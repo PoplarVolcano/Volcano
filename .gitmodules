@@ -1,0 +1,9 @@
+[submodule "Volcano/vendor/spdlog"]
+	path = Volcano/vendor/spdlog
+	url = https://github.com/gabime/spdlog
+[submodule "Volcano/vendor/GLFW"]
+	path = Volcano/vendor/GLFW
+	url = https://github.com/glfw/glfw.git
+[submodule "Volcano/vendor/imgui"]
+	path = Volcano/vendor/imgui
+	url = https://github.com/ocornut/imgui
