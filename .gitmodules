@@ -7,3 +7,6 @@
 [submodule "Volcano/vendor/imgui"]
 	path = Volcano/vendor/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "Volcano/vendor/glm"]
+	path = Volcano/vendor/glm
+	url = https://github.com/g-truc/glm

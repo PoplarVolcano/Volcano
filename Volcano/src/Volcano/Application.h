@@ -7,6 +7,7 @@
 #include "Events/Event.h"
 #include "Volcano/Events/ApplicationEvent.h"
 
+#include "Volcano/ImGui/ImGuiLayer.h"
 
 namespace Volcano {
 
@@ -17,9 +18,7 @@ namespace Volcano {
 		virtual ~Application();
 
 		void Run();
-
 		void OnEvent(Event& e);
-
 		void PushLayer(Layer* layer);
 		void PushOverlay(Layer* layer);
 
@@ -27,14 +26,14 @@ namespace Volcano {
 		inline Window& GetWindow() { return *m_Window; }
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
-
 		std::unique_ptr<Window> m_Window;
+		ImGuiLayer* m_ImGuiLayer;
 		bool m_Running = true;
 		LayerStack m_LayerStack;
 
 		static Application* s_Instance;
 	};
 
-	// To be defined in CLIENT
+	// 在客户端定义
 	Application* CreateApplication();
 }

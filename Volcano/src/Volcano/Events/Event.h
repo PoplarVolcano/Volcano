@@ -7,10 +7,10 @@ namespace Volcano {
 	//immediately gets dispatched and must be dealt with right then an there.
 	//For the future, a better strategy might be to buffer events in an event
 	//bus and process them during the "event" part of the update stage.
-	// Hazel中的事件当前是阻塞的，这意味着当一个事件发生时，它立即被分派，必须立即处理。
+	// Volcano中的事件当前是阻塞的，这意味着当一个事件发生时，它立即被分派，必须立即处理。
 	//将来，一个更好的策略可能是在事件总线中缓冲事件，并在更新阶段的“事件”部分处理它们。
+	
 	//事件类型
-
 	enum class EventType {
 		None = 0,
 		WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
@@ -71,6 +71,7 @@ namespace Volcano {
 		}
 
 		// F will be deduced by the compiler
+		// F将由编译器推导出来
 		template<typename T>
 		bool Dispatch(EventFn<T> func){
 			if (m_Event.GetEventType() == T::GetStaticType()){

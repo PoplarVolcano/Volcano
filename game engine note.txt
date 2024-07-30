@@ -1,0 +1,396 @@
+什么是入口点
+引擎入口点（Engine Entry Point）通常指的是一个程序的起始执行位置，也可以被称为主函数（Main Function）。程序从这里开始执行，并按照预定的流程继续执行。
+eg::例如，在C语言中，引擎入口点通常被命名为main函数，它是程序的起始位置。在C++中，引擎入口点可以是全局的main函数，也可以是类的静态成员函数。
+
+
+
+什么是沙盒(sandbox)
+sandbox（沙盒）是一种安全机制，用于限制程序的访问权限和行为范围。它创建了一个受限的执行环境，将程序隔离在其中，以防止恶意代码或不安全的操作对系统造成损害。
+
+
+
+虚析构函数？
+当一个类的析构函数被声明为虚析构函数时，这意味着该类将成为多态类型，并且可以安全地通过基类指针删除派生类对象。
+    1.安全地销毁派生类对象：当使用基类指针指向派生类对象时，如果基类的析构函数不是虚函数，在使用delete删除指针时只会调用基类的析构函数。这可能导致派生类中的资源泄漏，因为派生类的析构函数未被调用。通过将析构函数声明为虚函数，可以确保在删除指向派生类对象的基类指针时，会先调用派生类的析构函数，然后再调用基类的析构函数，从而正确释放派生类所占用的资源。
+    2.支持多态行为：在使用基类指针指向派生类对象并调用虚函数时，会根据对象的实际类型来调用相应的函数。
+
+
+
+宏（条件判断的实现逻辑）
+
+#define 宏名称 值或代码
+
+#ifdef 标识符
+    // 如果标识符已经被定义，则编译这部分代码
+#else
+    // 如果标识符没有被定义，则编译这部分代码
+#endif
+
+宏不会自动定义。如果在 属性页 -> C++ -> 预处理器 中填入一个宏XXX，这意味着在编译代码时会自动在预处理阶段为XXX这个宏定义一个值。
+这样不用手动编写一个宏，可以直接使用#ifdef语句进行条件判断。
+
+
+
+
+类的继承
+在 C++ 中，有三种继承方式：公有继承（public inheritance）、私有继承（private inheritance）和受保护继承（protected inheritance）。
+它们的区别在于派生类对基类成员的访问权限。
+
+公有继承（public inheritance）：
+        语法：使用 public 关键字进行声明，例如 class 派生类 : public 基类 {}。
+              基类的公有成员在派生类中仍然是公有的。
+              基类的保护成员在派生类中仍然是保护的。
+              基类的私有成员在派生类中不可访问。
+私有继承（private inheritance）：
+        语法：使用 private 关键字进行声明，例如 class 派生类 : private 基类 {}。
+              基类的公有成员在派生类中变为私有的。
+              基类的保护成员在派生类中变为私有的。
+              基类的私有成员在派生类中不可访问。
+受保护继承（protected inheritance）：
+        语法：使用 protected 关键字进行声明，例如 class 派生类 : protected 基类 {}。
+              基类的公有成员在派生类中变为受保护的。
+              基类的保护成员在派生类中仍然是受保护的。
+              基类的私有成员在派生类中不可访问。
+选择继承方式应根据具体的设计需求和情况来决定。通常情况下，公有继承是最常用的继承方式，因为它能够使派生类获得基类的接口和功能，并且符合面向对象编程的封装性和多态性原则。私有继承和受保护继承在特定场景下有其用途，比如实现继承实现细节封装或限制派生类对基类接口的访问。
+
+
+
+
+双下划线   "__"   ---->   预定义的宏
+定义：双下划线 "__" 表示这是一个预定义的宏，由编译器或标准库定义。
+目的：一些预定义的宏都包含双下划线 "__"，例如 __cplusplus、LINE、FILE 等等。这样设计的目的是为了避免与用户自定义的标识符冲突，并且提供一些方便的功能。
+
+
+
+
+(...) 和 __VA_ARGS__配对使用
+
+1.(...) 是可变参数模板的语法，表示宏函数可以接受任意数量的参数。
+2.VA_ARGS 是一个预定义的宏，在 C++ 中用于表示可变参数列表。它将被展开成实际传入的可变参数列表。
+
+一般情况下，在宏定义中使用 (...) 来接受可变数量的参数，在宏展开时使用 VA_ARGS 来引用这些参数。
+下面是一个示例来说明 (...) 和 VA_ARGS 的配对使用：
+
+#define PRINT_VALUES(format, ...) \
+    printf(format, __VA_ARGS__);
+
+int main() {
+    PRINT_VALUES("%d %s\n", 10, "Hello");  // 输出：10 Hello
+    return 0;
+}
+在这个例子中，PRINT_VALUES 宏使用了可变参数模板 (...) 来接受可变数量的参数，然后使用 VA_ARGS 来引用这些参数。在宏展开时，VA_ARGS 将被实际传入的可变参数替换。
+
+
+
+
+EventType::##type 和 #type 是什么？
+
+EventType::##type 中的 ## 是预处理操作符，用于将宏参数 type 与 EventType:: 连接起来。例如，如果 type 是 Mouse，那么 EventType::##type 就会被展开为 EventType::Mouse。
+
+return #type; 中的 # 是字符串化操作符，将宏参数转换为字符串。如果 type 是 Mouse，那么 #type 就会被展开为 "Mouse"。
+
+
+
+m_Event.m_Handled = func(*(T*)&m_Event) 的作用是什么？
+这段代码在 Dispatch 模板函数中，将事件对象转换为指定类型 T 后，调用传入的处理函数 func 来处理事件，并将处理结果存储在 m_Event.m_Handled 中，标记事件是否被处理。*(T*)&m_Event 表示强制将 m_Event 转换为 T 类型的引用，并将其作为参数调用函数对象 func。
+
+
+template<typename T>
+using EventFn = std::function<bool(T&)>; 和 std::function 是什么？
+EventFn 是一个别名模板，定义了一个函数对象类型 std::function<bool(T&)>，表示接受一个参数类型为 T&，返回类型为 bool 的函数对象。std::function 是一个通用的函数封装类，用于封装可调用对象，如函数指针、成员函数指针、Lambda 表达式等。
+
+
+enum 和 enum class 的区别
+enum class 中的成员在使用时候有类名这个作用域的限制，enum 则没有
+
+
+
+什么是事件分发器
+概念：事件分发器（Event Dispatcher）是一种设计模式，用于处理和分发事件（Event）的机制。
+包括以下几个要点：
+    接收事件：事件分发器需要能够接收系统中产生的各种事件，如按键输入、鼠标点击、网络消息等。
+    分发事件：根据事件的类型和属性，事件分发器将事件分发给注册的事件处理函数或对象。
+    事件处理：事件处理函数负责对接收到的事件做出相应的处理，可能包括更新系统状态、触发其他操作等。
+
+eg.一个简单的事件分发器的例子是一个图形界面应用程序，当用户点击按钮时，按钮控件会生成一个点击事件，事件分发器接收到该事件后，会将事件分发给注册的按钮点击事件处理函数，从而执行按钮点击后的相应操作，比如显示弹窗、切换界面等。
+
+
+
+
+std::to_string() 和 std::stringstream ss 的 ss.str()
+std::to_string 函数只接受基本数据类型（例如 int、float 等）作为参数，并将其转换为 std::string 类型的字符串。
+因此，直接将 std::stringstream 对象作为参数传递给 std::to_string 函数是不可行的，编译器会报错。
+
+
+
+子类的构造函数中是否应该调用父类的构造函数？
+
+在 C++ 中，如果子类构造函数没有显式调用父类构造函数，则会自动调用父类的默认构造函数（如果存在）。
+以确保从父类继承而来的部分能够正确初始化，保证整个对象的完整性和正确性。
+
+如果父类没有无参的默认构造函数，而只有带参数的构造函数，则子类必须通过初始化列表显式调用父类的构造函数来初始化从父类继承而来的部分。
+
+通过初始化列表显式调用基类构造函数来初始化从基类继承来的部分：
+        class Derived : public Base {
+        public:
+            Derived(int value) : Base(value) {
+                // 派生类构造函数体
+            }
+        };
+
+
+
+fork（分支/派生）和submodule（子模块）
+
+Fork= 就像是你复制了一个完整的项目到你自己的账号下，你可以在这个复制的项目上做任何修改而不影响原始项目。
+          你可以把这个复制的项目当作你自己的项目来管理。
+Submodule= 就像是在一个项目中引入了另一个项目，但它们是独立的。主项目知道子项目的存在并能够与之交互，但它们是分开管理的。
+      子模块通常用于将一个项目作为另一个项目的一部分来使用。
+
+简而言之，Fork 是复制整个项目到你自己的账号下，而 Submodule 是在一个项目中引入另一个项目作为子项目。
+
+
+
+glfwInit（）
+通常情况下，glfwInit() 函数会返回一个整数值来指示初始化是否成功。
+
+
+
+
+glfwSetWindowUserPointer( )
+作用：将一个指向自定义数据的指针与 GLFW 窗口相关联
+解释：
+通过调用 glfwSetWindowUserPointer(m_Window, &m_Data); 函数，你将自定义数据 m_Data 与 GLFW 窗口 m_Window 相关联。这样做的目的通常是为了在程序中可以方便地访问和操作与该窗口相关的自定义数据。例如，当你需要在 GLFW 窗口回调函数中访问特定窗口的自定义数据时，可以使用 glfwGetWindowUserPointer(m_Window) 来获取该数据指针。
+
+
+
+
+glfwSetWindowUserPointer 和 glfwGetWindowUserPointer的关系和用法
+
+void glfwSetWindowUserPointer(GLFWwindow* window, void* pointer)、
+参数：
+    window：用于设置用户指针数据的窗口对象。
+    pointer： 想要关联的自定义指针数据（通常是一个结构体指针或其他数据类型的指针。）
+功能：将用户自定义的指针数据与特定窗口对象关联起来。方便后续取出使用。
+
+
+void* glfwGetWindowUserPointer(GLFWwindow* window)
+参数：
+    window：想要获取用户指针数据的窗口对象。
+返回值：
+    与窗口对象关联的，用户指明的 自定义指针数据（即上面关联进来的那个数据或结构体）。
+注意：
+    返回值是一个void *，可以指向任何数据。所以在使用时也许需要你将返回值强制类型转换并赋值给其他变量。
+功能：从特定窗口对象中获取之前通过 glfwSetWindowUserPointer 设置的用户自定义指针数据。
+
+    eg.
+    // 在初始化窗口时将自定义数据与窗口对象关联
+    MyData data;
+    glfwSetWindowUserPointer(window, &data);
+
+    // 在需要时从窗口对象中获取自定义数据
+    MyData* userData = static_cast<MyData*>(glfwGetWindowUserPointer(window));
+    if (userData)  {    // 使用 userData 中的数据     }
+
+
+
+
+在OpenGL程序中调用glfwSwapInterval(1)是可选的，它用于设置垂直同步（Vertical Sync）的行为。垂直同步是一种技术，用于控制图形渲染与显示设备的刷新率同步，以避免出现画面撕裂（Tearing）现象。
+
+调用glfwSwapInterval(1)会将垂直同步打开，即将渲染与显示设备的刷新率同步，每次渲染完成后等待显示设备完成一次刷新再进行下一次渲染。这可以确保画面的流畅性和稳定性，但可能会导致一定的延迟。
+
+然而，如果您的应用程序对于实时性要求较高，例如游戏或实时模拟等，您可能希望关闭垂直同步以减少延迟。在这种情况下，您可以调用glfwSwapInterval(0)来关闭垂直同步。
+
+
+
+
+
+
+bind函数是C++11标准中的一个函数模板，用于将函数和一组参数绑定在一起，生成一个新的可调用对象。可以用于实现函数适配器、参数绑定等功能。
+
+bind函数的声明如下：
+
+template<class F, class... Args>
+constexpr /*unspecified*/ bind(F&& f, Args&&... args);
+
+其中，F表示需要绑定的函数或函数指针，Args表示需要绑定的参数。
+
+bind函数的返回值是一个可调用对象，可以通过调用该对象来执行绑定的函数。
+
+
+
+
+std::placeholders 是 C++ 标准库中的一个命名空间，它包含了一组特殊的占位符对象，用于与 std::bind 函数一起使用。这些占位符对象允许你在绑定函数时表示某些参数是未指定的，并在稍后提供这些参数的值。
+
+std::placeholders 中有以下占位符：
+std::placeholders::_1：表示第一个未指定的参数。
+std::placeholders::_2：表示第二个未指定的参数。
+
+
+
+
+
+事件回调步骤
+EntryPoint的main函数调用CreateApplication()
+CreateApplication(){ return new Sandbox;}
+
+初始化Sandbox
+Sandbox继承Application
+
+初始化Application
+Application构造函数调用Window::Create(props){ return new WindowsWindow(props); }
+
+初始化WindowsWindow
+设置m_Window 标题，长，宽，初始化GLFW窗口，将m_Data注入GLFWwindow，设置GLFW回调函数
+GLFW回调函数逻辑{
+	获取m_Data;
+	创建对应Event
+	m_Data.EventCallBack(Event);
+}
+WindowsWindow赋给unique指针m_Window
+
+把 Application的OnEvent(Event& e)函数 作为参数 绑定 m_Window的窗口回调函数EventCallbackFn
+将 OnEvent(Event& e) 赋给 m_Window.m_Data.EventCallback，回调函数都会调用m_Data.EventCallback(Event)
+
+设置事件拦截器
+触发关闭窗口事件
+创建关闭窗口事件的事件拦截器
+判断事件拦截器是否符合Dispatch<WindowCloseEvent>的拦截条件
+是WindowCloseEvent，调用OnWindowClose(WindowCloseEvent)，
+将OnWindowClose处理结果返回给m_Event.m_Handled标记事件是否被处理
+
+OnEvent(Event& e) {
+	EventDispatcher dispatcher(e);
+	EventDispatcher::Dispatch<WindowCloseEvent>(BIND_EVENT_FN(OnWindowClose))
+}
+
+EntryPoint的main函数调用Run()
+OnUpdate()刷新窗口
+
+
+
+
+
+
+问题：Application.cpp中的语句m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));在干什么？
+
+在WindowsWindow.h中，有  
+	inline void SetEventCallback(const EventCallbackFn& callback) override { m_Data.EventCallback = callback; } 
+ 这样的定义。
+所以SetEventCallback 这个函数需要接受一个  EventCallbackFn  类型的函数，也就是  void XXX(Event& e)  这样的函数。
+而std::bind恰好能返回一组函数指针或者说一个函数对象，通过这个函数对象，我们可以用传入的 OnEvent  这个函数初始化  m_Data.EventCallback 
+（注意：在将成员函数作为函数对象传递时，需要绑定其对象，确保能通过对象正确的访问到这个成员函数）
+
+而  BIND_EVENT_FN(OnEvent)  就像是对  OnEvent  做了一些暂缓的设置，以便之后处理
+
+问题：占位符呢？
+虽然有占位符的设计，但是m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));这个OnEvent却没有填入参数
+即使在绑定时没有显式地填入参数，但通过占位符的机制，函数对象仍然能够正确地接收事件参数并传递给 OnEvent 函数。
+（注意是  std::placeholders::_1  而不是  std::placeholders::1， 有下划线）
+
+理解：
+通过使用占位符，函数对象会暂时（注意：暂时）保留一个位置用于接收后续传入的参数，并在调用时将这些参数正确地传递给被绑定的成员函数。
+
+
+
+问题一：
+首先我们在前面提到，m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent)); 其实是  std::bind( )  返回了一个函数对象作为 SetEventCallback的参数，
+这用来初始化  data  中的一个元素  EventCallback 。
+
+问题二：那么  BIND_EVENT_FN(OnEvent)  呢？
+
+解释：在定义中我们看到  #define BIND_EVENT_FN(x) std::bind(&Application::x, this, std::placeholders::_1)
+      意思是为成员函数绑定了对象，并将其作为函数对象传递，这就是前两个参数的意义，
+      第三个参数：std::placeholders::_1 ， 指出了  OnEvent  的参数暂时被占位了，可以先不填入参数，以便之后处理。
+
+问题三：
+      之后处理，实际上就是指之后的  data.EventCallback(event);   要进行的处理
+      通过  Data  类型的对象  data，我们调用出来了刚才初始化进  data  的那个函数：OnEvent。
+
+      调用出来的  OnEvent( )  就相当于  data.EventCallback( )，然而  OnEvent  在定义上是需要参数的，所以
+      data.EventCallback(event)  ==  OnEvent(event)  ,这个  event ，就是我们用占位符延缓的参数（ 这个参数被标明会在后续使用）
+
+      在使用  Event  对象作为  OnEvent  的参数填入之后，event这个参数参与到OnEvent函数体内的操作中去，完成我们定义的操作。
+
+
+
+
+--------layers-------------
+
+关于“普通图层”和“覆盖图层”的理解
+在CS:GO游戏中
+普通图层：一般是游戏场景和玩家角色，它们包含了游戏世界的内容以及玩家的交互。
+覆盖图层：一般是设置菜单、商店界面等UI，它们会覆盖在游戏场景上方，用于显示各种菜单、选项、提示等用户界面元素。
+
+
+层的传入顺序
+层的设置：
+    层这个数组整体分为两部分：前半部分为普通图层，后半部分为覆盖图层。
+    就绪后从头到尾开始绘制。（layer1, layer2, layer3, overlay1, overlay2, overlay3）
+
+
+
+运行流程
+每次触发Application::OnEvent，从end到begin遍历层栈LayerStack并执行层Layer的OnEvent
+每次循环从begin到end遍历层栈LayerStack并执行层Layer的Opdate
+1.图层将会是
+ （layer1, layer2, layer3, overlay1, overlay2, overlay3）
+     begin											,   end
+
+
+
+------------------------OpenGL & Glad-----------------------------------------------------
+
+int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);是在干嘛?
+作用：
+使用 glfwGetProcAddress 获取当前环境下的 OpenGL 函数的地址，并通过 gladLoadGLLoader 将这些函数指针加载到程序中，从而使得程序可以调用 OpenGL 提供的各种函数进行图形渲染等操作。
+
+之前都在使用glfw，经此之后可以使用gl的函数，以此获取用来进行图形渲染的函数。
+
+
+避免 glad.h 和 glfw3.h 包含两个 gl.h导致的错误
+加入一个宏定义"GLFW_INCLUDE_NONE"以确保 gl.h 不会被包含两次。
+
+先包含 glad.h ：
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+在WindowsWindow.h中按照这样的方式同时包含两个文件，并在 WindowsWindow.cpp 中删除 glad.h。这样也是可以正常运行的。
+
+
+
+
+
+glViewport的参数
+
+概念：设置视口（Viewport），用来指定 OpenGL 渲染的目标区域在帧缓冲区中的位置和大小。
+原型：void glViewport(GLint x, GLint y, GLsizei width, GLsizei height);
+参数：
+x：指定视口的左下角 X 坐标。
+y：指定视口的左下角 Y 坐标。
+width：指定视口的宽度。
+height：指定视口的高度。
+
+
+
+
+Input轮询
+
+在引擎程序中任何时间，任何位置都能知道按键是否按下、鼠标的位置等等信息。
+
+与事件系统的区别：事件系统是在按下时调用并传递按键状态；轮询是每时每刻都能获取按键状态
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

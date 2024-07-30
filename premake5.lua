@@ -18,6 +18,7 @@ IncludeDir = {}
 IncludeDir["GLFW"] = "Volcano/vendor/GLFW/include"
 IncludeDir["Glad"] = "Volcano/vendor/Glad/include"
 IncludeDir["ImGui"] = "Volcano/vendor/imgui"
+IncludeDir["glm"] = "Volcano/vendor/glm"
 
 include "Volcano/vendor/GLFW"
 include "Volcano/vendor/Glad"
@@ -25,8 +26,10 @@ include "Volcano/vendor/imgui"
 
 project "Volcano"	--项目名称
 	location "Volcano"	--相对路径
-	kind "SharedLib"	--表明该项目是dll动态库
+	kind "StaticLib"	--表明该项目是lib静态库
 	language "C++"
+	cppdialect "C++20"
+	staticruntime "on"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")	--输出目录
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")	--中间临时文件的目录
@@ -38,7 +41,15 @@ project "Volcano"	--项目名称
 	files	--该项目的文件
 	{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vendor/glm/glm/**.hpp",
+		"%{prj.name}/vendor/glm/glm/**.inl",
+		"%{prj.name}/vendor/glm/glm/**.cppm"
+	}
+
+	defines
+	{
+		"_CRT_SECURE_NO_WARNINGS"
 	}
 
 	includedirs	--附加包含目录
@@ -47,7 +58,8 @@ project "Volcano"	--项目名称
 		"%{prj.name}/vendor/spdlog/include",
 		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
-		"%{IncludeDir.ImGui}"
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.glm}"
 	}
 
 	links
@@ -58,10 +70,10 @@ project "Volcano"	--项目名称
 		"opengl32.lib"
 	}
 	filter "system:windows"	--windows平台的配置
-		cppdialect "C++20"
+		--cppdialect "C++20"
 		-- On:代码生成的运行库选项是MTD,静态链接MSVCRT.lib库;
 		-- Off:代码生成的运行库选项是MDD,动态链接MSVCRT.dll库;打包后的exe放到另一台电脑上若无这个dll会报错
-		staticruntime "On"
+		--staticruntime "On"
 		systemversion "latest"	-- windowSDK版本
 
 		defines	--预编译宏
@@ -71,31 +83,36 @@ project "Volcano"	--项目名称
 			--"GLFW_INCLUDE_NONE" --让GLFW不包含OpenGL
 		}
 
-		postbuildcommands	-- build后的自定义命令,编译好后移动Volcano.dll文件到Sandbox文件夹下
-		{
-			("{COPY} %{cfg.buildtarget.relpath} ../bin/" ..outputdir .. "/Sandbox")
-		}
+		--postbuildcommands	-- build后的自定义命令,编译好后移动Volcano.dll文件到Sandbox文件夹下
+		--{
+		--	("{COPY} %{cfg.buildtarget.relpath} ../bin/" ..outputdir .. "/Sandbox")
+		--}
 
 	-- 不同配置下的预定义不同
 	filter "configurations:Debug"
 		defines "VOL_DEBUG"
 		buildoptions "/MDd"
+		runtime "Debug"
 		symbols "On"
 		
 	filter "configurations:Release"
 		defines "VOL_RELEASE"
 		buildoptions "/MD"
+		runtime "Release"
 		symbols "On"
 		
 	filter "configurations:Dist"
 		defines "VOL_DIST"
 		buildoptions "/MD"
+		runtime "Release"
 		symbols "On"
 
 project "Sandbox"
 	location "Sandbox"
 	kind "ConsoleApp"
 	language "C++"
+	cppdialect "C++20"
+	staticruntime "On"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
@@ -109,7 +126,9 @@ project "Sandbox"
 	includedirs
 	{
 		"Volcano/vendor/spdlog/include;",
-		"Volcano/src"
+		"Volcano/src",
+		"%{IncludeDir.glm}",
+		"Volcano/vendor"
 	}
 
 	links
@@ -118,8 +137,8 @@ project "Sandbox"
 	}
 
 	filter "system:windows"
-		cppdialect "C++20"
-		staticruntime "On"
+		--cppdialect "C++20"
+		--staticruntime "On"
 		systemversion "latest"
 		
 		defines
