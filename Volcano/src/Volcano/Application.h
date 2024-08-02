@@ -9,6 +9,10 @@
 
 #include "Volcano/ImGui/ImGuiLayer.h"
 
+#include "Volcano/Renderer/Shader.h"
+#include "Volcano/Renderer/Buffer.h"
+#include "Volcano/Renderer/VertexArray.h"
+
 namespace Volcano {
 
 	class VOLCANO_API Application
@@ -30,6 +34,12 @@ namespace Volcano {
 		ImGuiLayer* m_ImGuiLayer;
 		bool m_Running = true;
 		LayerStack m_LayerStack;
+
+		std::shared_ptr<Shader> m_Shader;
+		std::shared_ptr<VertexArray> m_VertexArray;
+
+		std::shared_ptr<Shader> m_BlueShader;
+		std::shared_ptr<VertexArray> m_SquareVA;
 
 		static Application* s_Instance;
 	};

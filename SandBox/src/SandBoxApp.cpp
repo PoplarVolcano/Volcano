@@ -61,7 +61,7 @@ public:
 class Sandbox : public Volcano::Application {
 public:
 	Sandbox() {
-		PushLayer(new ExampleLayer());
+		//PushLayer(new ExampleLayer());
 	}
 
 	~Sandbox() {

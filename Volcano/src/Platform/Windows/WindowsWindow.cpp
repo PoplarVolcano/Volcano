@@ -5,6 +5,7 @@
 #include "Volcano/Events/KeyEvent.h"
 #include "Volcano/Events/MouseEvent.h"
 
+#include "Platform/OpenGL/OpenGLContext.h"
 
 namespace Volcano {
 
@@ -47,9 +48,10 @@ namespace Volcano {
         }
 
         m_Window = glfwCreateWindow((int)m_Data.Width, (int)m_Data.Height, m_Data.Title.c_str(), nullptr, nullptr);
-        glfwMakeContextCurrent(m_Window);
-        int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-        VOL_CORE_ASSERT(status, "Failed to initialize Glad!");
+        
+        m_Context = new OpenGLContext(m_Window);
+        m_Context->Init();
+        
         glfwSetWindowUserPointer(m_Window, &m_Data);
         SetVSync(true);
 
@@ -143,8 +145,10 @@ namespace Volcano {
 
     void WindowsWindow::OnUpdate()
     {
+        //轮询事件
         glfwPollEvents();
-        glfwSwapBuffers(m_Window);
+        //交换缓冲区
+        m_Context->SwapBuffers();
     }
 
     void WindowsWindow::SetVSync(bool enabled)

@@ -138,6 +138,9 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
+    <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
+    <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h" />
     <ClInclude Include="src\Platform\Windows\WindowsInput.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\Volcano.h" />
@@ -155,6 +158,11 @@
     <ClInclude Include="src\Volcano\LayerStack.h" />
     <ClInclude Include="src\Volcano\Log.h" />
     <ClInclude Include="src\Volcano\MouseButtonCodes.h" />
+    <ClInclude Include="src\Volcano\Renderer\Buffer.h" />
+    <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h" />
+    <ClInclude Include="src\Volcano\Renderer\Renderer.h" />
+    <ClInclude Include="src\Volcano\Renderer\Shader.h" />
+    <ClInclude Include="src\Volcano\Renderer\VertexArray.h" />
     <ClInclude Include="src\Volcano\Window.h" />
     <ClInclude Include="src\volpch.h" />
     <ClInclude Include="vendor\glm\glm\common.hpp" />
@@ -575,6 +583,9 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
+    <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
+    <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\Volcano\Application.cpp" />
@@ -583,6 +594,10 @@
     <ClCompile Include="src\Volcano\Layer.cpp" />
     <ClCompile Include="src\Volcano\LayerStack.cpp" />
     <ClCompile Include="src\Volcano\Log.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Buffer.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp" />
     <ClCompile Include="src\volpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

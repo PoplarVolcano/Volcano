@@ -1,9 +1,11 @@
 #pragma once
 
 #include "Volcano/Window.h"
+#include "Volcano/Renderer/GraphicsContext.h"
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+
 
 namespace Volcano {
 
@@ -30,6 +32,7 @@ namespace Volcano {
         virtual void Shutdown();
     private:
         GLFWwindow* m_Window;
+        GraphicsContext* m_Context;
 
         struct WindowData
         {
