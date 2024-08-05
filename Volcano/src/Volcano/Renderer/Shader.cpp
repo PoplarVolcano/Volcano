@@ -1,115 +1,69 @@
-#include"volpch.h"
+#include "volpch.h"
 #include "Shader.h"
-#include <glad/glad.h>
-#include <Volcano/Log.h>
+
+#include"Renderer.h"
+#include "Platform/OpenGL/OpenGLShader.h"
 
 namespace Volcano {
-
-	Shader::Shader(const std::string& vertexSrc, const std::string& fragmentSrc)
+	Ref<Shader> Shader::Create(const std::string& filepath)
 	{
-		// 1.1.创建顶点着色器对象
-		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-		// Send the vertex shader source code to GL
-		// Note that std::string's .c_str is NULL character terminated.
-		// 1.2.附加顶点着色器源码到顶点着色器对象中
-		const GLchar* source = vertexSrc.c_str();
-		glShaderSource(vertexShader, 1, &source, 0);
-		// 1.3.编译顶点着色器对象
-		glCompileShader(vertexShader);
-
-
-		// 1.4.检查是否编译成功
-		GLint isCompiled = 0;
-		glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &isCompiled);
-		if (isCompiled == GL_FALSE) {
-			// 1.4.2编译失败可以打印报错信息
-			GLint maxLength = 0;
-			glGetShaderiv(vertexShader, GL_INFO_LOG_LENGTH, &maxLength);
-			// The maxLength includes the NULL character
-			std::vector<GLchar> infoLog(maxLength);
-			glGetShaderInfoLog(vertexShader, maxLength, &maxLength, &infoLog[0]);
-			// We don't need the shader anymore.
-			glDeleteShader(vertexShader);
-			VOL_CORE_ERROR("{0}", infoLog.data());
-			VOL_CORE_ASSERT(false, "Vertex shader compilation failure!");
-			return;
+		switch (Renderer::GetAPI())
+		{
+			case RendererAPI::API::None:   VOL_CORE_ASSERT(false, "Buffer：API为None不支持"); return nullptr;
+			case RendererAPI::API::OpenGL: return std::make_shared<OpenGLShader>(filepath);
 		}
 
-		// 片段着色器
-		// 2.1.创建片段着色器对象
-		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-		// Send the fragment shader source code to GL
-		// Note that std::string's .c_str is NULL character terminated.
-		// 2.2.附加片段着色器源码到片段着色器对象中
-		source = fragmentSrc.c_str();
-		glShaderSource(fragmentShader, 1, &source, 0);
-		// 2.3.编译片段着色器对象
-		glCompileShader(fragmentShader);
-		// 2.4.检查是否编译成功
-		glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &isCompiled);
-		if (isCompiled == GL_FALSE) {
-			// 2.4.2编译失败可以打印报错信息
-			GLint maxLength = 0;
-			glGetShaderiv(fragmentShader, GL_INFO_LOG_LENGTH, &maxLength);
-			// The maxLength includes the NULL character
-			std::vector<GLchar> infoLog(maxLength);
-			glGetShaderInfoLog(fragmentShader, maxLength, &maxLength, &infoLog[0]);
-			// We don't need the shader anymore.
-			glDeleteShader(fragmentShader);
-			// Either of them. Don't leak shaders.
-			glDeleteShader(vertexShader);
-			VOL_CORE_ERROR("{0}", infoLog.data());
-			VOL_CORE_ASSERT(false, "Fragment shader compilation failure!");
-			return;
+		VOL_CORE_ASSERT(false, "Buffer：未知RendererAPI");
+		return nullptr;
+	}
+
+	Ref<Shader> Shader::Create(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc)
+	{
+		switch (Renderer::GetAPI())
+		{
+			case RendererAPI::API::None:   VOL_CORE_ASSERT(false, "Buffer：API为None不支持"); return nullptr;
+			case RendererAPI::API::OpenGL: return std::make_shared<OpenGLShader>(name, vertexSrc, fragmentSrc);
 		}
 
-		// Vertex and fragment shaders are successfully compiled.
-		// Now time to link them together into a program.
-		// Get a program object.
-		// 3.1创建着色器程序对象
-		m_RendererID = glCreateProgram();
-		GLuint program = m_RendererID;
-		// 3.2附加着色器对象给着色器程序对象
-		glAttachShader(program, vertexShader);
-		glAttachShader(program, fragmentShader);
-		// 3.3链接着色器程序对象
-		glLinkProgram(program);
-		// 3.4可以检查链接是否成功
-		// Note the different functions here: glGetProgram* instead of glGetShader*.
-		GLint isLinked = 0;
-		glGetProgramiv(program, GL_LINK_STATUS, (int*)&isLinked);
-		if (isLinked == GL_FALSE) {
-			GLint maxLength = 0;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &maxLength);
-			// The maxLength includes the NULL character
-			std::vector<GLchar> infoLog(maxLength);
-			glGetProgramInfoLog(program, maxLength, &maxLength, &infoLog[0]);
-			// We don't need the program anymore.
-			glDeleteProgram(program);
-			// Don't leak shaders either.
-			glDeleteShader(vertexShader);
-			glDeleteShader(fragmentShader);
-			VOL_CORE_ERROR("{0}", infoLog.data());
-			VOL_CORE_ASSERT(false, "Shader link failure!");
-			return;
-		}
-		// 4.删除着色器对象
-		// Always detach shaders after a successful link.
-		glDetachShader(program, vertexShader);
-		glDetachShader(program, fragmentShader);
+		VOL_CORE_ASSERT(false, "Buffer：未知RendererAPI");
+		return nullptr;
+	}
 
+	void ShaderLibrary::Add(const std::string& name, const Ref<Shader>& shader)
+	{
+		VOL_CORE_ASSERT(!Exists(name), "Shader already exists!");
+		m_Shaders[name] = shader;
+	}
 
-	}
-	Shader::~Shader()
+	void ShaderLibrary::Add(const Ref<Shader>& shader)
 	{
-		glDeleteProgram(m_RendererID);
+		auto& name = shader->GetName();
+		Add(name, shader);
 	}
-	void Shader::Bind() const
+
+	Ref<Shader> ShaderLibrary::Load(const std::string& filepath)
 	{
-		glUseProgram(m_RendererID);
+		auto shader = Shader::Create(filepath);
+		Add(shader);
+		return shader;
 	}
-	void Shader::UnBind() const
+
+	Ref<Shader> ShaderLibrary::Load(const std::string& name, const std::string& filepath)
 	{
-		glUseProgram(0);
+		auto shader = Shader::Create(filepath);
+		Add(name, shader);
+		return shader;
 	}
+
+	Ref<Shader> ShaderLibrary::Get(const std::string& name)
+	{
+		VOL_CORE_ASSERT(Exists(name), "Shader not found!");
+		return m_Shaders[name];
+	}
+
+	bool ShaderLibrary::Exists(const std::string& name)
+	{
+		return m_Shaders.find(name) != m_Shaders.end();
+	}
+
 }

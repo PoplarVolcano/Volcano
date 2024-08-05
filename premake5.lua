@@ -19,6 +19,7 @@ IncludeDir["GLFW"] = "Volcano/vendor/GLFW/include"
 IncludeDir["Glad"] = "Volcano/vendor/Glad/include"
 IncludeDir["ImGui"] = "Volcano/vendor/imgui"
 IncludeDir["glm"] = "Volcano/vendor/glm"
+IncludeDir["stb_image"] = "Volcano/vendor/stb_image"
 
 include "Volcano/vendor/GLFW"
 include "Volcano/vendor/Glad"
@@ -42,6 +43,8 @@ project "Volcano"	--项目名称
 	{
 		"%{prj.name}/src/**.h",
 		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vendor/stb_image/**.h",
+		"%{prj.name}/vendor/stb_image/**.cpp",
 		"%{prj.name}/vendor/glm/glm/**.hpp",
 		"%{prj.name}/vendor/glm/glm/**.inl",
 		"%{prj.name}/vendor/glm/glm/**.cppm"
@@ -59,7 +62,8 @@ project "Volcano"	--项目名称
 		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.stb_image}"
 	}
 
 	links

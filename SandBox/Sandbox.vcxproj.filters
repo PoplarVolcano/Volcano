@@ -1,0 +1,29 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\SandboxApp.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\textures\03 (9).jpg" />
+    <Image Include="assets\textures\03(1).jpg" />
+    <Image Include="assets\textures\03(10).jpg" />
+    <Image Include="assets\textures\04(1).jpg" />
+    <Image Include="assets\textures\05 (10).jpg" />
+    <Image Include="assets\textures\06(9).jpg" />
+    <Image Include="assets\textures\07.jpg" />
+    <Image Include="assets\textures\08 (4).jpg" />
+    <Image Include="assets\textures\08 (5).jpg" />
+    <Image Include="assets\textures\09 (5).jpg" />
+    <Image Include="assets\textures\10 (2).jpg" />
+    <Image Include="assets\textures\14 (2).jpg" />
+    <Image Include="assets\textures\15 (2).jpg" />
+    <Image Include="assets\textures\15 (4).jpg" />
+    <Image Include="assets\textures\16 (2).jpg" />
+    <Image Include="assets\textures\17.jpg" />
+    <Image Include="assets\textures\2016-08-22 000130.jpg" />
+    <Image Include="assets\textures\莫斯提马.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\texture.glsl" />
+  </ItemGroup>
+</Project>

@@ -7,17 +7,26 @@
     <Filter Include="src\Platform">
       <UniqueIdentifier>{21CA02E5-0D2D-9289-B6B2-CA3FA2F45D0C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Platform\OpenGL">
+      <UniqueIdentifier>{35A49437-A105-7245-2A73-B8F796D3A804}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Platform\Windows">
       <UniqueIdentifier>{5B054582-4794-CE4B-F0B2-E246DC20DFF1}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\Volcano">
       <UniqueIdentifier>{4EEFD0F3-BAA4-49E9-4399-43C0AF4D40ED}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Volcano\Core">
+      <UniqueIdentifier>{66D42910-52CD-4862-7BFF-2DE76757286E}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Volcano\Events">
       <UniqueIdentifier>{729712C7-5E7B-D31C-C7DB-CD6FB3DEBD9E}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\Volcano\ImGui">
       <UniqueIdentifier>{F826CF15-643D-CDAB-ADB4-58CD190A9E33}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Volcano\Renderer">
+      <UniqueIdentifier>{B44A11CD-A0D9-9A96-49F8-AE913566AB3C}</UniqueIdentifier>
     </Filter>
     <Filter Include="vendor">
       <UniqueIdentifier>{B3738122-9F15-ACF8-88D0-BF4C74113349}</UniqueIdentifier>
@@ -40,8 +49,29 @@
     <Filter Include="vendor\glm\glm\gtx">
       <UniqueIdentifier>{B3A6A76B-9F8A-68C1-08EB-6214F4ED5243}</UniqueIdentifier>
     </Filter>
+    <Filter Include="vendor\stb_image">
+      <UniqueIdentifier>{0DA0BA59-F998-D9AB-22CB-BE300E23B9B7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLRendererAPI.h">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLShader.h">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLTexture.h">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClInclude>
     <ClInclude Include="src\Platform\Windows\WindowsInput.h">
       <Filter>src\Platform\Windows</Filter>
     </ClInclude>
@@ -56,6 +86,9 @@
     </ClInclude>
     <ClInclude Include="src\Volcano\Core.h">
       <Filter>src\Volcano</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Timestep.h">
+      <Filter>src\Volcano\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\EntryPoint.h">
       <Filter>src\Volcano</Filter>
@@ -92,6 +125,33 @@
     </ClInclude>
     <ClInclude Include="src\Volcano\MouseButtonCodes.h">
       <Filter>src\Volcano</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Buffer.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\OrthoGraohicCamera.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RenderCommand.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Renderer.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererAPI.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Shader.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Texture.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\VertexArray.h">
+      <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Window.h">
       <Filter>src\Volcano</Filter>
@@ -1347,16 +1407,29 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
-    <ClInclude Include="src\Platform\OpenGL\OpenGLContext.h" />
-    <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h" />
-    <ClInclude Include="src\Volcano\Renderer\Shader.h" />
-    <ClInclude Include="src\Volcano\Renderer\Buffer.h" />
-    <ClInclude Include="src\Platform\OpenGL\OpenGLBuffer.h" />
-    <ClInclude Include="src\Volcano\Renderer\Renderer.h" />
-    <ClInclude Include="src\Volcano\Renderer\VertexArray.h" />
-    <ClInclude Include="src\Platform\OpenGL\OpenGLVertexArray.h" />
+    <ClInclude Include="vendor\stb_image\stb_image.h">
+      <Filter>vendor\stb_image</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLRendererAPI.cpp">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLShader.cpp">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLTexture.cpp">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp">
+      <Filter>src\Platform\OpenGL</Filter>
+    </ClCompile>
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp">
       <Filter>src\Platform\Windows</Filter>
     </ClCompile>
@@ -1381,18 +1454,38 @@
     <ClCompile Include="src\Volcano\Log.cpp">
       <Filter>src\Volcano</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Buffer.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\OrthoGraohicCamera.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RenderCommand.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Renderer.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererAPI.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Shader.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Texture.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="vendor\glm\glm\glm.cppm">
       <Filter>vendor\glm\glm</Filter>
     </ClCompile>
-    <ClCompile Include="src\Platform\OpenGL\OpenGLContext.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\Shader.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\Buffer.cpp" />
-    <ClCompile Include="src\Platform\OpenGL\OpenGLBuffer.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp" />
-    <ClCompile Include="src\Platform\OpenGL\OpenGLVertexArray.cpp" />
+    <ClCompile Include="vendor\stb_image\stb_image.cpp">
+      <Filter>vendor\stb_image</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

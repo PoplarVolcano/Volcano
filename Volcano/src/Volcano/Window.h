@@ -13,16 +13,14 @@ namespace Volcano {
         unsigned int Width;
         unsigned int Height;
 
-        WindowProps(const std::string& title = "Volcano Engine",
-            unsigned int width = 1280,
-            unsigned int height = 720)
+        WindowProps(const std::string& title = "Volcano Engine", unsigned int width = 1280, unsigned int height = 720)
             : Title(title), Width(width), Height(height)
         {
         }
     };
 
     // Interface representing a desktop system based Window
-    class VOLCANO_API Window { //窗口抽象类
+    class Window { //窗口抽象类
     
     public:
         using EventCallbackFn = std::function<void(Event&)>;

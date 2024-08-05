@@ -153,6 +153,7 @@ namespace Volcano {
 
     void WindowsWindow::SetVSync(bool enabled)
     {
+        //glfw交换间隔设置为1或0
         if (enabled)
             glfwSwapInterval(1);
         else
