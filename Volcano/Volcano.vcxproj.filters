@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Volcano">
+      <UniqueIdentifier>{37EF96EA-A3CE-1586-ACE6-A05C18457CE7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Volcano\Core">
+      <UniqueIdentifier>{EF2D09FD-DB90-98A1-8416-D15770586424}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Volcano\Core\Events">
+      <UniqueIdentifier>{F3F63FC8-5F58-1DD6-E8C5-638854265495}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Volcano\ImGui">
+      <UniqueIdentifier>{A1B1999E-0D72-15D5-D6AC-5E52422C5AB1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Volcano\Platform">
+      <UniqueIdentifier>{6B39C78A-5732-E6DC-8064-CB616CBCC5E8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Volcano\Platform\OpenGL">
+      <UniqueIdentifier>{3FBC2D0F-ABF3-75A6-B4FD-D9C920B49C9F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Volcano\Platform\Windows">
+      <UniqueIdentifier>{A51E014D-9143-50CD-BA8E-355DA6124FEB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Volcano\Renderer">
+      <UniqueIdentifier>{BD40A465-A939-C3B7-D26B-A83CBEC3A2C3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Volcano.h" />
+    <ClInclude Include="src\Volcano\Core\Application.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Assert.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Base.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Buffer.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Events\ApplicationEvent.h">
+      <Filter>Volcano\Core\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Events\Event.h">
+      <Filter>Volcano\Core\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Events\KeyEvent.h">
+      <Filter>Volcano\Core\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Events\MouseEvent.h">
+      <Filter>Volcano\Core\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Input.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\KeyCodes.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Layer.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\LayerStack.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Log.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Timestep.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Window.h">
+      <Filter>Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\EntryPoint.h">
+      <Filter>Volcano</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\ImGui\ImGuiLayer.h">
+      <Filter>Volcano\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.h">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLContext.h">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLShader.h">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLTexture.h">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLVertexArray.h">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\Windows\WindowsWindow.h">
+      <Filter>Volcano\Platform\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Buffer.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\OrthographicCamera.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\OrthographicCameraController.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RenderCommandQueue.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Renderer.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Renderer2D.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererAPI.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Shader.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Texture.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\VertexArray.h">
+      <Filter>Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\volpch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Volcano\Core\Application.cpp">
+      <Filter>Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Core\Base.cpp">
+      <Filter>Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Core\Layer.cpp">
+      <Filter>Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Core\LayerStack.cpp">
+      <Filter>Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Core\Log.cpp">
+      <Filter>Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Core\Timestep.cpp">
+      <Filter>Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\ImGui\ImGuiBuild.cpp">
+      <Filter>Volcano\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\ImGui\ImGuiLayer.cpp">
+      <Filter>Volcano\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.cpp">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLContext.cpp">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRendererAPI.cpp">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLShader.cpp">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLTexture.cpp">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLVertexArray.cpp">
+      <Filter>Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\Windows\WindowsInput.cpp">
+      <Filter>Volcano\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\Windows\WindowsWindow.cpp">
+      <Filter>Volcano\Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Buffer.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\OrthographicCamera.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\OrthographicCameraController.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RenderCommandQueue.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Renderer.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Shader.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Texture.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp">
+      <Filter>Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\volpch.cpp" />
+  </ItemGroup>
+</Project>

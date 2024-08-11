@@ -1,0 +1,220 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Dist|x64">
+      <Configuration>Dist</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{37EF96EA-A3CE-1586-ACE6-A05C18457CE7}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>Volcano</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>..\bin\Debug-windows-x86_64\Volcano\</OutDir>
+    <IntDir>..\bin-int\Debug-windows-x86_64\Volcano\</IntDir>
+    <TargetName>Volcano</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>..\bin\Release-windows-x86_64\Volcano\</OutDir>
+    <IntDir>..\bin-int\Release-windows-x86_64\Volcano\</IntDir>
+    <TargetName>Volcano</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <OutDir>..\bin\Dist-windows-x86_64\Volcano\</OutDir>
+    <IntDir>..\bin-int\Dist-windows-x86_64\Volcano\</IntDir>
+    <TargetName>Volcano</TargetName>
+    <TargetExt>.lib</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>volpch.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;VOL_PLATFORM_WINDOWS;VOL_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\assimp\include;vendor\spdlog\include;vendor\stb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>volpch.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;VOL_PLATFORM_WINDOWS;VOL_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\assimp\include;vendor\spdlog\include;vendor\stb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>volpch.h</PrecompiledHeaderFile>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;VOL_PLATFORM_WINDOWS;VOL_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>src;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\assimp\include;vendor\spdlog\include;vendor\stb\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <ExternalWarningLevel>Level3</ExternalWarningLevel>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <Lib>
+      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="src\Volcano.h" />
+    <ClInclude Include="src\Volcano\Core\Application.h" />
+    <ClInclude Include="src\Volcano\Core\Assert.h" />
+    <ClInclude Include="src\Volcano\Core\Base.h" />
+    <ClInclude Include="src\Volcano\Core\Buffer.h" />
+    <ClInclude Include="src\Volcano\Core\Events\ApplicationEvent.h" />
+    <ClInclude Include="src\Volcano\Core\Events\Event.h" />
+    <ClInclude Include="src\Volcano\Core\Events\KeyEvent.h" />
+    <ClInclude Include="src\Volcano\Core\Events\MouseEvent.h" />
+    <ClInclude Include="src\Volcano\Core\Input.h" />
+    <ClInclude Include="src\Volcano\Core\KeyCodes.h" />
+    <ClInclude Include="src\Volcano\Core\Layer.h" />
+    <ClInclude Include="src\Volcano\Core\LayerStack.h" />
+    <ClInclude Include="src\Volcano\Core\Log.h" />
+    <ClInclude Include="src\Volcano\Core\Timestep.h" />
+    <ClInclude Include="src\Volcano\Core\Window.h" />
+    <ClInclude Include="src\Volcano\EntryPoint.h" />
+    <ClInclude Include="src\Volcano\ImGui\ImGuiLayer.h" />
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.h" />
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLContext.h" />
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLShader.h" />
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLTexture.h" />
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLVertexArray.h" />
+    <ClInclude Include="src\Volcano\Platform\Windows\WindowsWindow.h" />
+    <ClInclude Include="src\Volcano\Renderer\Buffer.h" />
+    <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h" />
+    <ClInclude Include="src\Volcano\Renderer\OrthographicCamera.h" />
+    <ClInclude Include="src\Volcano\Renderer\OrthographicCameraController.h" />
+    <ClInclude Include="src\Volcano\Renderer\RenderCommandQueue.h" />
+    <ClInclude Include="src\Volcano\Renderer\Renderer.h" />
+    <ClInclude Include="src\Volcano\Renderer\Renderer2D.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererAPI.h" />
+    <ClInclude Include="src\Volcano\Renderer\Shader.h" />
+    <ClInclude Include="src\Volcano\Renderer\Texture.h" />
+    <ClInclude Include="src\Volcano\Renderer\VertexArray.h" />
+    <ClInclude Include="src\volpch.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\Volcano\Core\Application.cpp" />
+    <ClCompile Include="src\Volcano\Core\Base.cpp" />
+    <ClCompile Include="src\Volcano\Core\Layer.cpp" />
+    <ClCompile Include="src\Volcano\Core\LayerStack.cpp" />
+    <ClCompile Include="src\Volcano\Core\Log.cpp" />
+    <ClCompile Include="src\Volcano\Core\Timestep.cpp" />
+    <ClCompile Include="src\Volcano\ImGui\ImGuiBuild.cpp" />
+    <ClCompile Include="src\Volcano\ImGui\ImGuiLayer.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLContext.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRendererAPI.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLShader.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLTexture.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLVertexArray.cpp" />
+    <ClCompile Include="src\Volcano\Platform\Windows\WindowsInput.cpp" />
+    <ClCompile Include="src\Volcano\Platform\Windows\WindowsWindow.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Buffer.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\OrthographicCamera.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\OrthographicCameraController.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RenderCommandQueue.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Texture.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp" />
+    <ClCompile Include="src\volpch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="vendor\GLFW\GLFW.vcxproj">
+      <Project>{154B857C-0182-860D-AA6E-6C109684020F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\Glad\Glad.vcxproj">
+      <Project>{BDD6857C-A90D-870D-52FA-6C103E10030F}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
+      <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
