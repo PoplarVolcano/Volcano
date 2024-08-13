@@ -10,6 +10,9 @@
     <Filter Include="Volcano\Core\Events">
       <UniqueIdentifier>{F3F63FC8-5F58-1DD6-E8C5-638854265495}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Volcano\Debug">
+      <UniqueIdentifier>{ED463B9E-5907-B7D4-2242-00528EC1FBB0}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Volcano\ImGui">
       <UniqueIdentifier>{A1B1999E-0D72-15D5-D6AC-5E52422C5AB1}</UniqueIdentifier>
     </Filter>
@@ -73,6 +76,9 @@
     <ClInclude Include="src\Volcano\Core\Window.h">
       <Filter>Volcano\Core</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Debug\instrumentor.h">
+      <Filter>Volcano\Debug</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\EntryPoint.h">
       <Filter>Volcano</Filter>
     </ClInclude>
@@ -131,6 +137,7 @@
       <Filter>Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\volpch.h" />
+    <ClInclude Include="src\Volcano\Renderer\SubTexture2D.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -212,5 +219,6 @@
       <Filter>Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\volpch.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\SubTexture2D.cpp" />
   </ItemGroup>
 </Project>

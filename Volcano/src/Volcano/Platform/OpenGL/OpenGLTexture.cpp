@@ -20,7 +20,7 @@ namespace Volcano {
 		m_DataFormat = GL_RGBA;
 
 
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
 			///告诉OpenGLm_RendererID的纹理存储的是rbg8位，宽高的缓冲区
 			glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
@@ -30,7 +30,7 @@ namespace Volcano {
 
 			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			});
+		//	});
 
 	}
 
@@ -58,7 +58,7 @@ namespace Volcano {
 
 		VOL_CORE_ASSERT(m_InternalFormat && m_DataFormat, "Format not supported!");
 
-		Renderer::Submit([this, data]() {
+		//Renderer::Submit([this, data]() {
 			//获取数据缓冲区并上传到OpenGL，然后上传到GPU
 			//创建2D纹理
 			glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
@@ -73,28 +73,28 @@ namespace Volcano {
 			glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
 			//释放data存储在CPU上的内存
 			stbi_image_free(data);
-			});
+		//	});
 	}
 
 	OpenGLTexture2D::~OpenGLTexture2D()
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glDeleteTextures(1, &m_RendererID);
-			});
+		//	});
 	}
 
 	void OpenGLTexture2D::Bind(uint32_t slot) const
 	{
-		Renderer::Submit([this, slot]() {
+		//Renderer::Submit([this, slot]() {
 			glBindTextureUnit(slot, m_RendererID);
-			});
+		//	});
 	}
 	void OpenGLTexture2D::SetData(void* data, uint32_t size)
 	{
 		uint32_t bpc = m_DataFormat == GL_RGBA ? 4 : 3;
 		VOL_CORE_ASSERT(size == m_Width * m_Height * bpc, "OpenGLTexture2D：数据必须是完整的！");
-		Renderer::Submit([this, data]() {
+		//Renderer::Submit([this, data]() {
 			glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
-			});
+		//	});
 	}
 }

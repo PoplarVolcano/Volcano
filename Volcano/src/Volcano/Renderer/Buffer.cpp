@@ -7,12 +7,23 @@
 
 namespace Volcano {
 
+	Ref<VertexBuffer> VertexBuffer::Create(uint32_t size)
+	{
+		switch (RendererAPI::Current())
+		{
+			case RendererAPIType::None:   VOL_CORE_ASSERT(false, "RendererAPI::None is currently not supported!"); return nullptr;
+			case RendererAPIType::OpenGL: return std::make_shared<OpenGLVertexBuffer>(size);
+		}
+		VOL_CORE_ASSERT(false, "Unknown RendererAPI!");
+		return nullptr;
+	}
+
 	Ref<VertexBuffer> VertexBuffer::Create(float* vertices, uint32_t size)
 	{
 		switch (RendererAPI::Current())
 		{
-		case RendererAPIType::None:   VOL_CORE_ASSERT(false, "RendererAPI::None is currently not supported!"); return nullptr;
-		case RendererAPIType::OpenGL: return std::make_shared<OpenGLVertexBuffer>(vertices, size);
+			case RendererAPIType::None:   VOL_CORE_ASSERT(false, "RendererAPI::None is currently not supported!"); return nullptr;
+			case RendererAPIType::OpenGL: return std::make_shared<OpenGLVertexBuffer>(vertices, size);
 		}
 		VOL_CORE_ASSERT(false, "Unknown RendererAPI!");
 		return nullptr;
@@ -23,8 +34,8 @@ namespace Volcano {
 	{
 		switch (RendererAPI::Current())
 		{
-		case RendererAPIType::None:   VOL_CORE_ASSERT(false, "RendererAPI::None is currently not supported!"); return nullptr;
-		case RendererAPIType::OpenGL: return std::make_shared<OpenGLIndexBuffer>(indices, count);
+			case RendererAPIType::None:   VOL_CORE_ASSERT(false, "RendererAPI::None is currently not supported!"); return nullptr;
+			case RendererAPIType::OpenGL: return std::make_shared<OpenGLIndexBuffer>(indices, count);
 
 		}
 		VOL_CORE_ASSERT(false, "Unknown RendererAPI!");

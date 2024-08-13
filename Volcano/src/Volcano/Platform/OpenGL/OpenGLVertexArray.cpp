@@ -29,30 +29,30 @@ namespace Volcano {
 
 	OpenGLVertexArray::OpenGLVertexArray()
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glCreateVertexArrays(1, &m_RendererID);
-			});
+		//	});
 	}
 
 	OpenGLVertexArray::~OpenGLVertexArray()
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glDeleteVertexArrays(1, &m_RendererID);
-			});
+		//	});
 	}
 
 	void OpenGLVertexArray::Bind() const
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glBindVertexArray(m_RendererID);
-			});
+		//	});
 	}
 
 	void OpenGLVertexArray::UnBind() const
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glBindVertexArray(0);
-			});
+		//	});
 	}
 
 	void OpenGLVertexArray::AddVertexBuffer(const Ref<VertexBuffer>& vertexBuffer)
@@ -61,7 +61,7 @@ namespace Volcano {
 
 		Bind();
 		vertexBuffer->Bind();
-		Renderer::Submit([this, vertexBuffer]() {
+		//Renderer::Submit([this, vertexBuffer]() {
 			const auto& layout = vertexBuffer->GetLayout();
 			// shader中有多个layout，每个layout对应一个索引
 			// 对于每个layout进行一次设置
@@ -90,7 +90,7 @@ namespace Volcano {
 				}
 				m_VertexBufferIndex++;
 			}
-			});
+		//	});
 		m_VertexBuffers.push_back(vertexBuffer);
 	}
 

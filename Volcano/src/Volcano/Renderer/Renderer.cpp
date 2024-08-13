@@ -17,24 +17,26 @@ namespace Volcano {
 	void Renderer::Init()
 	{
 		s_Data.m_ShaderLibrary = std::make_unique<ShaderLibrary>();
-		Renderer::Submit([]() { RendererAPI::Init(); });
+		//Renderer::Submit([]() { 
+		RendererAPI::Init(); 
+	//});
 
-		//Renderer::GetShaderLibrary()->Load("assets/shaders/Square.glsl");
-		Renderer::GetShaderLibrary()->Load("assets/shaders/Texture.glsl");
-
+		Renderer::WaitAndRender();
 		Renderer2D::Init();
 	}
 
 	void Renderer::OnWindowResize(uint32_t width, uint32_t height)
 	{
-		Renderer::Submit([=]() { RendererAPI::SetViewport(0, 0, width, height); });
+		//Renderer::Submit([=]() { 
+		RendererAPI::SetViewport(0, 0, width, height); 
+	//});
 	}
 
 	void Renderer::DrawIndexed(PrimitiveType type, uint32_t count, bool depthTest)
 	{
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			RendererAPI::DrawIndexed(type, count, depthTest);
-			});
+		//	});
 	}
 
 	const Scope<ShaderLibrary>& Renderer::GetShaderLibrary()
@@ -54,22 +56,22 @@ namespace Volcano {
 
 	void Renderer::Clear()
 	{
-		Renderer::Submit([]() {
+		//Renderer::Submit([]() {
 			RendererAPI::Clear();
-			});
+		//	});
 	}
 
 	void Renderer::Clear(float r, float g, float b, float a)
 	{
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			RendererAPI::Clear(r, g, b, a);
-			});
+		//	});
 	}
 
 	void Renderer::SetClearColor(float r, float g, float b, float a)
 	{
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			RendererAPI::SetClearColor(r, g, b, a);
-			});
+		//	});
 	}
 }

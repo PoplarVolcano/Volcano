@@ -151,6 +151,7 @@
     <ClInclude Include="src\Volcano\Core\Log.h" />
     <ClInclude Include="src\Volcano\Core\Timestep.h" />
     <ClInclude Include="src\Volcano\Core\Window.h" />
+    <ClInclude Include="src\Volcano\Debug\instrumentor.h" />
     <ClInclude Include="src\Volcano\EntryPoint.h" />
     <ClInclude Include="src\Volcano\ImGui\ImGuiLayer.h" />
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.h" />
@@ -168,6 +169,7 @@
     <ClInclude Include="src\Volcano\Renderer\Renderer2D.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h" />
     <ClInclude Include="src\Volcano\Renderer\Shader.h" />
+    <ClInclude Include="src\Volcano\Renderer\SubTexture2D.h" />
     <ClInclude Include="src\Volcano\Renderer\Texture.h" />
     <ClInclude Include="src\Volcano\Renderer\VertexArray.h" />
     <ClInclude Include="src\volpch.h" />
@@ -197,6 +199,7 @@
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\SubTexture2D.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Texture.cpp" />
     <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp" />
     <ClCompile Include="src\volpch.cpp">

@@ -2,6 +2,7 @@
 
 #include "Volcano.h"
 #include <Volcano/Renderer/OrthographicCameraController.h>
+#include <ParticleSystem.h>
 
 namespace Volcano {
 
@@ -18,8 +19,24 @@ namespace Volcano {
 		virtual void OnEvent(Event& event) override;
 
 	private:
+		OrthographicCameraController m_CameraController;
+
 		Ref<VertexArray> m_VertexArray;
 		Ref<Texture2D> m_Texture, m_AlterTexture;
-		OrthographicCameraController m_CameraController;
+		Ref<Texture2D> m_SpriteSheet;
+		Ref<SubTexture2D> m_TextureStairs, m_TextureTree;
+
+		struct ProfileResult
+		{
+			const char* Name;
+			float Time;
+		};
+		std::vector<ProfileResult> m_ProfileResults;
+
+		ParticleProps m_Particle;
+		ParticleSystem m_ParticleSystem;
+
+		uint32_t m_MapWidth, m_MapHeight;
+		std::unordered_map<char, Ref<SubTexture2D>> s_TextureMap;
 	};
 }

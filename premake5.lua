@@ -120,6 +120,7 @@ project "VolcanoNut"
 		"%{prj.name}/src",
 		"Volcano/vendor",
 		"Volcano/src",
+		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
 		"Volcano/vendor/spdlog/include;"
 	}

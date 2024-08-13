@@ -24,9 +24,9 @@ namespace Volcano {
 	{
 		std::string source = ReadFile(filepath);
 		auto shaderSources = PreProcess(source);
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			Compile(shaderSources);
-			});
+		//	});
 
 		// Extract name from filepath
 		auto lastSlash = filepath.find_last_of("/\\");
@@ -43,61 +43,82 @@ namespace Volcano {
 		sources[GL_VERTEX_SHADER] = vertexSrc;
 		sources[GL_FRAGMENT_SHADER] = fragmentSrc;
 
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			Compile(sources);
-			});
+		//	});
 	}
 
 
 	OpenGLShader::~OpenGLShader()
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glDeleteProgram(m_RendererID);
-			});
+		//	});
 	}
 	void OpenGLShader::SetInt(const std::string& name, int value)
 	{
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			UploadUniformInt(name, value);
-			});
+		//	});
 	}
+
+	void OpenGLShader::SetIntArray(const std::string& name, int* values, uint32_t count)
+	{
+		//Renderer::Submit([=]() {
+			UploadUniformIntArray(name, values, count);
+		//	});
+	}
+
+	void OpenGLShader::SetFloat(const std::string& name, float value)
+	{
+		//Renderer::Submit([=]() {
+			UploadUniformFloat(name, value);
+		//	});
+	}
+
 	void OpenGLShader::SetFloat3(const std::string& name, const glm::vec3& value)
 	{
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			UploadUniformFloat3(name, value);
-			});
+		//	});
 	}
 	void OpenGLShader::SetFloat4(const std::string& name, const glm::vec4& value)
 	{
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			UploadUniformFloat4(name, value);
-			});
+		//	});
 	}
 	void OpenGLShader::SetMat4(const std::string& name, const glm::mat4& value)
 	{
-		Renderer::Submit([=]() {
+		//Renderer::Submit([=]() {
 			UploadUniformMat4(name, value);
-			});
+		//	});
 	}
 
 	void OpenGLShader::Bind() const
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glUseProgram(m_RendererID);
-			});
+		//	});
 	}
 
 	void OpenGLShader::UnBind() const
 	{
-		Renderer::Submit([this]() {
+		//Renderer::Submit([this]() {
 			glUseProgram(0);
-			});
+		//	});
 	}
 
 	void OpenGLShader::UploadUniformInt(const std::string& name, int value)
 	{
 		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
 		glUniform1i(location, value);
+	}
+
+	void OpenGLShader::UploadUniformIntArray(const std::string& name, int* values, uint32_t count)
+	{
+		GLint location = glGetUniformLocation(m_RendererID, name.c_str());
+		glUniform1iv(location, count, values);
 	}
 
 	void OpenGLShader::UploadUniformFloat(const std::string& name, float value)

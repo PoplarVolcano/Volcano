@@ -63,10 +63,6 @@ namespace Volcano {
 		ImGui::DestroyContext();
 	}
 
-	void ImGuiLayer::OnImGuiRender()
-	{
-	}
-
 	void ImGuiLayer::Begin()
 	{
 		// ´´½¨imgui´°¿ÚÖ¡

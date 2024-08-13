@@ -54,7 +54,8 @@ namespace Volcano {
 
 				// Render ImGui on render thread
 				Application* app = this;
-				Renderer::Submit([app]() { app->RenderImGui(); });
+				//Renderer::Submit([app]() { app->RenderImGui(); });
+				app->RenderImGui();
 
 				Renderer::WaitAndRender();
 			}
