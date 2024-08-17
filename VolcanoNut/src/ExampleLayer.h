@@ -3,6 +3,7 @@
 #include "Volcano.h"
 #include <Volcano/Renderer/OrthographicCameraController.h>
 #include <ParticleSystem.h>
+#include <Panels/SceneHierarchyPanel.h>
 
 namespace Volcano {
 
@@ -17,7 +18,12 @@ namespace Volcano {
 		virtual void OnUpdate(Timestep ts) override;
 		virtual void OnImGuiRender() override;
 		virtual void OnEvent(Event& event) override;
+	private:
+		bool OnKeyPressed(KeyPressedEvent& e);
 
+		void NewScene();
+		void OpenScene();
+		void SaveSceneAs();
 	private:
 		OrthographicCameraController m_CameraController;
 
@@ -25,6 +31,17 @@ namespace Volcano {
 		Ref<Texture2D> m_Texture, m_AlterTexture;
 		Ref<Texture2D> m_SpriteSheet;
 		Ref<SubTexture2D> m_TextureStairs, m_TextureTree;
+		Ref<Framebuffer> m_Framebuffer;
+
+		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
+		bool m_ViewportFocused = false, m_ViewportHovered = false;
+
+		Ref<Scene> m_ActiveScene;
+		Entity m_SquareEntity;
+		Entity m_CameraEntity;
+		Entity m_SecondCamera;
+
+		bool m_PrimaryCamera = true;
 
 		struct ProfileResult
 		{
@@ -38,5 +55,10 @@ namespace Volcano {
 
 		uint32_t m_MapWidth, m_MapHeight;
 		std::unordered_map<char, Ref<SubTexture2D>> s_TextureMap;
+		
+		int m_GizmoType = -1;
+
+		// Panels
+		SceneHierarchyPanel m_SceneHierarchyPanel;
 	};
 }

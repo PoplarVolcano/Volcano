@@ -8,6 +8,9 @@
 #include "Volcano/Core/Events/ApplicationEvent.h"
 
 #include "Volcano/ImGui/ImGuiLayer.h"
+#include <Volcano/Renderer/VertexArray.h>
+#include <Volcano/Renderer/Framebuffer.h>
+#include <Volcano/Renderer/Texture.h>
 
 namespace Volcano {
 
@@ -25,6 +28,8 @@ namespace Volcano {
 
 		void Run();
 
+		void Close();
+
 		virtual void OnInit() {}
 		virtual void OnShutdown() {}
 		virtual void OnUpdate(Timestep ts) {}
@@ -36,6 +41,7 @@ namespace Volcano {
 		void RenderImGui();
 
 		inline Window& GetWindow() { return *m_Window; }
+		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
 
 		float GetTime() const;
 		static inline Application& Get() { return *s_Instance; }

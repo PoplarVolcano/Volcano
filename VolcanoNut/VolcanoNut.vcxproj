@@ -79,7 +79,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>VOL_PLATFORM_WINDOWS;VOL_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\glm;..\Volcano\vendor\spdlog\include;..\Volcano\vendor\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;..\Volcano\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -101,7 +101,7 @@ IF EXIST "..\Volcano\vendor\assimp\bin\Debug\assimp-vc143-mtd.dll"\ (xcopy /Q /E
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>VOL_PLATFORM_WINDOWS;VOL_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\glm;..\Volcano\vendor\spdlog\include;;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;..\Volcano\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -123,7 +123,7 @@ IF EXIST "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll"\ (xcopy /Q /
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>VOL_PLATFORM_WINDOWS;VOL_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\glm;..\Volcano\vendor\spdlog\include;;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;..\Volcano\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -141,12 +141,16 @@ IF EXIST "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll"\ (xcopy /Q /
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\EditorLayer.h" />
     <ClInclude Include="src\ExampleLayer.h" />
+    <ClInclude Include="src\Panels\SceneHierarchyPanel.h" />
     <ClInclude Include="src\ParticleSystem.h" />
     <ClInclude Include="src\Random.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\EditorLayer.cpp" />
     <ClCompile Include="src\ExampleLayer.cpp" />
+    <ClCompile Include="src\Panels\SceneHierarchyPanel.cpp" />
     <ClCompile Include="src\ParticleSystem.cpp" />
     <ClCompile Include="src\Random.cpp" />
     <ClCompile Include="src\VolcanoNut.cpp" />

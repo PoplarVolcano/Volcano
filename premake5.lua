@@ -15,14 +15,20 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 -- Include directories relative to root folder (solution directory)
 IncludeDir = {}
-IncludeDir["GLFW"] = "Volcano/vendor/GLFW/include"
-IncludeDir["Glad"] = "Volcano/vendor/Glad/include"
-IncludeDir["ImGui"] = "Volcano/vendor/imgui"
-IncludeDir["glm"] = "Volcano/vendor/glm"
+IncludeDir["GLFW"] = "%{wks.location}/Volcano/vendor/GLFW/include"
+IncludeDir["Glad"] = "%{wks.location}/Volcano/vendor/Glad/include"
+IncludeDir["ImGui"] = "%{wks.location}/Volcano/vendor/imgui"
+IncludeDir["glm"] = "%{wks.location}/Volcano/vendor/glm"
+IncludeDir["entt"] = "%{wks.location}/Volcano/vendor/entt/include"
+IncludeDir["yaml_cpp"] = "%{wks.location}/Volcano/vendor/yaml-cpp/include"
+--IncludeDir["ImGuizmo"] = "%{wks.location}/Volcano/vendor/ImGuizmo"
 
-include "Volcano/vendor/GLFW"
-include "Volcano/vendor/Glad"
-include "Volcano/vendor/imgui"
+group "Dependencies"
+	include "Volcano/vendor/GLFW"
+	include "Volcano/vendor/Glad"
+	include "Volcano/vendor/imgui"
+	include "Volcano/vendor/yaml-cpp"
+group ""
 
 project "Volcano"	--项目名称
 	location "Volcano"	--相对路径
@@ -43,12 +49,19 @@ project "Volcano"	--项目名称
 	files	--该项目的文件
 	{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vendor/stb_image/**.h",
+		"%{prj.name}/vendor/stb_image/**.cpp",
+		"%{prj.name}/vendor/glm/glm/**.hpp",
+		"%{prj.name}/vendor/glm/glm/**.inl",
+--		"%{prj.name}/vendor/ImGuizmo/ImGuizmo.h",
+--		"%{prj.name}/vendor/ImGuizmo/ImGuizmo.cpp"
 	}
 
 	defines
 	{
-		"_CRT_SECURE_NO_WARNINGS"
+		"_CRT_SECURE_NO_WARNINGS",
+		"YAML_CPP_STATIC_DEFINE"
 	}
 
 	includedirs	--附加包含目录
@@ -58,6 +71,9 @@ project "Volcano"	--项目名称
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.entt}",
+		"%{IncludeDir.yaml_cpp}",
+	--	"%{IncludeDir.ImGuizmo}",
 		"%{prj.name}/vendor/assimp/include",
 		"%{prj.name}/vendor/spdlog/include",
 		"%{prj.name}/vendor/stb/include"
@@ -68,8 +84,12 @@ project "Volcano"	--项目名称
 		"GLFW",
 		"Glad",
 		"ImGui",
+		"yaml-cpp",
 		"opengl32.lib"
 	}
+
+--	filter "files:%{prj.name}/vendor/ImGuizmo/**.cpp"
+--	flags { "NoPCH" }
 
 	filter "system:windows"	--windows平台的配置
 		systemversion "latest"	-- windowSDK版本
@@ -108,7 +128,7 @@ project "VolcanoNut"
 	{ 
 		"Volcano"
 	}
-	
+
 	files 
 	{ 
 		"%{prj.name}/src/**.h", 
@@ -122,7 +142,9 @@ project "VolcanoNut"
 		"Volcano/src",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
-		"Volcano/vendor/spdlog/include;"
+		"%{IncludeDir.entt}",
+--		"%{IncludeDir.ImGuizmo}",
+		"Volcano/vendor/spdlog/include"
 	}
 
 	postbuildcommands --需要premake在生成项目时执行的命令,把VolcanoNut的asset复制到目标assets

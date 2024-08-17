@@ -38,7 +38,6 @@ namespace Volcano {
 		uint32_t TextureSlotIndex = 1;// 0 = white texture
 
 		glm::vec4 QuadVertexPosition[4];
-		glm::vec2 QuadTexCoord[4];
 
 		Renderer2D::Statistics Stats;
 	};
@@ -94,10 +93,10 @@ namespace Volcano {
 
 		s_Data.TextureSlots[0] = s_Data.WhiteTexture;
 
-		s_Data.QuadTexCoord[0] = { 0.0f, 0.0f };
-		s_Data.QuadTexCoord[1] = { 1.0f, 0.0f };
-		s_Data.QuadTexCoord[2] = { 1.0f, 1.0f };
-		s_Data.QuadTexCoord[3] = { 0.0f, 1.0f };
+		s_Data.QuadVertexPosition[0] = { -0.5, -0.5, 0.0f, 1.0f };
+		s_Data.QuadVertexPosition[1] = { 0.5, -0.5, 0.0f, 1.0f };
+		s_Data.QuadVertexPosition[2] = { 0.5,  0.5, 0.0f, 1.0f };
+		s_Data.QuadVertexPosition[3] = { -0.5,  0.5, 0.0f, 1.0f };
 
 		//Renderer::WaitAndRender();
 
@@ -107,7 +106,7 @@ namespace Volcano {
 	{
 	}
 
-	void Renderer2D::BeginScene(OrthographicCamera camera)
+	void Renderer2D::BeginScene(const OrthographicCamera& camera)
 	{
 		s_Data.TextureShader->Bind();
 		s_Data.TextureShader->SetMat4("u_ViewProjection", camera.GetViewProjectionMatrix());
@@ -116,11 +115,19 @@ namespace Volcano {
 		s_Data.QuadVertexBufferPtr = s_Data.QuadVertexBufferBase;
 
 		s_Data.TextureSlotIndex = 1;
+	}
 
-		s_Data.QuadVertexPosition[0] = { -0.5, -0.5, 0.0f, 1.0f };
-		s_Data.QuadVertexPosition[1] = {  0.5, -0.5, 0.0f, 1.0f };
-		s_Data.QuadVertexPosition[2] = {  0.5,  0.5, 0.0f, 1.0f };
-		s_Data.QuadVertexPosition[3] = { -0.5,  0.5, 0.0f, 1.0f };
+	void Renderer2D::BeginScene(const Camera& camera, const glm::mat4& transform)
+	{
+		glm::mat4 viewProj = camera.GetProjection() * glm::inverse(transform);
+
+		s_Data.TextureShader->Bind();
+		s_Data.TextureShader->SetMat4("u_ViewProjection", viewProj);
+
+		s_Data.QuadIndexCount = 0;
+		s_Data.QuadVertexBufferPtr = s_Data.QuadVertexBufferBase;
+
+		s_Data.TextureSlotIndex = 1;
 	}
 
 	void Renderer2D::EndScene()
@@ -151,29 +158,8 @@ namespace Volcano {
 
 	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color)
 	{
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
-			FlushAndReset();
-
-		const float textureIndex = 0.0f; // White Texture
-		const float tilingFactor = 1.0f;
-
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
-			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-
-		// 逆时针注入顶点数据
-		// 设置顶点的地址指向注入的地址
-		for (uint32_t i = 0; i < 4; i++) {
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = s_Data.QuadTexCoord[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr++;
-		}
-
-		s_Data.QuadIndexCount += 6;
-
-		s_Data.Stats.QuadCount++;
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+		DrawQuad(transform, color);
 	}
 
 	void Renderer2D::DrawQuad(const glm::vec2& position, const glm::vec2& size, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& color)
@@ -183,6 +169,25 @@ namespace Volcano {
 
 	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& color)
 	{
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
+			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+		DrawQuad(transform, texture, tilingFactor, color);
+	}
+
+	void Renderer2D::DrawQuad(const glm::vec2& position, const glm::vec2& size, const Ref<SubTexture2D>& subTexture, float tilingFactor, const glm::vec4& color)
+	{
+		DrawQuad({ position.x,position.y,0.0f }, size, subTexture, tilingFactor, color);
+	}
+
+	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const Ref<SubTexture2D>& subTexture, float tilingFactor, const glm::vec4& color)
+	{
+
+		const glm::vec2* textureCoords = subTexture->GetTexCoords();
+		const Ref<Texture2D> texture = subTexture->GetTexture();
+
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
+			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+
 		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
 			FlushAndReset();
 
@@ -206,13 +211,10 @@ namespace Volcano {
 			s_Data.TextureSlotIndex++;
 		}
 
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
-			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-
 		for (uint32_t i = 0; i < 4; i++) {
 			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
 			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = s_Data.QuadTexCoord[i];
+			s_Data.QuadVertexBufferPtr->TexCoord = textureCoords[i];
 			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
 			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
 			s_Data.QuadVertexBufferPtr++;
@@ -223,20 +225,38 @@ namespace Volcano {
 		s_Data.Stats.QuadCount++;
 	}
 
-	void Renderer2D::DrawQuad(const glm::vec2& position, const glm::vec2& size, const Ref<SubTexture2D>& subTexture, float tilingFactor, const glm::vec4& color)
+	void Renderer2D::DrawQuad(const glm::mat4& transform, const glm::vec4& color)
 	{
-		DrawQuad({ position.x,position.y,0.0f }, size, subTexture, tilingFactor, color);
+		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
+			FlushAndReset();
+
+		const float textureIndex = 0.0f; // White Texture
+		constexpr glm::vec2 textureCoords[] = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
+		const float tilingFactor = 1.0f;
+
+		// 逆时针注入顶点数据
+		// 设置顶点的地址指向注入的地址
+		for (uint32_t i = 0; i < 4; i++) {
+			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
+			s_Data.QuadVertexBufferPtr->Color = color;
+			s_Data.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
+			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+			s_Data.QuadVertexBufferPtr++;
+		}
+
+		s_Data.QuadIndexCount += 6;
+
+		s_Data.Stats.QuadCount++;
 	}
 
-	void Renderer2D::DrawQuad(const glm::vec3& position, const glm::vec2& size, const Ref<SubTexture2D>& subTexture, float tilingFactor, const glm::vec4& color)
+	void Renderer2D::DrawQuad(const glm::mat4& transform, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& color)
 	{
-		const glm::vec2* textureCoords = subTexture->GetTexCoords();
-		const Ref<Texture2D> texture = subTexture->GetTexture();
-
 		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
 			FlushAndReset();
 
 		float textureIndex = 0.0f;
+		constexpr glm::vec2 textureCoords[] = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
 
 		// 遍历纹理，是否已注入
 		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
@@ -255,9 +275,6 @@ namespace Volcano {
 			s_Data.TextureSlots[s_Data.TextureSlotIndex] = texture;
 			s_Data.TextureSlotIndex++;
 		}
-
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
-			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
 
 		for (uint32_t i = 0; i < 4; i++) {
 			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
@@ -280,29 +297,8 @@ namespace Volcano {
 
 	void Renderer2D::DrawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const glm::vec4& color)
 	{
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
-			FlushAndReset();
-
-		const float textureIndex = 0.0f; // White Texture
-		const float tilingFactor = 1.0f;
-
-
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
-			* glm::rotate(glm::mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
-			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-
-		for (uint32_t i = 0; i < 4; i++) {
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = s_Data.QuadTexCoord[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr++;
-		}
-
-		s_Data.QuadIndexCount += 6;
-
-		s_Data.Stats.QuadCount++;
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::rotate(glm::mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f }) * glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+		DrawQuad(transform, color);
 	}
 
 	void Renderer2D::DrawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& color)
@@ -312,45 +308,10 @@ namespace Volcano {
 
 	void Renderer2D::DrawRotatedQuad(const glm::vec3& position, const glm::vec2& size, float rotation, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& color)
 	{
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
-			FlushAndReset();
-
-		float textureIndex = 0.0f;
-
-		// 遍历纹理，是否已注入
-		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
-		{
-			if (*s_Data.TextureSlots[i].get() == *texture.get())
-			{
-				textureIndex = (float)i;
-				break;
-			}
-		}
-
-		//未注入，将texture注入，索引为TextureSlotIndex（从1开始计数）
-		if (textureIndex == 0.0f)
-		{
-			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[s_Data.TextureSlotIndex] = texture;
-			s_Data.TextureSlotIndex++;
-		}
-
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
 			* glm::rotate(glm::mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
 			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-
-		for (uint32_t i = 0; i < 4; i++) {
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = s_Data.QuadTexCoord[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr++;
-		}
-
-		s_Data.QuadIndexCount += 6;
-
-		s_Data.Stats.QuadCount++;
+		DrawQuad(transform, texture, tilingFactor, color);
 	}
 
 	void Renderer2D::DrawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const Ref<SubTexture2D>& subTexture, float tilingFactor, const glm::vec4& color)
@@ -363,6 +324,10 @@ namespace Volcano {
 		const glm::vec2* textureCoords = subTexture->GetTexCoords();
 		const Ref<Texture2D> texture = subTexture->GetTexture();
 
+		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
+			* glm::rotate(glm::mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
+			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
+
 		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
 			FlushAndReset();
 
@@ -385,11 +350,6 @@ namespace Volcano {
 			s_Data.TextureSlots[s_Data.TextureSlotIndex] = texture;
 			s_Data.TextureSlotIndex++;
 		}
-
-		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
-			* glm::rotate(glm::mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
-			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-
 		for (uint32_t i = 0; i < 4; i++) {
 			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
 			s_Data.QuadVertexBufferPtr->Color = color;

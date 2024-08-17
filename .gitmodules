@@ -10,3 +10,6 @@
 [submodule "Volcano/vendor/imgui"]
 	path = Volcano/vendor/imgui
 	url = https://github.com/ocornut/imgui
+[submodule "Volcano/vendor/yaml-cpp"]
+	path = Volcano/vendor/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp

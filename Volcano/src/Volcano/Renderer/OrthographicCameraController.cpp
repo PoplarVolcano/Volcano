@@ -15,19 +15,19 @@ namespace Volcano {
 
 	void OrthographicCameraController::OnUpdate(Timestep ts)
 	{
-		if (Input::IsKeyPressed(VOL_KEY_A))
+		if (Input::IsKeyPressed(Key::A))
 			m_CameraPosition.x -= m_CameraTranslationSpeed * ts;
-		if (Input::IsKeyPressed(VOL_KEY_D))
+		if (Input::IsKeyPressed(Key::D))
 			m_CameraPosition.x += m_CameraTranslationSpeed * ts;
-		if (Input::IsKeyPressed(VOL_KEY_S))
+		if (Input::IsKeyPressed(Key::S))
 			m_CameraPosition.y -= m_CameraTranslationSpeed * ts;
-		if (Input::IsKeyPressed(VOL_KEY_W))
+		if (Input::IsKeyPressed(Key::W))
 			m_CameraPosition.y += m_CameraTranslationSpeed * ts;
 
 		if (m_Rotation) {
-			if (Input::IsKeyPressed(VOL_KEY_Q))
+			if (Input::IsKeyPressed(Key::Q))
 				m_CameraRotation += m_CameraRotationSpeed * ts;
-			if (Input::IsKeyPressed(VOL_KEY_E))
+			if (Input::IsKeyPressed(Key::E))
 				m_CameraRotation -= m_CameraRotationSpeed * ts;
 			m_Camera.SetRotation(m_CameraRotation);
 		}
@@ -40,7 +40,13 @@ namespace Volcano {
 	{
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<MouseScrolledEvent>(VOL_BIND_EVENT_FN(OrthographicCameraController::OnMouseScrolled));
-		dispatcher.Dispatch<WindowResizeEvent>(VOL_BIND_EVENT_FN(OrthographicCameraController::OnWindowResized));
+		//dispatcher.Dispatch<WindowResizeEvent>(VOL_BIND_EVENT_FN(OrthographicCameraController::OnWindowResized));
+	}
+
+	void OrthographicCameraController::OnResize(float width, float height)
+	{
+		m_AspectRatio = width / height;
+		CalculateView();
 	}
 
 	void OrthographicCameraController::CalculateView()
@@ -59,8 +65,7 @@ namespace Volcano {
 
 	bool OrthographicCameraController::OnWindowResized(WindowResizeEvent& e)
 	{
-		m_AspectRatio = (float)e.GetWidth() / (float)e.GetHeight();
-		CalculateView();
+		OnResize((float)e.GetWidth(), (float)e.GetHeight());
 		return false;
 	}
 }

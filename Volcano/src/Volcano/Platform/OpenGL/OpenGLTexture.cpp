@@ -59,19 +59,19 @@ namespace Volcano {
 		VOL_CORE_ASSERT(m_InternalFormat && m_DataFormat, "Format not supported!");
 
 		//Renderer::Submit([this, data]() {
-			//获取数据缓冲区并上传到OpenGL，然后上传到GPU
-			//创建2D纹理
+			// 获取数据缓冲区并上传到OpenGL，然后上传到GPU
+			// 创建2D纹理
 			glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
-			//在GPU上分配内存，便于存储图像数据
-			//internalformat OpenGL如何存储（GL_RGB8处理一个纹理，每个通道有八位）
+			// 在GPU上分配内存，便于存储图像数据
+			// internalformat OpenGL如何存储（GL_RGB8处理一个纹理，每个通道有八位）
 			glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
-			//设置纹理参数, GL_TEXTURE_MIN_FILTER用什么样的过滤来缩小, 
+			// 更新纹理数据
+			glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
+			// 设置纹理参数, GL_TEXTURE_MIN_FILTER用什么样的过滤来缩小, 
 			// GL_LINEAR linear filtering 线性滤波（用线性插值计算想要什么颜色）
 			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			//上传纹理
-			glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
-			//释放data存储在CPU上的内存
+			// 释放data存储在CPU上的内存
 			stbi_image_free(data);
 		//	});
 	}

@@ -22,6 +22,14 @@ namespace Volcano {
 		return state == GLFW_PRESS;
 	}
 
+	std::pair<float, float> Input::GetMousePosition()
+	{
+		auto& window = static_cast<WindowsWindow&>(Application::Get().GetWindow());
+		double x, y;
+		glfwGetCursorPos(static_cast<GLFWwindow*>(window.GetNativeWindow()), &x, &y);
+		return { (float)x, (float)y };
+	}
+
 	float Input::GetMouseX()
 	{
 		auto [x, y] = GetMousePosition();
@@ -32,14 +40,6 @@ namespace Volcano {
 	{
 		auto [x, y] = GetMousePosition();
 		return (float)y;
-	}
-
-	std::pair<float, float> Input::GetMousePosition() 
-	{
-		auto& window = static_cast<WindowsWindow&>(Application::Get().GetWindow());
-		double x, y;
-		glfwGetCursorPos(static_cast<GLFWwindow*>(window.GetNativeWindow()), &x, &y);
-		return { (float)x, (float)y };
 	}
 
 }

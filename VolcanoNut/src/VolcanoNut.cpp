@@ -1,6 +1,7 @@
 #include "Volcano.h"
 #include "Volcano/EntryPoint.h"
 
+#include "EditorLayer.h"
 #include "ExampleLayer.h"
 //#include "Game/GameLayer.h"
 
@@ -14,6 +15,7 @@ public:
 
 	virtual void OnInit() override
 	{
+		//PushLayer(new Volcano::EditorLayer());
 		PushLayer(new Volcano::ExampleLayer());
 		//PushLayer(new Volcano::GameLayer());
 	}

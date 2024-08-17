@@ -15,8 +15,8 @@ namespace Volcano {
 
         void OnUpdate() override;
 
-        inline unsigned int GetWidth() const override { return m_Data.Width; }
-        inline unsigned int GetHeight() const override { return m_Data.Height; }
+        inline uint32_t GetWidth() const override { return m_Data.Width; }
+        inline uint32_t GetHeight() const override { return m_Data.Height; }
 
         virtual std::pair<uint32_t, uint32_t> GetSize() const override { return { m_Data.Width, m_Data.Height }; }
         virtual std::pair<float, float> GetWindowPos() const override;
@@ -39,7 +39,7 @@ namespace Volcano {
         struct WindowData
         {
             std::string Title;
-            unsigned int Width, Height;
+            uint32_t Width, Height;
             bool VSync;
 
             EventCallbackFn EventCallback;
