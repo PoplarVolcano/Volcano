@@ -12,8 +12,8 @@ namespace Volcano {
         uint32_t Height;
 
         WindowProps(const std::string& title = "Volcano Engine",
-            uint32_t width = 1280,
-            uint32_t height = 720)
+            uint32_t width = 1600,
+            uint32_t height = 900)
             : Title(title), Width(width), Height(height)
         {
         }
@@ -33,8 +33,6 @@ namespace Volcano {
 
         virtual uint32_t GetWidth() const = 0;
         virtual uint32_t GetHeight() const = 0;
-        virtual std::pair<uint32_t, uint32_t> GetSize() const = 0;
-        virtual std::pair<float, float> GetWindowPos() const = 0;
 
         // Window attributes
         virtual void SetEventCallback(const EventCallbackFn& callback) = 0;//设置窗口事件回调,平台触发
@@ -45,7 +43,7 @@ namespace Volcano {
 
         virtual float GetTime() const = 0;
 
-        static Window* Create(const WindowProps& props = WindowProps());
+        static Scope<Window> Create(const WindowProps& props = WindowProps());
     };
 
 }

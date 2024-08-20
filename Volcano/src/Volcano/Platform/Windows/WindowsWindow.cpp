@@ -16,11 +16,6 @@ namespace Volcano {
 
     static bool s_GLFWInitialized = false;
 
-    Window* Window::Create(const WindowProps& props)
-    {
-        return new WindowsWindow(props);
-    }
-
     WindowsWindow::WindowsWindow(const WindowProps& props)
     {
         Init(props);
@@ -163,13 +158,6 @@ namespace Volcano {
     void WindowsWindow::Shutdown()
     {
         glfwDestroyWindow(m_Window);
-    }
-
-    inline std::pair<float, float> WindowsWindow::GetWindowPos() const
-    {
-        int x, y;
-        glfwGetWindowPos(m_Window, &x, &y);
-        return { x, y };
     }
 
     void WindowsWindow::OnUpdate()

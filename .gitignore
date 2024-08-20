@@ -5,3 +5,8 @@ bin-int/
 
 # Files
 *.user
+
+# Directories
+Volcano/vendor/VulkanSDK
+VolcanoNut/assets/cache
+scripts/__pycache__

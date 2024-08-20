@@ -19,6 +19,9 @@
     <Filter Include="src\Volcano\ImGui">
       <UniqueIdentifier>{F826CF15-643D-CDAB-ADB4-58CD190A9E33}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Volcano\Math">
+      <UniqueIdentifier>{E7142F10-D30D-4E62-FC3F-33E7E8972D6E}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Volcano\Platform">
       <UniqueIdentifier>{624334F2-4ED2-BDBB-F7F0-D1B6E35ECE61}</UniqueIdentifier>
     </Filter>
@@ -105,6 +108,9 @@
     <ClInclude Include="src\Volcano\Core\MouseCodes.h">
       <Filter>src\Volcano\Core</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Core\Timer.h">
+      <Filter>src\Volcano\Core</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Core\Timestep.h">
       <Filter>src\Volcano\Core</Filter>
     </ClInclude>
@@ -123,6 +129,9 @@
     <ClInclude Include="src\Volcano\ImGui\ImGuizmo.h">
       <Filter>src\Volcano\ImGui</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Math\Math.h">
+      <Filter>src\Volcano\Math</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.h">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClInclude>
@@ -138,6 +147,9 @@
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLTexture.h">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLUniformBuffer.h">
+      <Filter>src\Volcano\Platform\OpenGL</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLVertexArray.h">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClInclude>
@@ -148,6 +160,9 @@
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Camera.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\EditorCamera.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Framebuffer.h">
@@ -181,6 +196,9 @@
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Texture.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\UniformBuffer.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\VertexArray.h">
@@ -1458,7 +1476,6 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Math\Math.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1479,6 +1496,9 @@
     <ClCompile Include="src\Volcano\Core\Timestep.cpp">
       <Filter>src\Volcano\Core</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Core\Window.cpp">
+      <Filter>src\Volcano\Core</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\ImGui\ImGuiBuild.cpp">
       <Filter>src\Volcano\ImGui</Filter>
     </ClCompile>
@@ -1487,6 +1507,9 @@
     </ClCompile>
     <ClCompile Include="src\Volcano\ImGui\ImGuizmo.cpp">
       <Filter>src\Volcano\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Math\Math.cpp">
+      <Filter>src\Volcano\Math</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.cpp">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
@@ -1506,6 +1529,9 @@
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLTexture.cpp">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLUniformBuffer.cpp">
+      <Filter>src\Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLVertexArray.cpp">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClCompile>
@@ -1521,7 +1547,7 @@
     <ClCompile Include="src\Volcano\Renderer\Buffer.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\Camera.cpp">
+    <ClCompile Include="src\Volcano\Renderer\EditorCamera.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Framebuffer.cpp">
@@ -1554,6 +1580,9 @@
     <ClCompile Include="src\Volcano\Renderer\Texture.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\UniformBuffer.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
@@ -1572,6 +1601,5 @@
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Math\Math.cpp" />
   </ItemGroup>
 </Project>

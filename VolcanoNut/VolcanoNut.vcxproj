@@ -79,66 +79,51 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>VOL_PLATFORM_WINDOWS;VOL_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;..\Volcano\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\Volcano\src;..\Volcano\vendor;..\Volcano\vendor\spdlog\include;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\Volcano\vendor\assimp\lib\Debug\assimp-vc143-mtd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>IF EXIST "..\VolcanoNut\assets"\ (xcopy /Q /E /Y /I "..\VolcanoNut\assets" "..\bin\Debug-windows-x86_64\VolcanoNut\assets" &gt; nul) ELSE (xcopy /Q /Y /I "..\VolcanoNut\assets" "..\bin\Debug-windows-x86_64\VolcanoNut\assets" &gt; nul)
-IF EXIST "..\Volcano\vendor\assimp\bin\Debug\assimp-vc143-mtd.dll"\ (xcopy /Q /E /Y /I "..\Volcano\vendor\assimp\bin\Debug\assimp-vc143-mtd.dll" "..\bin\Debug-windows-x86_64\VolcanoNut" &gt; nul) ELSE (xcopy /Q /Y /I "..\Volcano\vendor\assimp\bin\Debug\assimp-vc143-mtd.dll" "..\bin\Debug-windows-x86_64\VolcanoNut" &gt; nul)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>VOL_PLATFORM_WINDOWS;VOL_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;..\Volcano\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\Volcano\src;..\Volcano\vendor;..\Volcano\vendor\spdlog\include;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\Volcano\vendor\assimp\lib\Release\assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>IF EXIST "..\VolcanoNut\assets"\ (xcopy /Q /E /Y /I "..\VolcanoNut\assets" "..\bin\Release-windows-x86_64\VolcanoNut\assets" &gt; nul) ELSE (xcopy /Q /Y /I "..\VolcanoNut\assets" "..\bin\Release-windows-x86_64\VolcanoNut\assets" &gt; nul)
-IF EXIST "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll"\ (xcopy /Q /E /Y /I "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll" "..\bin\Release-windows-x86_64\VolcanoNut" &gt; nul) ELSE (xcopy /Q /Y /I "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll" "..\bin\Release-windows-x86_64\VolcanoNut" &gt; nul)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Dist|x64'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>VOL_PLATFORM_WINDOWS;VOL_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;..\Volcano\vendor;..\Volcano\src;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;..\Volcano\vendor\spdlog\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;..\Volcano\src;..\Volcano\vendor;..\Volcano\vendor\spdlog\include;..\Volcano\vendor\imgui;..\Volcano\vendor\glm;..\Volcano\vendor\entt\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\Volcano\vendor\assimp\lib\Release\assimp-vc143-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>IF EXIST "..\VolcanoNut\assets"\ (xcopy /Q /E /Y /I "..\VolcanoNut\assets" "..\bin\Dist-windows-x86_64\VolcanoNut\assets" &gt; nul) ELSE (xcopy /Q /Y /I "..\VolcanoNut\assets" "..\bin\Dist-windows-x86_64\VolcanoNut\assets" &gt; nul)
-IF EXIST "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll"\ (xcopy /Q /E /Y /I "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll" "..\bin\Dist-windows-x86_64\VolcanoNut" &gt; nul) ELSE (xcopy /Q /Y /I "..\Volcano\vendor\assimp\bin\Release\assimp-vc143-mt.dll" "..\bin\Dist-windows-x86_64\VolcanoNut" &gt; nul)</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\EditorLayer.h" />

@@ -79,6 +79,11 @@ namespace Volcano{
         m_SpriteSheet = Texture2D::Create("assets/game/textures/RPGpack_sheet_2X.png");
 
         FramebufferSpecification fbSpec;
+        fbSpec.Attachments = { 
+            FramebufferTextureFormat::RGBA8,
+            FramebufferTextureFormat::RED_INTEGER,
+            FramebufferTextureFormat::Depth 
+        };
         fbSpec.Width = 1280;
         fbSpec.Height = 720;
         m_Framebuffer = Framebuffer::Create(fbSpec);
@@ -102,6 +107,15 @@ namespace Volcano{
         //m_CameraController.SetZoomLevel(5.5f);
 
         m_ActiveScene = CreateRef<Scene>();
+
+        auto commandLineArgs = Application::Get().GetSpecification().CommandLineArgs;
+        if (commandLineArgs.Count > 1)
+        {
+            auto sceneFilePath = commandLineArgs[1];
+            SceneSerializer serializer(m_ActiveScene);
+            serializer.Deserialize(sceneFilePath);
+        }
+
 
         /*
         //Entity
@@ -162,6 +176,8 @@ namespace Volcano{
         */
         m_SceneHierarchyPanel.SetContext(m_ActiveScene);
 
+        m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
+
     }
 
     void ExampleLayer::OnDetach()
@@ -172,10 +188,11 @@ namespace Volcano{
     {
         PROFILE_SCOPE("ExampleLayer::OnUpdate");
 
-        if(m_ViewportFocused)
+        if (m_ViewportFocused)
         {
             m_CameraController.OnUpdate(ts);
         }
+        m_EditorCamera.OnUpdate(ts);
 
         //Resize
         FramebufferSpecification spec = m_Framebuffer->GetSpecification();
@@ -185,20 +202,44 @@ namespace Volcano{
             // 将视图的尺寸同步到帧缓冲尺寸
             m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
             m_CameraController.OnResize(m_ViewportSize.x, m_ViewportSize.y);
-
+            m_EditorCamera.SetViewportSize(m_ViewportSize.x, m_ViewportSize.y);
             m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
         }
 
+        // 重置渲染计数
         Renderer2D::ResetStats();
+
         m_Framebuffer->Bind();
         Renderer::SetClearColor(0.2f, 0.2f, 0.2f, 1);
         Renderer::Clear();
 
-        static float rotation = 0.0f;
-        rotation += ts * 20.0f;
+        // Clear entity ID atachement to -1
+        m_Framebuffer->ClearAttachment(1, -1);
 
-        // Background Scene
+        //Update scene
+        m_ActiveScene->OnUpdateEditor(ts, m_EditorCamera);
+
+        auto [mx, my] = ImGui::GetMousePos();
+        // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
+        mx -= m_ViewportBounds[0].x;
+        my -= m_ViewportBounds[0].y;
+        // viewport窗口的右下角绝对位置-左上角的绝对位置=viewport窗口的大小
+        glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
+        // 翻转y,使其左下角开始才是(0,0)
+        my = viewportSize.y - my;
+        int mouseX = (int)mx;
+        int mouseY = (int)my;
+
+        if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
+        {
+            // 读取帧缓冲第二个缓冲区的数据
+            int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
+            m_HoveredEntity = pixelData == -1 ? Entity() : Entity({ (entt::entity)pixelData, m_ActiveScene.get() });
+        }
+
+
         /*
+        // Background Scene
         Renderer2D::BeginScene(m_CameraController.GetCamera());
         {
             for (float y = -5.0f; y < 5.0f; y += 0.5f)
@@ -212,9 +253,7 @@ namespace Volcano{
             }
             Renderer2D::EndScene();
         }
-        */
         // SpriteSheet Scene
-        /*
         Renderer2D::BeginScene(m_CameraController.GetCamera());
         {
             for (uint32_t y = 0; y < m_MapHeight; y++)
@@ -235,9 +274,7 @@ namespace Volcano{
             //Renderer2D::DrawQuad({ -1.0f, 0.0f, -0.1f }, { 1.0f, 2.0f }, m_TextureTree);
             Renderer2D::EndScene();
         }
-        */
         // Test Scene
-        /*
         Renderer2D::BeginScene(m_SecondCamera.GetComponent<CameraComponent>().Camera, m_SecondCamera.GetComponent<CameraComponent>().Camera.GetProjection());
         {
             glm::vec4  redColor(0.8f, 0.3f, 0.3f, 1.0f);
@@ -251,15 +288,11 @@ namespace Volcano{
             Renderer2D::DrawRotatedQuad({ -2.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }, glm::radians(rotation), m_AlterTexture, 10.0f);
             Renderer2D::EndScene();
         }
-        */
 
 
-
-        m_ActiveScene->OnUpdate(ts);
 
 
         // Particle Scene
-        /*
         Renderer2D::BeginScene(m_CameraEntity.GetComponent<CameraComponent>().Camera, m_CameraEntity.GetComponent<CameraComponent>().Camera.GetProjection());
         {
             //如果按下空格
@@ -282,11 +315,13 @@ namespace Volcano{
             Renderer2D::EndScene();
         }
         */
+
         m_Framebuffer->Unbind();
     }
 
     void ExampleLayer::OnImGuiRender()
     {
+        // =============================DockSpace from ImGui::ShowDemoWindow()======================
         static bool p_open = true;
 
         static bool opt_fullscreen = true;
@@ -382,6 +417,9 @@ namespace Volcano{
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
         ImGui::Begin("Viewport");
 
+        // 获取Viewport视口左上角与viewport视口标题栏距离的偏移位置（0, 24) - 必须放这，因为标题栏后就是视口的左上角
+        auto viewportOffset = ImGui::GetCursorPos();  // Include Tab bar
+
         // 窗口是否被选中
         m_ViewportFocused = ImGui::IsWindowFocused();
         // 鼠标是否悬浮在窗口上
@@ -389,11 +427,25 @@ namespace Volcano{
         // 只有同时选中和悬浮才会执行Event
         Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
 
+        // 获取视图窗口尺寸
         ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
         m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
 
+        // 在视图显示帧缓冲画面
         uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
         ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{0, 1}, ImVec2{1, 0});
+
+        // 获取vieport视口大小 - 包含标题栏的高
+        auto windowSize = ImGui::GetWindowSize();
+        // 获取当前vieport视口标题栏左上角距离当前整个屏幕左上角（0,0）的位置
+        ImVec2 minBound = ImGui::GetWindowPos();
+        minBound.x += viewportOffset.x;
+        minBound.y += viewportOffset.y;
+
+        ImVec2 maxBound = { minBound.x + windowSize.x, minBound.y + windowSize.y };
+        // 保存左上角和右下角距离整个屏幕左上角的位置
+        m_ViewportBounds[0] = { minBound.x, minBound.y };
+        m_ViewportBounds[1] = { maxBound.x, maxBound.y };
 
         //Gizmos
         Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
@@ -405,13 +457,19 @@ namespace Volcano{
             float windowHeight = (float)ImGui::GetWindowHeight();
             ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
             
-            //Camera
-            auto cameraEntity = m_ActiveScene->GetPrimaryCameraEntity();
-            const auto& camera = cameraEntity.GetComponent<CameraComponent>().Camera;
-            const glm::mat4& cameraProjection = camera.GetProjection();
-            glm::mat4 cameraView = glm::inverse(cameraEntity.GetComponent<TransformComponent>().GetTransform());
+            // Camera
 
-            //Entity transform
+            // Runtime camera from entity
+            // auto cameraEntity = m_ActiveScene->GetPrimaryCameraEntity();
+            // const auto& camera = cameraEntity.GetComponent<CameraComponent>().Camera;
+            // const glm::mat4& cameraProjection = camera.GetProjection();
+            // glm::mat4 cameraView = glm::inverse(cameraEntity.GetComponent<TransformComponent>().GetTransform());
+
+            //Editor Camera
+            const glm::mat4& cameraProjection = m_EditorCamera.GetProjection();
+            glm::mat4 cameraView = m_EditorCamera.GetViewMatrix();
+
+            // Selected Entity transform
             auto& tc = selectedEntity.GetComponent<TransformComponent>();
             glm::mat4 transform = tc.GetTransform();
 
@@ -455,7 +513,12 @@ namespace Volcano{
         m_SceneHierarchyPanel.OnImGuiRender();
 
         // =====================================================Settings=====================================================
-        ImGui::Begin("Settings");
+        ImGui::Begin("Stats");
+
+        std::string name = "None";
+        if (m_HoveredEntity)
+            name = m_HoveredEntity.GetComponent<TagComponent>().Tag;
+        ImGui::Text("Hovered Entity: %s", name.c_str());
 
         auto stats = Renderer2D::GetStats();
         ImGui::Text("Renderer2D Stats:");
@@ -473,7 +536,7 @@ namespace Volcano{
         }
         m_ProfileResults.clear();
 
-        // Settings
+        // Stats
         ImGui::End();
 
         //ImGui::ShowDemoWindow();
@@ -486,9 +549,11 @@ namespace Volcano{
     void ExampleLayer::OnEvent(Event& event)
     {
         m_CameraController.OnEvent(event);
+        m_EditorCamera.OnEvent(event);
         
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<KeyPressedEvent>(VOL_BIND_EVENT_FN(ExampleLayer::OnKeyPressed));
+        dispatcher.Dispatch<MouseButtonPressedEvent>(VOL_BIND_EVENT_FN(ExampleLayer::OnMouseButtonPressed));
 
     }
     bool ExampleLayer::OnKeyPressed(KeyPressedEvent& e)
@@ -529,6 +594,16 @@ namespace Volcano{
         case Key::R:
             m_GizmoType = ImGuizmo::OPERATION::SCALE;
             break;
+        }
+        return false;
+    }
+
+    bool ExampleLayer::OnMouseButtonPressed(MouseButtonPressedEvent& e)
+    {
+        if (e.GetMouseButton() == Mouse::ButtonLeft)
+        {
+            if (m_ViewportHovered && !ImGuizmo::IsOver() && !Input::IsKeyPressed(Key::LeftAlt))
+                m_SceneHierarchyPanel.SetSelectedEntity(m_HoveredEntity);
         }
         return false;
     }

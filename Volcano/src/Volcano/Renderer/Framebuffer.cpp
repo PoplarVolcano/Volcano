@@ -4,7 +4,6 @@
 #include "Volcano/Platform/OpenGL/OpenGLFramebuffer.h"
 
 namespace Volcano {
-
 	Ref<Framebuffer> Framebuffer::Create(const FramebufferSpecification& spec)
 	{
 		switch (RendererAPI::Current())

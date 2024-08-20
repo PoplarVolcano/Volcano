@@ -14,42 +14,53 @@
 
 namespace Volcano {
 
-	struct ApplicationProps
+	struct ApplicationCommandLineArgs
 	{
-		std::string Name;
-		uint32_t WindowWidth, WindowHeight;
+		int Count = 0;
+		char** Args = nullptr;
+
+		const char* operator[](int index) const
+		{
+			VOL_CORE_ASSERT(index < Count);
+			return Args[index];
+		}
+	};
+
+	struct ApplicationSpecification
+	{
+		std::string Name = "Volcano Application";
+		std::string WorkingDirectory;
+		ApplicationCommandLineArgs CommandLineArgs;
 	};
 
 	class Application
 	{
 	public:
-		Application(const ApplicationProps& props = { "Hazel Engine", 1280, 720 });
+		Application(const ApplicationSpecification& specification);
 		virtual ~Application();
-
-		void Run();
 
 		void Close();
 
-		virtual void OnInit() {}
-		virtual void OnShutdown() {}
 		virtual void OnUpdate(Timestep ts) {}
 
 		virtual void OnEvent(Event& e);
 
 		void PushLayer(Layer* layer);
 		void PushOverlay(Layer* layer);
-		void RenderImGui();
 
 		inline Window& GetWindow() { return *m_Window; }
 		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
 
 		float GetTime() const;
 		static inline Application& Get() { return *s_Instance; }
+		const ApplicationSpecification& GetSpecification() const { return m_Specification; }
+		void Run();
 	private:
 		bool OnWindowResize(WindowResizeEvent& e);
 		bool OnWindowClose(WindowCloseEvent& e);
 	private:
-		std::unique_ptr<Window> m_Window;
+		ApplicationSpecification m_Specification;
+		Scope<Window> m_Window;
 		bool m_Running = true, m_Minimized = false;
 		LayerStack m_LayerStack;
 		ImGuiLayer* m_ImGuiLayer;
@@ -61,5 +72,5 @@ namespace Volcano {
 	};
 
 	// 在客户端定义
-	Application* CreateApplication();
+	Application* CreateApplication(ApplicationCommandLineArgs args);
 }

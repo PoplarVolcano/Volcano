@@ -4,6 +4,7 @@
 #include <Volcano/Renderer/OrthographicCameraController.h>
 #include <ParticleSystem.h>
 #include <Panels/SceneHierarchyPanel.h>
+#include "Volcano/Renderer/EditorCamera.h"
 
 namespace Volcano {
 
@@ -20,6 +21,7 @@ namespace Volcano {
 		virtual void OnEvent(Event& event) override;
 	private:
 		bool OnKeyPressed(KeyPressedEvent& e);
+		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 
 		void NewScene();
 		void OpenScene();
@@ -34,12 +36,16 @@ namespace Volcano {
 		Ref<Framebuffer> m_Framebuffer;
 
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
+		glm::vec2 m_ViewportBounds[2];
 		bool m_ViewportFocused = false, m_ViewportHovered = false;
 
 		Ref<Scene> m_ActiveScene;
 		Entity m_SquareEntity;
 		Entity m_CameraEntity;
 		Entity m_SecondCamera;
+		EditorCamera m_EditorCamera;
+
+		Entity m_HoveredEntity;
 
 		bool m_PrimaryCamera = true;
 

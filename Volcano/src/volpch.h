@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <fstream>
+#include <filesystem>
 
 #include <Volcano/Core/Base.h>
 #include <Volcano/Core/Log.h>

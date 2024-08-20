@@ -3,29 +3,27 @@
 
 #include "EditorLayer.h"
 #include "ExampleLayer.h"
-//#include "Game/GameLayer.h"
 
-class VolcanoNutApplication : public Volcano::Application
+class VolcanoNut : public Volcano::Application
 {
 public:
-	VolcanoNutApplication(const Volcano::ApplicationProps& props)
-		: Application(props)
+	VolcanoNut(const Volcano::ApplicationSpecification& spec)
+		: Application(spec)
 	{
-	}
-
-	virtual void OnInit() override
-	{
-		//PushLayer(new Volcano::EditorLayer());
 		PushLayer(new Volcano::ExampleLayer());
-		//PushLayer(new Volcano::GameLayer());
 	}
 
-	~VolcanoNutApplication() {
+	~VolcanoNut() {
 
 	}
 };
 
 //创建应用
-Volcano::Application* Volcano::CreateApplication() {
-	return new VolcanoNutApplication({ "Volcano", 1600, 900 });
+Volcano::Application* Volcano::CreateApplication(ApplicationCommandLineArgs args)
+{
+	ApplicationSpecification spec;
+	spec.Name = "Volcanonut";
+	spec.CommandLineArgs = args;
+
+	return new VolcanoNut(spec);
 }

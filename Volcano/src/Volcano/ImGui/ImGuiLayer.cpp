@@ -4,7 +4,6 @@
 #include "imgui.h"
 #include "ImGuizmo.h"
 
-#define IMGUI_IMPL_API
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
 
@@ -41,8 +40,8 @@ namespace Volcano {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;        // 启用自动布局
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;      // 启用多视窗/平台视窗（能出opengl的框子）
 
-		io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", 18.0f);
-		io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", 18.0f);
+		io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", 28.0f);
+		io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", 28.0f);
 
 		//设置颜色
 		ImGui::StyleColorsDark();
