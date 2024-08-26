@@ -32,11 +32,19 @@ namespace Volcano {
 	//});
 	}
 
-	void Renderer::DrawIndexed(PrimitiveType type, uint32_t count, bool depthTest)
+	void Renderer::DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
 	{
-		//Renderer::Submit([=]() {
-			RendererAPI::DrawIndexed(type, count, depthTest);
-		//	});
+		RendererAPI::DrawIndexed(vertexArray, indexCount);
+	}
+
+	void Renderer::DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
+	{
+		RendererAPI::DrawLines(vertexArray, vertexCount);
+	}
+
+	void Renderer::SetLineWidth(float width)
+	{
+		RendererAPI::SetLineWidth(width);
 	}
 
 	const Scope<ShaderLibrary>& Renderer::GetShaderLibrary()

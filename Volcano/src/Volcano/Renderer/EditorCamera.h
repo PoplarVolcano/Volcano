@@ -23,7 +23,7 @@ namespace Volcano {
 		inline void SetViewportSize(float width, float height) { m_ViewportWidth = width; m_ViewportHeight = height; UpdateProjection(); }
 				
 		const glm::mat4& GetViewMatrix() const { return m_ViewMatrix; }
-		glm::mat4 GetViewProjection() const { return m_Projection * m_ViewMatrix; }
+		glm::mat4 GetViewProjection() const { return m_Projection * glm::inverse(m_ViewMatrix); }
 
 		glm::vec3 GetUpDirection() const;
 		glm::vec3 GetRightDirection() const;

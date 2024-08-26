@@ -40,8 +40,9 @@ namespace Volcano {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;        // 启用自动布局
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;      // 启用多视窗/平台视窗（能出opengl的框子）
 
-		io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", 28.0f);
-		io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", 28.0f);
+		float fontSize = 18.0f * 1.5f;
+		io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", fontSize);
+		io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", fontSize);
 
 		//设置颜色
 		ImGui::StyleColorsDark();

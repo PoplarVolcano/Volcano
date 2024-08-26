@@ -4,6 +4,7 @@
 #include <Volcano/Renderer/OrthographicCameraController.h>
 #include <ParticleSystem.h>
 #include <Panels/SceneHierarchyPanel.h>
+#include <Panels/ContentBrowserPanel.h>
 #include "Volcano/Renderer/EditorCamera.h"
 
 namespace Volcano {
@@ -23,9 +24,25 @@ namespace Volcano {
 		bool OnKeyPressed(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
 
+		void OnOverlayRender();
+
 		void NewScene();
 		void OpenScene();
+		void OpenScene(const std::filesystem::path& path);
+		void SaveScene();
 		void SaveSceneAs();
+
+		void SerializeScene(Ref<Scene> scene, const std::filesystem::path& path);
+
+		void OnScenePlay();
+		void OnSceneSimulate();
+		void OnScenePause();
+		void OnSceneStop();
+
+		void OnDuplicateEntity();
+
+		// UI Panels
+		void UI_Toolbar();
 	private:
 		OrthographicCameraController m_CameraController;
 
@@ -39,7 +56,13 @@ namespace Volcano {
 		glm::vec2 m_ViewportBounds[2];
 		bool m_ViewportFocused = false, m_ViewportHovered = false;
 
+		// 活动场景
 		Ref<Scene> m_ActiveScene;
+		// 编辑器场景
+		Ref<Scene> m_EditorScene;
+		// 编辑器场景文件路径
+		std::filesystem::path m_EditorScenePath;
+
 		Entity m_SquareEntity;
 		Entity m_CameraEntity;
 		Entity m_SecondCamera;
@@ -64,7 +87,20 @@ namespace Volcano {
 		
 		int m_GizmoType = -1;
 
+		bool m_ShowPhysicsColliders = false;
+
+		enum class SceneState
+		{
+			Edit = 0, Play = 1, Simulate = 2
+		};
+		SceneState m_SceneState = SceneState::Edit;
+		SceneState m_ActiveSceneState = SceneState::Edit;
+		
+		// Editor resources
+		Ref<Texture2D> m_IconPlay, m_IconPause, m_IconStop, m_IconSimulate;
+
 		// Panels
 		SceneHierarchyPanel m_SceneHierarchyPanel;
+		ContentBrowserPanel m_ContentBrowserPanel;
 	};
 }

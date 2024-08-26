@@ -3,6 +3,7 @@
 #include "Volcano/Renderer/RenderCommandQueue.h"
 #include "Volcano/Renderer/RendererAPI.h"
 #include "Volcano/Renderer/Shader.h"
+#include "VertexArray.h"
 
 namespace Volcano {
 
@@ -19,7 +20,9 @@ namespace Volcano {
 		static void Clear(float r, float g, float b, float a = 1.0f);
 		static void SetClearColor(float r, float g, float b, float a);
 
-		static void DrawIndexed(PrimitiveType type, uint32_t count, bool depthTest = true);
+		static void DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount);
+		static void DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount);
+		static void SetLineWidth(float width);
 
 		static const Scope<ShaderLibrary>& GetShaderLibrary();
 

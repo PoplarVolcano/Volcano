@@ -6,13 +6,15 @@ project "Volcano"	--项目名称
 	-- On:代码生成的运行库选项是MTD,静态链接MSVCRT.lib库;
 	-- Off:代码生成的运行库选项是MDD,动态链接MSVCRT.dll库;打包后的exe放到另一台电脑上若无这个dll会报错
 	staticruntime "off"
+	-- 多字节字符集
+	characterset "MBCS"
 
 	targetdir ("%{wks.location}/bin/" .. outputdir .. "/%{prj.name}")	--输出目录
 	objdir ("%{wks.location}/bin-int/" .. outputdir .. "/%{prj.name}")	--中间临时文件的目录
 	
 	-- 预编译头 precompiled header
 	pchheader "volpch.h"
-	pchsource "Volcano/src/volpch.cpp"
+	pchsource "src/volpch.cpp"
 
 	files	--该项目的文件
 	{
@@ -33,9 +35,11 @@ project "Volcano"	--项目名称
 	includedirs	--附加包含目录
 	{
 		"src",
+		"vendor",
 		"vendor/assimp/include",
 		"vendor/spdlog/include",
 		"vendor/stb/include",
+		"%{IncludeDir.box2d}",
 		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
@@ -51,9 +55,14 @@ project "Volcano"	--项目名称
 		"Glad",
 		"ImGui",
 		"yaml-cpp",
+		"box2d",
 		"opengl32.lib"
 	}
 	
+	-- 创建预编译头文件
+    filter "files:src/volpch.cpp"
+      buildoptions { "/Yc\"volpch.h\"" }
+
 	filter "files:src/Volcano/ImGui/ImGuizmo.cpp"
 	flags { "NoPCH" }
 
@@ -79,6 +88,7 @@ project "Volcano"	--项目名称
 			"%{Library.SPIRV_Cross_GLSL_Debug}"
 		}
 
+
 	filter "configurations:Release"
 		defines "VOL_RELEASE"
 		runtime "Release"
@@ -90,6 +100,7 @@ project "Volcano"	--项目名称
 			"%{Library.SPIRV_Cross_Release}",
 			"%{Library.SPIRV_Cross_GLSL_Release}"
 		}
+		
 
 	filter "configurations:Dist"
 		defines "VOL_DIST"
@@ -102,4 +113,4 @@ project "Volcano"	--项目名称
 			"%{Library.SPIRV_Cross_Release}",
 			"%{Library.SPIRV_Cross_GLSL_Release}"
 		}
-
+		

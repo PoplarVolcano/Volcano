@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include "VertexArray.h"
 
 namespace Volcano {
 
@@ -8,11 +9,6 @@ namespace Volcano {
 	{
 		None,
 		OpenGL
-	};
-
-	enum class PrimitiveType
-	{
-		None = 0, Triangles, Lines
 	};
 
 	class RendererAPI
@@ -28,7 +24,11 @@ namespace Volcano {
 		static void Clear(float r, float g, float b, float a);
 		static void SetClearColor(float r, float g, float b, float a);
 
-		static void DrawIndexed(PrimitiveType type, uint32_t count, bool depthTest = true);
+		static void DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount, bool depthTest = true);
+
+		static void DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount);
+
+		static void SetLineWidth(float width);
 
 		inline static RendererAPIType Current() { return s_CurrentRendererAPI; }
 	private:

@@ -25,4 +25,4 @@
 #include "Volcano/Scene/Scene.h"
 #include "Volcano/Scene/Entity.h"
 #include "Volcano/Scene/ScriptableEntity.h"
-#include "Volcano/Scene/Component.h"
+#include "Volcano/Scene/Components.h"

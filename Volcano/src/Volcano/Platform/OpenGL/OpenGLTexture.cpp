@@ -26,7 +26,7 @@ namespace Volcano {
 			glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
 			//配置参数:纹理放大时用周围颜色的平均值过滤
 			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
 			glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -70,7 +70,7 @@ namespace Volcano {
 			// 设置纹理参数, GL_TEXTURE_MIN_FILTER用什么样的过滤来缩小, 
 			// GL_LINEAR linear filtering 线性滤波（用线性插值计算想要什么颜色）
 			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			// 释放data存储在CPU上的内存
 			stbi_image_free(data);
 		//	});

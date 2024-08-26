@@ -3,6 +3,7 @@ VULKAN_SDK = os.getenv("VULKAN_SDK")
 
 -- Include directories relative to root folder (solution directory)
 IncludeDir = {}
+IncludeDir["box2d"] = "%{wks.location}/Volcano/vendor/box2d/include"
 IncludeDir["GLFW"] = "%{wks.location}/Volcano/vendor/GLFW/include"
 IncludeDir["Glad"] = "%{wks.location}/Volcano/vendor/Glad/include"
 IncludeDir["ImGui"] = "%{wks.location}/Volcano/vendor/imgui"

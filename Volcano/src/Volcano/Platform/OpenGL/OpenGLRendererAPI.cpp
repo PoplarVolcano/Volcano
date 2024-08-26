@@ -11,6 +11,7 @@ namespace Volcano {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_LINE_SMOOTH);
 	}
 
 	void RendererAPI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
@@ -39,22 +40,29 @@ namespace Volcano {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
 
-	void RendererAPI::DrawIndexed(PrimitiveType type, uint32_t count, bool depthTest)
+	void RendererAPI::DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount, bool depthTest)
 	{
 		if (!depthTest)
 			glDisable(GL_DEPTH_TEST);
-		
-		GLenum glPrimitiveType = 0;
-		switch (type)
-		{
-		case PrimitiveType::Triangles: glPrimitiveType = GL_TRIANGLES; break;
-		case PrimitiveType::Lines:     glPrimitiveType = GL_LINES;     break;
-		}
+
+		vertexArray->Bind();
+		uint32_t count = indexCount ? indexCount : vertexArray->GetIndexBuffer()->GetCount();
 		//如何绘制索引， 多少个索引， 索引类型， 偏移量
-		glDrawElements(glPrimitiveType, count, GL_UNSIGNED_INT, nullptr);
+		glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, nullptr);
 
 		if (!depthTest)
 			glEnable(GL_DEPTH_TEST);
+	}
+
+	void RendererAPI::DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
+	{
+		vertexArray->Bind();
+		glDrawArrays(GL_LINES, 0, vertexCount);
+	}
+
+	void RendererAPI::SetLineWidth(float width)
+	{
+		glLineWidth(width);
 	}
 
 

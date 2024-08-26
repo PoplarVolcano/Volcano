@@ -17,6 +17,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
 
 group "Dependencies"
+	include "Volcano/vendor/box2d"
 	include "Volcano/vendor/GLFW"
 	include "Volcano/vendor/Glad"
 	include "Volcano/vendor/imgui"

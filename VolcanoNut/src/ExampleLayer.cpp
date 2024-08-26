@@ -63,6 +63,8 @@ namespace Volcano{
 
 #define PROFILE_SCOPE(name) Timer timer##__LINE__(name, [&](ProfileResult profileResult) { m_ProfileResults.push_back(profileResult); })
 
+    extern const std::filesystem::path g_AssetPath;
+
     ExampleLayer::ExampleLayer()
         : m_CameraController(1280.0f / 720.0f, true)
     {
@@ -75,6 +77,10 @@ namespace Volcano{
     void ExampleLayer::OnAttach()
     {
         m_Texture = Texture2D::Create("assets/textures/Mostima.png");
+        m_IconPlay = Texture2D::Create("Resources/Icons/PlayButton.png");
+        m_IconPause = Texture2D::Create("Resources/Icons/PauseButton.png");
+        m_IconStop = Texture2D::Create("Resources/Icons/StopButton.png");
+        m_IconSimulate = Texture2D::Create("Resources/Icons/SimulateButton.png");
         m_AlterTexture = Texture2D::Create("assets/textures/莫斯提马.png");
         m_SpriteSheet = Texture2D::Create("assets/game/textures/RPGpack_sheet_2X.png");
 
@@ -106,19 +112,22 @@ namespace Volcano{
 
         //m_CameraController.SetZoomLevel(5.5f);
 
-        m_ActiveScene = CreateRef<Scene>();
+        // 初始化场景
+        m_EditorScene = CreateRef<Scene>();
+        m_ActiveScene = m_EditorScene;
+        m_ActiveSceneState = SceneState::Edit;
 
+        // 从app获取指令行，如果指令行大于1则读取场景
         auto commandLineArgs = Application::Get().GetSpecification().CommandLineArgs;
         if (commandLineArgs.Count > 1)
         {
             auto sceneFilePath = commandLineArgs[1];
-            SceneSerializer serializer(m_ActiveScene);
+            SceneSerializer serializer(m_EditorScene);
             serializer.Deserialize(sceneFilePath);
         }
 
-
-        /*
         //Entity
+        /*
         auto square = m_ActiveScene->CreateEntity("Square");
         square.AddComponent<SpriteRendererComponent>(glm::vec4{ 0.2f, 0.2f, 0.8f, 1.0f });
 
@@ -174,7 +183,8 @@ namespace Volcano{
         };
         m_CameraEntity.AddComponent<NativeScriptComponent>().Bind<CameraController>();
         */
-        m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+        
+        //m_SceneHierarchyPanel.SetContext(m_ActiveScene);
 
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
 
@@ -188,12 +198,6 @@ namespace Volcano{
     {
         PROFILE_SCOPE("ExampleLayer::OnUpdate");
 
-        if (m_ViewportFocused)
-        {
-            m_CameraController.OnUpdate(ts);
-        }
-        m_EditorCamera.OnUpdate(ts);
-
         //Resize
         FramebufferSpecification spec = m_Framebuffer->GetSpecification();
         if (m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f && // zero sized Framebuffer is invalid
@@ -203,7 +207,10 @@ namespace Volcano{
             m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
             m_CameraController.OnResize(m_ViewportSize.x, m_ViewportSize.y);
             m_EditorCamera.SetViewportSize(m_ViewportSize.x, m_ViewportSize.y);
-            m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+
+            m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+            if(m_SceneState == SceneState::Play)
+                m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
         }
 
         // 重置渲染计数
@@ -216,8 +223,29 @@ namespace Volcano{
         // Clear entity ID atachement to -1
         m_Framebuffer->ClearAttachment(1, -1);
 
-        //Update scene
-        m_ActiveScene->OnUpdateEditor(ts, m_EditorCamera);
+        switch (m_SceneState)
+        {
+            case SceneState::Edit:
+            {
+                // 当焦点聚焦，才能wasd
+                if (m_ViewportFocused)
+                    m_CameraController.OnUpdate(ts);
+                m_EditorCamera.OnUpdate(ts);
+                m_ActiveScene->OnUpdateEditor(ts, m_EditorCamera);
+                break;
+            }
+            case SceneState::Simulate:
+            {
+                m_EditorCamera.OnUpdate(ts);
+                m_ActiveScene->OnUpdateSimulation(ts, m_EditorCamera);
+                break;
+            }
+            case SceneState::Play:
+            {
+                m_ActiveScene->OnUpdateRuntime(ts);
+                break;
+            }
+        }
 
         auto [mx, my] = ImGui::GetMousePos();
         // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
@@ -237,62 +265,8 @@ namespace Volcano{
             m_HoveredEntity = pixelData == -1 ? Entity() : Entity({ (entt::entity)pixelData, m_ActiveScene.get() });
         }
 
-
-        /*
-        // Background Scene
-        Renderer2D::BeginScene(m_CameraController.GetCamera());
-        {
-            for (float y = -5.0f; y < 5.0f; y += 0.5f)
-            {
-                for (float x = -5.0f; x < 5.0f; x += 0.5f)
-                {
-                    glm::vec4 color = { (x + 5.0f) / 10.0f, 0.4f, (y + 5.0f) / 10.0f, 1.0f };
-                    Renderer2D::DrawQuad({ x, y, -0.2f }, { 0.45f, 0.45f }, color);
-
-                }
-            }
-            Renderer2D::EndScene();
-        }
-        // SpriteSheet Scene
-        Renderer2D::BeginScene(m_CameraController.GetCamera());
-        {
-            for (uint32_t y = 0; y < m_MapHeight; y++)
-            {
-                for (uint32_t x = 0; x < m_MapWidth; x++)
-                {
-                    char tileType = s_MapTiles[x + y * m_MapWidth];
-                    Ref<SubTexture2D> texture;
-                    if (s_TextureMap.find(tileType) != s_TextureMap.end())
-                        texture = s_TextureMap[tileType];
-                    else 
-                        texture = m_TextureStairs;
-                    Renderer2D::DrawQuad({ x - m_MapWidth / 2.0f, y - m_MapHeight / 2.0f, -0.1f }, { 1.0f, 1.0f }, texture);
-                }
-
-            }
-            //Renderer2D::DrawQuad({ 0.0f, 0.0f, -0.1f }, { 1.0f, 1.0f }, m_TextureStairs);
-            //Renderer2D::DrawQuad({ -1.0f, 0.0f, -0.1f }, { 1.0f, 2.0f }, m_TextureTree);
-            Renderer2D::EndScene();
-        }
-        // Test Scene
-        Renderer2D::BeginScene(m_SecondCamera.GetComponent<CameraComponent>().Camera, m_SecondCamera.GetComponent<CameraComponent>().Camera.GetProjection());
-        {
-            glm::vec4  redColor(0.8f, 0.3f, 0.3f, 1.0f);
-            glm::vec4  blueColor(0.2f, 0.3f, 0.8f, 1.0f);
-
-            Renderer2D::DrawQuad({ 0.0f, 0.0f, -0.2f }, { 10.0f, 10.0f }, m_Texture);
-            Renderer2D::DrawQuad({ 0.0f, 0.0f, -0.1f }, { 10.0f, 10.0f }, m_AlterTexture);
-            Renderer2D::DrawQuad({ -1.0f, 0.0f }, { 0.8f, 0.8f }, redColor);
-            Renderer2D::DrawQuad({ 0.5f, -0.5f }, { 0.5f, 0.75f }, blueColor);
-            Renderer2D::DrawRotatedQuad({ 1.0f, 0.0f }, { 0.8f,0.8f }, glm::radians(rotation), redColor);
-            Renderer2D::DrawRotatedQuad({ -2.0f, 0.0f, 0.0f }, { 1.0f, 1.0f }, glm::radians(rotation), m_AlterTexture, 10.0f);
-            Renderer2D::EndScene();
-        }
-
-
-
-
         // Particle Scene
+        /*
         Renderer2D::BeginScene(m_CameraEntity.GetComponent<CameraComponent>().Camera, m_CameraEntity.GetComponent<CameraComponent>().Camera.GetProjection());
         {
             //如果按下空格
@@ -315,6 +289,9 @@ namespace Volcano{
             Renderer2D::EndScene();
         }
         */
+
+        // 覆盖层
+        OnOverlayRender();
 
         m_Framebuffer->Unbind();
     }
@@ -402,6 +379,9 @@ namespace Volcano{
                 if (ImGui::MenuItem("Open...", "Ctrl+O"))
                     OpenScene();
 
+                if (ImGui::MenuItem("Save", "Ctrl+S"))
+                    SaveScene();
+
                 if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
                     SaveSceneAs();
 
@@ -434,6 +414,20 @@ namespace Volcano{
         // 在视图显示帧缓冲画面
         uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
         ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{0, 1}, ImVec2{1, 0});
+        
+        
+        // 接收在此视口拖放过来的值，On target candidates，拖放目标
+        if (ImGui::BeginDragDropTarget()) 
+        {
+            // 因为接收内容可能为空，需要if判断。 CONTENT_BROWSER_ITEM：拖动携带的内容
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) 
+            {
+                const wchar_t* path = (const wchar_t*)payload->Data;
+                OpenScene(std::filesystem::path(g_AssetPath) / path);
+            }
+            ImGui::EndDragDropTarget();
+        }
+
 
         // 获取vieport视口大小 - 包含标题栏的高
         auto windowSize = ImGui::GetWindowSize();
@@ -485,7 +479,7 @@ namespace Volcano{
             float snapValues[3] = { snapValue, snapValue, snapValue };
 
             ImGuizmo::Manipulate(
-                glm::value_ptr(cameraView), 
+                glm::value_ptr(glm::inverse(cameraView)), 
                 glm::value_ptr(cameraProjection),
                 (ImGuizmo::OPERATION)m_GizmoType, 
                 ImGuizmo::LOCAL, 
@@ -511,13 +505,17 @@ namespace Volcano{
         ImGui::PopStyleVar();
 
         m_SceneHierarchyPanel.OnImGuiRender();
+        m_ContentBrowserPanel.OnImGuiRender();
 
         // =====================================================Settings=====================================================
         ImGui::Begin("Stats");
 
         std::string name = "None";
         if (m_HoveredEntity)
-            name = m_HoveredEntity.GetComponent<TagComponent>().Tag;
+        {
+            // BUG!!! 悬浮在标题框m_HoveredEntity为空且会调用GetComponent
+            //name = m_HoveredEntity.GetComponent<TagComponent>().Tag;
+        }
         ImGui::Text("Hovered Entity: %s", name.c_str());
 
         auto stats = Renderer2D::GetStats();
@@ -539,11 +537,85 @@ namespace Volcano{
         // Stats
         ImGui::End();
 
+        ImGui::Begin("Settings");
+        ImGui::Checkbox("Show physics colliders", &m_ShowPhysicsColliders);
+        ImGui::End();
+
         //ImGui::ShowDemoWindow();
+
+        UI_Toolbar();
 
         // Dockspace
         ImGui::End();
 
+    }
+
+    void ExampleLayer::UI_Toolbar()
+    { 
+        // padding
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+        // 按钮图片透明背景
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        auto& colors = ImGui::GetStyle().Colors;
+        // 按钮针对hover、click有不同效果
+        const auto& buttonHovered = colors[ImGuiCol_ButtonHovered];
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(buttonHovered.x, buttonHovered.y, buttonHovered.z, 0.5f));
+        const auto& buttonActive = colors[ImGuiCol_ButtonActive];
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(buttonActive.x, buttonActive.y, buttonActive.z, 0.5f));
+
+        ImGui::Begin("##toolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        
+        bool toolbarEnabled = (bool)m_ActiveScene;
+
+        ImVec4 tintColor = ImVec4(1, 1, 1, 1);
+        if (!toolbarEnabled)
+            tintColor.w = 0.5f;
+
+        // 按钮适应窗口大小、放大时应使用线性插值保证不那么模糊
+        float size = ImGui::GetWindowHeight() - 4.0f;
+        // 按钮应该在中间, 设置按钮的x位置
+        ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - size);
+
+        // 开始暂停按钮
+        {
+            Ref<Texture2D> icon = (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Simulate) ? m_IconPlay : m_IconPause;
+            if (ImGui::ImageButton((ImTextureID)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+            {
+                if (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Simulate)
+                    OnScenePlay();
+                else if (m_SceneState == SceneState::Play)
+                    OnScenePause();
+            }
+        }
+
+        // 模拟按钮
+        ImGui::SameLine();
+        {
+            Ref<Texture2D> icon = (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Play) ? m_IconSimulate : m_IconPause;
+
+            if (ImGui::ImageButton((ImTextureID)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+            {
+
+                if (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Play)
+                    OnSceneSimulate();
+                else if (m_SceneState == SceneState::Simulate)
+                    OnScenePause();
+            }
+        }
+
+        // 重置按钮
+        ImGui::SameLine();
+        {
+            if (ImGui::ImageButton((ImTextureID)m_IconStop->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+            {
+                OnSceneStop();
+            }
+        }
+
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(3);
+        ImGui::End();
     }
 
     void ExampleLayer::OnEvent(Event& event)
@@ -556,6 +628,7 @@ namespace Volcano{
         dispatcher.Dispatch<MouseButtonPressedEvent>(VOL_BIND_EVENT_FN(ExampleLayer::OnMouseButtonPressed));
 
     }
+
     bool ExampleLayer::OnKeyPressed(KeyPressedEvent& e)
     {
         if (e.GetRepeatCount() > 0) 
@@ -577,9 +650,15 @@ namespace Volcano{
                 OpenScene();
             break;
         case Key::S:
-            if (control && shift)
-                SaveSceneAs();
+            if (control)
+                if (shift)
+                    SaveSceneAs();
+                else
+                    SaveScene();
             break;
+        case Key::D:
+            if (control)
+                OnDuplicateEntity();
 
         //Gizmos
         case Key::Q:
@@ -608,25 +687,120 @@ namespace Volcano{
         return false;
     }
 
+    void ExampleLayer::OnOverlayRender()
+    {
+        // 播放状态下
+        if (m_SceneState == SceneState::Play)
+        {
+            Entity camera = m_ActiveScene->GetPrimaryCameraEntity();
+            if (!camera)
+                return;  // 找不到就退出
+            Renderer2D::BeginScene(camera.GetComponent<CameraComponent>().Camera, camera.GetComponent<TransformComponent>().GetTransform());
+        }
+        else
+        {
+            Renderer2D::BeginScene(m_EditorCamera, m_EditorCamera.GetViewMatrix());
+        }
+
+        if (m_ShowPhysicsColliders)
+        {
+            // 包围盒需跟随对应的物体,包围盒的transform需基于物体的平移、旋转、缩放。
+            // Box Colliders
+            {
+                auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, BoxCollider2DComponent>();
+                for (auto entity : view)
+                {
+                    auto [tc, bc2d] = view.get<TransformComponent, BoxCollider2DComponent>(entity);
+
+                    // 0.001f Z轴偏移量
+                    glm::vec3 translation = tc.Translation + glm::vec3(bc2d.Offset, 0.001f);
+                    // bc2d.Size需乘以2，以免缩小一半
+                    glm::vec3 scale = tc.Scale * glm::vec3(bc2d.Size * 2.0f, 1.0f);
+
+                    glm::mat4 transform = glm::translate(glm::mat4(1.0f), translation)
+                        * glm::rotate(glm::mat4(1.0f), tc.Rotation.z, glm::vec3(0.0f, 0.0f, 1.0f))
+                        * glm::scale(glm::mat4(1.0f), scale);
+
+                    // 绿色的包围盒
+                    Renderer2D::DrawRect(transform, glm::vec4(0, 1, 0, 1));
+                }
+            }
+
+            // Circle Colliders
+            {
+                auto view = m_ActiveScene->GetAllEntitiesWith<TransformComponent, CircleCollider2DComponent>();
+                for (auto entity : view)
+                {
+                    auto [tc, cc2d] = view.get<TransformComponent, CircleCollider2DComponent>(entity);
+
+                    glm::vec3 translation = tc.Translation + glm::vec3(cc2d.Offset, 0.001f);
+                    // cc2d.Radius需乘以2，以免缩小一半
+                    glm::vec3 scale = tc.Scale * glm::vec3(cc2d.Radius * 2.0f);
+
+                    glm::mat4 transform = glm::translate(glm::mat4(1.0f), translation)
+                        * glm::scale(glm::mat4(1.0f), scale);
+
+                    Renderer2D::DrawCircle(transform, glm::vec4(0, 1, 0, 1), 0.01f);
+                }
+            }
+        }
+
+        Renderer2D::EndScene();
+    }
+
     void ExampleLayer::NewScene()
     {
-        m_ActiveScene = CreateRef<Scene>();
-        m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-        m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+        m_EditorScene = CreateRef<Scene>();
+        m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+        m_SceneHierarchyPanel.SetContext(m_EditorScene);
+        m_EditorScenePath = std::filesystem::path();
+        m_ActiveScene = m_EditorScene;
+        m_ActiveSceneState = SceneState::Edit;
     }
 
     void ExampleLayer::OpenScene()
     {
         std::string filepath = FileDialogs::OpenFile("Volcano Scene (*.volcano)\0*.volcano\0");
         if (!filepath.empty())
-        {
-            m_ActiveScene = CreateRef<Scene>();
-            m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-            m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+            OpenScene(filepath);
+    }
+    
+    void ExampleLayer::OpenScene(const std::filesystem::path& path)
+    {
+        if (m_SceneState != SceneState::Edit)
+            OnSceneStop();
 
-            SceneSerializer serializer(m_ActiveScene);
-            serializer.Deserialize(filepath);
+        if(path.extension().string() != ".volcano")
+        {
+            VOL_WARN("Could not load {0} - not a scene file", path.filename().string());
+            return;
         }
+
+        Ref<Scene> newScene = CreateRef<Scene>();
+        SceneSerializer serializer(newScene);
+        if (serializer.Deserialize(path.string()))
+        {
+            // 编辑器场景获取文件读取场景
+            m_EditorScene = newScene;
+            m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+            m_SceneHierarchyPanel.SetContext(m_EditorScene);
+            m_EditorScenePath = path;
+            m_ActiveScene = m_EditorScene;
+            m_ActiveSceneState = SceneState::Edit;
+        }
+    }
+
+    void ExampleLayer::SaveScene()
+    {
+        if (!m_EditorScenePath.empty())
+        {
+            SerializeScene(m_ActiveScene, m_EditorScenePath);
+            m_EditorScene = m_ActiveScene;
+            if (m_SceneState != SceneState::Edit)
+                OnSceneStop();
+        }
+        else
+            SaveSceneAs();
     }
 
     void ExampleLayer::SaveSceneAs()
@@ -634,8 +808,108 @@ namespace Volcano{
         std::string filepath = FileDialogs::SaveFile("Volcano Scene (*.volcano)\0*.volcano\0");
         if (!filepath.empty())
         {
-            SceneSerializer serializer(m_ActiveScene);
-            serializer.Serialize(filepath);
+            SerializeScene(m_ActiveScene, filepath);
+            m_EditorScenePath = filepath;
+            m_EditorScene = m_ActiveScene;
+            if (m_SceneState != SceneState::Edit)
+                OnSceneStop();
         }
     }
+
+    // 序列化场景
+    void ExampleLayer::SerializeScene(Ref<Scene> scene, const std::filesystem::path& path)
+    {
+        SceneSerializer serializer(scene);
+        serializer.Serialize(path.string());
+    }
+
+    // 播放场景
+    void ExampleLayer::OnScenePlay()
+    {
+        // 运行时物理模拟则重置场景
+        if (m_SceneState == SceneState::Simulate)
+            OnSceneStop();
+
+        // 设置场景状态：播放
+        m_SceneState = SceneState::Play;
+
+        // 分割活动场景为单独的Scene
+        if (m_ActiveScene == m_EditorScene)
+        {
+            m_ActiveScene = Scene::Copy(m_EditorScene);
+            m_ActiveSceneState = SceneState::Play;
+        }
+
+        // 设置活动场景物理效果
+        m_ActiveScene->OnRuntimeStart();
+
+        m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+    }
+
+    void ExampleLayer::OnSceneSimulate()
+    {
+        // 物理模拟时运行则重置场景
+        if (m_SceneState == SceneState::Play)
+            OnSceneStop();
+
+        // 设置场景状态：模拟
+        m_SceneState = SceneState::Simulate;
+
+        if (m_ActiveScene == m_EditorScene)
+        {
+            m_ActiveScene = Scene::Copy(m_EditorScene);
+            m_ActiveSceneState = SceneState::Simulate;
+        }
+
+        m_ActiveScene->OnSimulationStart();
+
+        m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+    }
+
+    // 暂停场景
+    void ExampleLayer::OnScenePause()
+    {
+        VOL_CORE_ASSERT(m_SceneState == SceneState::Play || m_SceneState == SceneState::Simulate);
+
+        // 关闭活动场景物理效果
+        if (m_SceneState == SceneState::Play)
+            m_ActiveScene->OnRuntimeStop();
+        else if (m_SceneState == SceneState::Simulate)
+            m_ActiveScene->OnSimulationStop();
+
+        // 设置场景状态：编辑
+        m_SceneState = SceneState::Edit;
+    }
+
+    // 重置场景
+    void ExampleLayer::OnSceneStop()
+    {
+        // 关闭活动场景物理效果
+        if (m_ActiveSceneState == SceneState::Play)
+            m_ActiveScene->OnRuntimeStop();
+        else if (m_ActiveSceneState == SceneState::Simulate)
+            m_ActiveScene->OnSimulationStop();
+
+        // 设置场景状态：编辑
+        m_SceneState = SceneState::Edit;
+
+        // 活动场景恢复编辑器场景
+        m_ActiveScene = m_EditorScene;
+        m_ActiveSceneState = SceneState::Edit;
+
+        m_SceneHierarchyPanel.SetContext(m_EditorScene);
+    }
+
+    // 编辑模式可用，如果选中实体，将实体复制
+    void ExampleLayer::OnDuplicateEntity()
+    {
+        if (m_SceneState != SceneState::Edit)
+            return;
+
+        Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
+        if (selectedEntity)
+            m_ActiveScene->DuplicateEntity(selectedEntity);
+    }
+
+
 }
