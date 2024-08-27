@@ -1,7 +1,5 @@
 #pragma once
 
-#include <xhash>
-
 namespace Volcano {
 
 	class UUID
@@ -19,13 +17,14 @@ namespace Volcano {
 }
 
 namespace std {
+	template<typename T> struct hash;
 
 	template<>
 	struct hash<Volcano::UUID>
 	{
 		std::size_t operator()(const Volcano::UUID& uuid) const
 		{
-			return hash<uint64_t>()((uint64_t)uuid);
+			return (uint64_t)uuid;
 		}
 	};
 

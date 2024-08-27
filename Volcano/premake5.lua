@@ -45,6 +45,7 @@ project "Volcano"	--项目名称
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.entt}",
+		"%{IncludeDir.mono}",
 		"%{IncludeDir.yaml_cpp}",
 		"%{IncludeDir.VulkanSDK}"
 	}
@@ -56,7 +57,8 @@ project "Volcano"	--项目名称
 		"ImGui",
 		"yaml-cpp",
 		"box2d",
-		"opengl32.lib"
+		"opengl32.lib",
+		"%{Library.mono}"
 	}
 	
 	-- 创建预编译头文件
@@ -74,6 +76,13 @@ project "Volcano"	--项目名称
 			"VOL_PLATFORM_WINDOWS"
 		}
 
+		links
+		{
+			"%{Library.WinSock}",
+			"%{Library.WinMM}",
+			"%{Library.WinVersion}",
+			"%{Library.BCrypt}",
+		}
 
 	-- 不同配置下的预定义不同
 	filter "configurations:Debug"

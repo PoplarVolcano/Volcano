@@ -126,68 +126,9 @@ namespace Volcano{
             serializer.Deserialize(sceneFilePath);
         }
 
-        //Entity
-        /*
-        auto square = m_ActiveScene->CreateEntity("Square");
-        square.AddComponent<SpriteRendererComponent>(glm::vec4{ 0.2f, 0.2f, 0.8f, 1.0f });
-
-        auto redquare = m_ActiveScene->CreateEntity("RedSquare");
-        redquare.AddComponent<SpriteRendererComponent>(glm::vec4{ 0.8f, 0.2f, 0.2f, 1.0f });
-
-        m_SquareEntity = square;
-
-        m_CameraEntity = m_ActiveScene->CreateEntity("Camera A");
-        m_CameraEntity.AddComponent<CameraComponent>();
-
-        m_SecondCamera = m_ActiveScene->CreateEntity("Camera B");
-        auto& cc = m_SecondCamera.AddComponent<CameraComponent>();
-        cc.Primary = false;
-
-        class CameraController : public ScriptableEntity
-        {
-        public:
-            void OnCreate()
-            {
-                auto& translation = GetComponent<TransformComponent>().Translation;
-                //translation.x = rand() % 10 - 5.0f;
-            }
-
-            void OnDestroy()
-            {
-
-            }
-
-            void OnUpdate(Timestep ts)
-            {
-                auto& translation = GetComponent<TransformComponent>().Translation;
-                auto& rotation = GetComponent<TransformComponent>().Rotation;
-                float speed = 5.0f;
-
-                if (Input::IsKeyPressed(VOL_KEY_A))
-                    translation.x -= speed * ts;
-                if (Input::IsKeyPressed(VOL_KEY_D))
-                    translation.x += speed * ts;
-                if (Input::IsKeyPressed(VOL_KEY_W))
-                    translation.y += speed * ts;
-                if (Input::IsKeyPressed(VOL_KEY_S))
-                    translation.y -= speed * ts;
-
-                if (Input::IsKeyPressed(VOL_KEY_Q))
-                    rotation.z += speed * ts;
-                if (Input::IsKeyPressed(VOL_KEY_E))
-                    rotation.z -= speed * ts;
-
-
-            }
-
-        };
-        m_CameraEntity.AddComponent<NativeScriptComponent>().Bind<CameraController>();
-        */
-        
-        //m_SceneHierarchyPanel.SetContext(m_ActiveScene);
-
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
 
+        Renderer2D::SetLineWidth(4.0f);
     }
 
     void ExampleLayer::OnDetach()
@@ -621,7 +562,10 @@ namespace Volcano{
     void ExampleLayer::OnEvent(Event& event)
     {
         m_CameraController.OnEvent(event);
-        m_EditorCamera.OnEvent(event);
+        if (m_SceneState == SceneState::Edit)
+        {
+            m_EditorCamera.OnEvent(event);
+        }
         
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<KeyPressedEvent>(VOL_BIND_EVENT_FN(ExampleLayer::OnKeyPressed));
@@ -631,7 +575,7 @@ namespace Volcano{
 
     bool ExampleLayer::OnKeyPressed(KeyPressedEvent& e)
     {
-        if (e.GetRepeatCount() > 0) 
+        if (e.IsRepeat()) 
         {
             return false;
         }
@@ -745,6 +689,13 @@ namespace Volcano{
             }
         }
 
+        // Draw selected entity outline 
+        if (Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity())
+        {
+            const TransformComponent& transform = selectedEntity.GetComponent<TransformComponent>();
+            Renderer2D::DrawRect(transform.GetTransform(), glm::vec4(1.0f, 0.5f, 0.0f, 1.0f)); 
+        }
+
         Renderer2D::EndScene();
     }
 
@@ -827,7 +778,7 @@ namespace Volcano{
     void ExampleLayer::OnScenePlay()
     {
         // 运行时物理模拟则重置场景
-        if (m_SceneState == SceneState::Simulate)
+        if (m_SceneState == SceneState::Simulate || (m_SceneState == SceneState::Edit && m_ActiveSceneState == SceneState::Simulate))
             OnSceneStop();
 
         // 设置场景状态：播放
@@ -849,7 +800,7 @@ namespace Volcano{
     void ExampleLayer::OnSceneSimulate()
     {
         // 物理模拟时运行则重置场景
-        if (m_SceneState == SceneState::Play)
+        if (m_SceneState == SceneState::Play || (m_SceneState == SceneState::Edit && m_ActiveSceneState == SceneState::Play))
             OnSceneStop();
 
         // 设置场景状态：模拟

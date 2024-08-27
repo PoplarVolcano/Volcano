@@ -86,6 +86,14 @@ namespace Volcano {
 		CameraComponent(const CameraComponent&) = default;
 	};
 
+	struct ScriptComponent
+	{
+		std::string ClassName;
+
+		ScriptComponent() = default;
+		ScriptComponent(const ScriptComponent&) = default;
+	};
+
 	// Forward declaration
 	class ScriptableEntity;
 
@@ -162,5 +170,21 @@ namespace Volcano {
 		CircleCollider2DComponent(const CircleCollider2DComponent&) = default;
 	};
 
+	template<typename... Component>
+	struct ComponentGroup
+	{
+	};
+
+	// (except IDComponent and TagComponent)
+	using AllComponents = ComponentGroup<
+								TransformComponent, 
+								SpriteRendererComponent,
+								CircleRendererComponent, 
+								CameraComponent, 
+								ScriptComponent,
+								NativeScriptComponent,
+								Rigidbody2DComponent, 
+								BoxCollider2DComponent, 
+								CircleCollider2DComponent>;
 
 }

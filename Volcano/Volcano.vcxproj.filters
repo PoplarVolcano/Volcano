@@ -37,6 +37,9 @@
     <Filter Include="src\Volcano\Scene">
       <UniqueIdentifier>{EB1E7F16-5735-7DAC-A0AC-08CE0C024E34}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Volcano\Scripting">
+      <UniqueIdentifier>{D05D8E4B-3CCA-4946-05BE-E1A371E96BAE}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Volcano\Utils">
       <UniqueIdentifier>{2EB3AC16-9AC9-AAAC-E340-36CE4F967B34}</UniqueIdentifier>
     </Filter>
@@ -112,6 +115,9 @@
       <Filter>src\Volcano\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Core\Timestep.h">
+      <Filter>src\Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\UUID.h">
       <Filter>src\Volcano\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Core\Window.h">
@@ -221,6 +227,12 @@
     </ClInclude>
     <ClInclude Include="src\Volcano\Scene\ScriptableEntity.h">
       <Filter>src\Volcano\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Scripting\ScriptEngine.h">
+      <Filter>src\Volcano\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Scripting\ScriptGlue.h">
+      <Filter>src\Volcano\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Utils\PlatformUtils.h">
       <Filter>src\Volcano\Utils</Filter>
@@ -1476,7 +1488,6 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Core\UUID.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1495,6 +1506,9 @@
       <Filter>src\Volcano\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Core\Timestep.cpp">
+      <Filter>src\Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Core\UUID.cpp">
       <Filter>src\Volcano\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Core\Window.cpp">
@@ -1599,9 +1613,14 @@
     <ClCompile Include="src\Volcano\Scene\SceneSerializer.cpp">
       <Filter>src\Volcano\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Scripting\ScriptEngine.cpp">
+      <Filter>src\Volcano\Scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Scripting\ScriptGlue.cpp">
+      <Filter>src\Volcano\Scripting</Filter>
+    </ClCompile>
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Core\UUID.cpp" />
   </ItemGroup>
 </Project>

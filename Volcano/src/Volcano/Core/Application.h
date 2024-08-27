@@ -51,7 +51,6 @@ namespace Volcano {
 		inline Window& GetWindow() { return *m_Window; }
 		ImGuiLayer* GetImGuiLayer() { return m_ImGuiLayer; }
 
-		float GetTime() const;
 		static inline Application& Get() { return *s_Instance; }
 		const ApplicationSpecification& GetSpecification() const { return m_Specification; }
 		void Run();

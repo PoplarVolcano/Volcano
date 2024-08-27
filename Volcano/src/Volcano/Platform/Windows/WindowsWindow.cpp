@@ -26,11 +26,6 @@ namespace Volcano {
         Shutdown();
     }
 
-    float WindowsWindow::GetTime() const
-    { 
-        return (float)glfwGetTime();
-    }
-
     void WindowsWindow::Init(const WindowProps& props)
     {
         m_Data.Title = props.Title;
@@ -92,7 +87,7 @@ namespace Volcano {
                     break;
                 }
                 case GLFW_REPEAT: {
-                    KeyPressedEvent event(key, 1);
+                    KeyPressedEvent event(key, true);
                     data.EventCallback(event);
                     break;
                 }
@@ -170,10 +165,6 @@ namespace Volcano {
         ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
         glfwSetCursor(m_Window, m_ImGuiMouseCursors[imgui_cursor] ? m_ImGuiMouseCursors[imgui_cursor] : m_ImGuiMouseCursors[ImGuiMouseCursor_Arrow]);
         glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-
-        float time = GetTime();
-        float delta = time - m_LastFrameTime;
-        m_LastFrameTime = time;
     }
 
     void WindowsWindow::SetVSync(bool enabled)

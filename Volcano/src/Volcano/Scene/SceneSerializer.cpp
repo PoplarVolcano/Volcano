@@ -184,12 +184,26 @@ namespace Volcano {
 			out << YAML::EndMap;//CameraComponent
 		}
 
+		if (entity.HasComponent<ScriptComponent>())
+		{
+			auto& scriptComponent = entity.GetComponent<ScriptComponent>();
+
+			out << YAML::Key << "ScriptComponent";
+			out << YAML::BeginMap; // ScriptComponent
+			out << YAML::Key << "ClassName" << YAML::Value << scriptComponent.ClassName;
+			out << YAML::EndMap; // ScriptComponent
+		}
+
 		if (entity.HasComponent<SpriteRendererComponent>())
 		{
 			out << YAML::Key << "SpriteRendererComponent";
 			out << YAML::BeginMap;//SpriteRendererComponent
 			auto& spriteRendererComponent = entity.GetComponent<SpriteRendererComponent>();
 			out << YAML::Key << "Color" << YAML::Value << spriteRendererComponent.Color;
+			if (spriteRendererComponent.Texture)
+				out << YAML::Key << "TexturePath" << YAML::Value << spriteRendererComponent.Texture->GetPath();
+
+			out << YAML::Key << "TilingFactor" << YAML::Value << spriteRendererComponent.TilingFactor;
 			out << YAML::EndMap;//SpriteRendererComponent
 		}
 
@@ -200,6 +214,8 @@ namespace Volcano {
 
 			auto& circleRendererComponent = entity.GetComponent<CircleRendererComponent>();
 			out << YAML::Key << "Color" << YAML::Value << circleRendererComponent.Color;
+			if (circleRendererComponent.Texture)
+				out << YAML::Key << "TexturePath" << YAML::Value << circleRendererComponent.Texture->GetPath();
 			out << YAML::Key << "Thickness" << YAML::Value << circleRendererComponent.Thickness;
 			out << YAML::Key << "Fade" << YAML::Value << circleRendererComponent.Fade;
 
@@ -285,11 +301,17 @@ namespace Volcano {
 
 	bool SceneSerializer::Deserialize(const std::string& filepath)
 	{
-		std::ifstream stream(filepath);
-		std::stringstream strStream;
-		strStream << stream.rdbuf();
+		YAML::Node data;
+		try
+		{
+			data = YAML::LoadFile(filepath);
+		}
+		catch (YAML::ParserException e)
+		{
+			VOL_CORE_ERROR("Failed to load .volcano file '{0}'\n     {1}", filepath, e.what());
+			return false;
+		}
 
-		YAML::Node data = YAML::Load(strStream.str());
 		if (!data["Scene"])
 			return false;
 		std::string sceneName = data["Scene"].as<std::string>();
@@ -338,11 +360,23 @@ namespace Volcano {
 					cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
 				}
 
+				auto scriptComponent = entity["ScriptComponent"];
+				if (scriptComponent)
+				{
+					auto& sc = deserializedEntity.AddComponent<ScriptComponent>();
+					sc.ClassName = scriptComponent["ClassName"].as<std::string>();
+				}
+
 				auto spriteRendererComponent = entity["SpriteRendererComponent"];
 				if (spriteRendererComponent)
 				{
 					auto& src = deserializedEntity.AddComponent<SpriteRendererComponent>();
 					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
+					if (spriteRendererComponent["TexturePath"])
+						src.Texture = Texture2D::Create(spriteRendererComponent["TexturePath"].as<std::string>());
+
+					if (spriteRendererComponent["TilingFactor"])
+						src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
 				}
 
 				auto circleRendererComponent = entity["CircleRendererComponent"];
@@ -350,6 +384,8 @@ namespace Volcano {
 				{
 					auto& crc = deserializedEntity.AddComponent<CircleRendererComponent>();
 					crc.Color = circleRendererComponent["Color"].as<glm::vec4>();
+					if (circleRendererComponent["TexturePath"])
+						crc.Texture = Texture2D::Create(circleRendererComponent["TexturePath"].as<std::string>());
 					crc.Thickness = circleRendererComponent["Thickness"].as<float>();
 					crc.Fade = circleRendererComponent["Fade"].as<float>();
 				}

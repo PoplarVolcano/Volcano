@@ -1,10 +1,10 @@
 #include "volpch.h"
-#include "Application.h"
 #include "Volcano/Core/Application.h"
-
+#include "Volcano/Core/Log.h"
+#include "Volcano/Core/Input.h"
 #include "Volcano/Renderer/Renderer.h"
-#include <imgui.h>
-#include <glad/glad.h>
+#include "Volcano/Scripting/ScriptEngine.h"
+#include "Volcano/Utils/PlatformUtils.h"
 
 namespace Volcano {
 #define BIND_EVENT_FN(x) std::bind(&Application::x, this, std::placeholders::_1)
@@ -12,7 +12,7 @@ namespace Volcano {
 	Application* Application::s_Instance = nullptr;
 
 	Application::Application(const ApplicationSpecification& specification)
-		: m_Specification(specification)
+		: m_Specification(specification) 
 	{
 		VOL_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
@@ -25,18 +25,25 @@ namespace Volcano {
 		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
 
 		Renderer::Init();
+		ScriptEngine::Init();
 
 		m_ImGuiLayer = new ImGuiLayer("ImGui");
 		PushOverlay(m_ImGuiLayer);
 	}
 	Application::~Application()
 	{
+		ScriptEngine::Shutdown();
+		Renderer::Shutdown();
 	}
 
 	void Application::Run()
 	{
 		while (m_Running)
 		{
+			float time = Time::GetTime();
+			m_Timestep = time - m_LastFrameTime;
+			m_LastFrameTime = time;
+
 			if (!m_Minimized)
 			{
 				for (Layer* layer : m_LayerStack)
@@ -49,9 +56,6 @@ namespace Volcano {
 			}
 			m_Window->OnUpdate();
 
-			float time = GetTime();
-			m_Timestep = time - m_LastFrameTime;
-			m_LastFrameTime = time;
 		}
 	}
 
@@ -96,11 +100,6 @@ namespace Volcano {
 	bool Application::OnWindowClose(WindowCloseEvent& e) {
 		m_Running = false;
 		return true;
-	}
-
-	float Application::GetTime() const
-	{
-		return m_Window->GetTime();
 	}
 
 	void Application::PushLayer(Layer* layer) {

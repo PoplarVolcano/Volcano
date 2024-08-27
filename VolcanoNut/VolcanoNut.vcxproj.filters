@@ -30,9 +30,4 @@
     <ClCompile Include="src\Random.cpp" />
     <ClCompile Include="src\VolcanoNut.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="assets\shaders\Renderer2D_Circle.glsl" />
-    <None Include="assets\shaders\Renderer2D_Quad.glsl" />
-    <None Include="assets\shaders\Renderer2D_Line.glsl" />
-  </ItemGroup>
 </Project>

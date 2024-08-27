@@ -12,10 +12,6 @@ public:
 	{
 		PushLayer(new Volcano::ExampleLayer());
 	}
-
-	~VolcanoNut() {
-
-	}
 };
 
 //创建应用
@@ -23,6 +19,7 @@ Volcano::Application* Volcano::CreateApplication(ApplicationCommandLineArgs args
 {
 	ApplicationSpecification spec;
 	spec.Name = "Volcanonut";
+	spec.WorkingDirectory = "../VolcanoNut";
 	spec.CommandLineArgs = args;
 
 	return new VolcanoNut(spec);

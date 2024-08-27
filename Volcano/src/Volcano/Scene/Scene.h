@@ -20,6 +20,8 @@ namespace Volcano {
 		static Ref<Scene> Copy(Ref<Scene> other);
 		void DuplicateEntity(Entity entity);
 
+		Entity GetEntityByUUID(UUID uuid);
+
 		Entity CreateEntity(const std::string& name = std::string());
 		Entity CreateEntityWithUUID(UUID uuid, const std::string& name = std::string());
 		void DestroyEntity(Entity entity);
@@ -57,6 +59,8 @@ namespace Volcano {
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 
 		b2World* m_PhysicsWorld = nullptr;
+
+		std::unordered_map<UUID, entt::entity> m_EntityMap;
 
 		friend class Entity;
 		friend class SceneSerializer;

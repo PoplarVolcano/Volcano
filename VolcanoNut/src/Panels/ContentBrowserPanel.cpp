@@ -45,10 +45,8 @@ namespace Volcano {
         for (auto& directoryEntry : std::filesystem::directory_iterator(m_CurrentDirectory)) {
             // 得到子文件夹或文件path类。					比如：path = assets\cache\shader
             const auto& path = directoryEntry.path();
-            // 得到子文件与assets文件夹的相对位置path。	    relativePath = cache\shader
-            auto relativePath = std::filesystem::relative(path, g_AssetPath);
             // 获取子文件的文件名。						    filenameString = shader
-            std::string filenameString = relativePath.filename().string();
+            std::string filenameString = path.filename().string();
 
             // ImageButton传入了icon的TextureID，这样同一个Scene文件夹下的所有.scene文件都是使用这个TextureID，
             // 外层有for循环遍历，pinkcube.scene在最后，他会在前面的场景最上面，所以每次获取的数据都是pinkcube.scene
@@ -64,6 +62,8 @@ namespace Volcano {
 
             if (ImGui::BeginDragDropSource())
             {
+                // 得到子文件与assets文件夹的相对位置path。	    relativePath = cache\shader
+                auto relativePath = std::filesystem::relative(path, g_AssetPath);
                 // 设置数据源，c_str返回以空字符结尾的const的宽字符串
                 const wchar_t* itemPath = relativePath.c_str();
                 // wcslen: returns the length of a wide string, that is the number of non-null wide characters that precedethe terminating null wide character

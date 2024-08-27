@@ -7,29 +7,24 @@ namespace Volcano {
 
 	RendererAPIType RendererAPI::s_CurrentRendererAPI = RendererAPIType::OpenGL;
 
-	struct RendererData
-	{
-		RenderCommandQueue m_CommandQueue;;
-		Scope<ShaderLibrary> m_ShaderLibrary;
-	};
-	static RendererData s_Data;
+	static Scope<ShaderLibrary> s_ShaderLibrary;
 
 	void Renderer::Init()
 	{
-		s_Data.m_ShaderLibrary = std::make_unique<ShaderLibrary>();
-		//Renderer::Submit([]() { 
+		s_ShaderLibrary = std::make_unique<ShaderLibrary>();
 		RendererAPI::Init(); 
-	//});
 
-		Renderer::WaitAndRender();
 		Renderer2D::Init();
+	}
+
+	void Renderer::Shutdown()
+	{
+		Renderer2D::Shutdown();
 	}
 
 	void Renderer::OnWindowResize(uint32_t width, uint32_t height)
 	{
-		//Renderer::Submit([=]() { 
 		RendererAPI::SetViewport(0, 0, width, height); 
-	//});
 	}
 
 	void Renderer::DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
@@ -49,37 +44,21 @@ namespace Volcano {
 
 	const Scope<ShaderLibrary>& Renderer::GetShaderLibrary()
 	{
-		return s_Data.m_ShaderLibrary;
-	}
-
-	RenderCommandQueue& Renderer::GetRenderCommandQueue()
-	{
-		return s_Data.m_CommandQueue;
-	}
-
-	void Renderer::WaitAndRender()
-	{
-		s_Data.m_CommandQueue.Execute();
+		return s_ShaderLibrary;
 	}
 
 	void Renderer::Clear()
 	{
-		//Renderer::Submit([]() {
-			RendererAPI::Clear();
-		//	});
+		RendererAPI::Clear();
 	}
 
 	void Renderer::Clear(float r, float g, float b, float a)
 	{
-		//Renderer::Submit([=]() {
-			RendererAPI::Clear(r, g, b, a);
-		//	});
+		RendererAPI::Clear(r, g, b, a);
 	}
 
 	void Renderer::SetClearColor(float r, float g, float b, float a)
 	{
-		//Renderer::Submit([=]() {
-			RendererAPI::SetClearColor(r, g, b, a);
-		//	});
+		RendererAPI::SetClearColor(r, g, b, a);
 	}
 }

@@ -26,5 +26,9 @@ group ""
 
 group "Core"
 	include "Volcano"
+	include "Volcano-ScriptCore"
+group ""
+
+group "Tools"
 	include "VolcanoNut"
 group ""

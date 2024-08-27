@@ -29,30 +29,22 @@ namespace Volcano {
 
 	OpenGLVertexArray::OpenGLVertexArray()
 	{
-		//Renderer::Submit([this]() {
-			glCreateVertexArrays(1, &m_RendererID);
-		//	});
+		glCreateVertexArrays(1, &m_RendererID);
 	}
 
 	OpenGLVertexArray::~OpenGLVertexArray()
 	{
-		//Renderer::Submit([this]() {
-			glDeleteVertexArrays(1, &m_RendererID);
-		//	});
+		glDeleteVertexArrays(1, &m_RendererID);
 	}
 
 	void OpenGLVertexArray::Bind() const
 	{
-		//Renderer::Submit([this]() {
-			glBindVertexArray(m_RendererID);
-		//	});
+		glBindVertexArray(m_RendererID);
 	}
 
 	void OpenGLVertexArray::UnBind() const
 	{
-		//Renderer::Submit([this]() {
-			glBindVertexArray(0);
-		//	});
+		glBindVertexArray(0);
 	}
 
 	void OpenGLVertexArray::AddVertexBuffer(const Ref<VertexBuffer>& vertexBuffer)
@@ -61,36 +53,34 @@ namespace Volcano {
 
 		Bind();
 		vertexBuffer->Bind();
-		//Renderer::Submit([this, vertexBuffer]() {
-			const auto& layout = vertexBuffer->GetLayout();
-			// shader中有多个layout，每个layout对应一个索引
-			// 对于每个layout进行一次设置
-			for (const auto& element : layout)
+		const auto& layout = vertexBuffer->GetLayout();
+		// shader中有多个layout，每个layout对应一个索引
+		// 对于每个layout进行一次设置
+		for (const auto& element : layout)
+		{
+			auto glBaseType = ShaderDataTypeToOpenGLBaseType(element.Type);
+			//启用数据的索引m_VertexBufferIndex
+			glEnableVertexAttribArray(m_VertexBufferIndex);
+			if (glBaseType == GL_INT)
 			{
-				auto glBaseType = ShaderDataTypeToOpenGLBaseType(element.Type);
-				//启用数据的索引m_VertexBufferIndex
-				glEnableVertexAttribArray(m_VertexBufferIndex);
-				if (glBaseType == GL_INT)
-				{
-					//设置缓冲区数据格式：缓冲区序号、顶点属性的大小、什么数据类型、会不会被归一化、步距、偏移量
-					glVertexAttribIPointer(m_VertexBufferIndex,
-						element.GetComponentCount(),             // 布局有几个数据（float3对应vec3有3个数据）
-						glBaseType,                              // 布局(layout)的类型(如float3为float类型)
-						layout.GetStride(),                      // 每一次读取的步距
-						(const void*)(intptr_t)element.Offset);  // 偏移量
-				}
-				else
-				{
-					glVertexAttribPointer(m_VertexBufferIndex,
-						element.GetComponentCount(),
-						glBaseType,
-						element.Normalized ? GL_TRUE : GL_FALSE,  // 数据是否归一化
-						layout.GetStride(),
-						(const void*)(intptr_t)element.Offset);
-				}
-				m_VertexBufferIndex++;
+				//设置缓冲区数据格式：缓冲区序号、顶点属性的大小、什么数据类型、会不会被归一化、步距、偏移量
+				glVertexAttribIPointer(m_VertexBufferIndex,
+					element.GetComponentCount(),             // 布局有几个数据（float3对应vec3有3个数据）
+					glBaseType,                              // 布局(layout)的类型(如float3为float类型)
+					layout.GetStride(),                      // 每一次读取的步距
+					(const void*)(intptr_t)element.Offset);  // 偏移量
 			}
-		//	});
+			else
+			{
+				glVertexAttribPointer(m_VertexBufferIndex,
+					element.GetComponentCount(),
+					glBaseType,
+					element.Normalized ? GL_TRUE : GL_FALSE,  // 数据是否归一化
+					layout.GetStride(),
+					(const void*)(intptr_t)element.Offset);
+			}
+			m_VertexBufferIndex++;
+		}
 		m_VertexBuffers.push_back(vertexBuffer);
 	}
 

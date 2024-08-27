@@ -92,15 +92,15 @@ namespace Volcano {
 		Ref<UniformBuffer> CameraUniformBuffer;
 
 	};
-	static Renderer2DData s_Data;
+	static Renderer2DData s_Renderer2DData;
 
 
 	void Renderer2D::Init()
 	{
 		// Quad
-		s_Data.QuadVertexArray = VertexArray::Create();
-		s_Data.QuadVertexBuffer = VertexBuffer::Create(s_Data.MaxVertices * sizeof(QuadVertex));
-		s_Data.QuadVertexBuffer->SetLayout({
+		s_Renderer2DData.QuadVertexArray = VertexArray::Create();
+		s_Renderer2DData.QuadVertexBuffer = VertexBuffer::Create(s_Renderer2DData.MaxVertices * sizeof(QuadVertex));
+		s_Renderer2DData.QuadVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position"     },
 			{ ShaderDataType::Float4, "a_Color"        },
 			{ ShaderDataType::Float2, "a_TexCoord"     },
@@ -108,11 +108,11 @@ namespace Volcano {
 			{ ShaderDataType::Float,  "a_TilingFactor" },
 			{ ShaderDataType::Int,    "a_EntityID"     }
 			});
-		s_Data.QuadVertexArray->AddVertexBuffer(s_Data.QuadVertexBuffer);
-		s_Data.QuadVertexBufferBase = new QuadVertex[s_Data.MaxVertices];
-		uint32_t* quadIndices = new uint32_t[s_Data.MaxIndices];
+		s_Renderer2DData.QuadVertexArray->AddVertexBuffer(s_Renderer2DData.QuadVertexBuffer);
+		s_Renderer2DData.QuadVertexBufferBase = new QuadVertex[s_Renderer2DData.MaxVertices];
+		uint32_t* quadIndices = new uint32_t[s_Renderer2DData.MaxIndices];
 		uint32_t offset = 0;
-		for (uint32_t i = 0; i < s_Data.MaxIndices; i += 6)
+		for (uint32_t i = 0; i < s_Renderer2DData.MaxIndices; i += 6)
 		{
 			quadIndices[i + 0] = offset + 0;
 			quadIndices[i + 1] = offset + 1;
@@ -124,14 +124,14 @@ namespace Volcano {
 
 			offset += 4;
 		}
-		Ref<IndexBuffer> quadIndexBuffer = IndexBuffer::Create(quadIndices, s_Data.MaxIndices);;
-		s_Data.QuadVertexArray->SetIndexBuffer(quadIndexBuffer);
+		Ref<IndexBuffer> quadIndexBuffer = IndexBuffer::Create(quadIndices, s_Renderer2DData.MaxIndices);;
+		s_Renderer2DData.QuadVertexArray->SetIndexBuffer(quadIndexBuffer);
 		delete[] quadIndices;	// cpu上传到gpu上了可以删除cpu的索引数据块了
 
 		// Circles
-		s_Data.CircleVertexArray = VertexArray::Create();
-		s_Data.CircleVertexBuffer = VertexBuffer::Create(s_Data.MaxVertices * sizeof(CircleVertex));
-		s_Data.CircleVertexBuffer->SetLayout({
+		s_Renderer2DData.CircleVertexArray = VertexArray::Create();
+		s_Renderer2DData.CircleVertexBuffer = VertexBuffer::Create(s_Renderer2DData.MaxVertices * sizeof(CircleVertex));
+		s_Renderer2DData.CircleVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_WorldPosition" },
 			{ ShaderDataType::Float3, "a_LocalPosition" },
 			{ ShaderDataType::Float4, "a_Color"         },
@@ -139,64 +139,64 @@ namespace Volcano {
 			{ ShaderDataType::Float,  "a_Fade"          },
 			{ ShaderDataType::Int,    "a_EntityID"      }
 			});
-		s_Data.CircleVertexArray->AddVertexBuffer(s_Data.CircleVertexBuffer);
-		s_Data.CircleVertexArray->SetIndexBuffer(quadIndexBuffer); // Use quad IB
-		s_Data.CircleVertexBufferBase = new CircleVertex[s_Data.MaxVertices];
+		s_Renderer2DData.CircleVertexArray->AddVertexBuffer(s_Renderer2DData.CircleVertexBuffer);
+		s_Renderer2DData.CircleVertexArray->SetIndexBuffer(quadIndexBuffer); // Use quad IB
+		s_Renderer2DData.CircleVertexBufferBase = new CircleVertex[s_Renderer2DData.MaxVertices];
 
 		// Lines
-		s_Data.LineVertexArray = VertexArray::Create();
-		s_Data.LineVertexBuffer = VertexBuffer::Create(s_Data.MaxVertices * sizeof(LineVertex));
-		s_Data.LineVertexBuffer->SetLayout({
+		s_Renderer2DData.LineVertexArray = VertexArray::Create();
+		s_Renderer2DData.LineVertexBuffer = VertexBuffer::Create(s_Renderer2DData.MaxVertices * sizeof(LineVertex));
+		s_Renderer2DData.LineVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position" },
 			{ ShaderDataType::Float4, "a_Color"    },
 			{ ShaderDataType::Int,    "a_EntityID" }
 			});
-		s_Data.LineVertexArray->AddVertexBuffer(s_Data.LineVertexBuffer);
-		s_Data.LineVertexBufferBase = new LineVertex[s_Data.MaxVertices];
+		s_Renderer2DData.LineVertexArray->AddVertexBuffer(s_Renderer2DData.LineVertexBuffer);
+		s_Renderer2DData.LineVertexBufferBase = new LineVertex[s_Renderer2DData.MaxVertices];
 
-		s_Data.WhiteTexture = Texture2D::Create(1, 1);
+		s_Renderer2DData.WhiteTexture = Texture2D::Create(1, 1);
 		uint32_t whiteTextureData = 0xffffffff;
-		s_Data.WhiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
+		s_Renderer2DData.WhiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
 
-		int32_t samplers[s_Data.MaxTextureSlots];
-		for (uint32_t i = 0; i < s_Data.MaxTextureSlots; i++)
+		int32_t samplers[s_Renderer2DData.MaxTextureSlots];
+		for (uint32_t i = 0; i < s_Renderer2DData.MaxTextureSlots; i++)
 			samplers[i] = i;
 
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Quad.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Circle.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Line.glsl");
-		s_Data.QuadShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Quad");
-		s_Data.CircleShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Circle");
-		s_Data.LineShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Line");
+		s_Renderer2DData.QuadShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Quad");
+		s_Renderer2DData.CircleShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Circle");
+		s_Renderer2DData.LineShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Line");
 
-		s_Data.TextureSlots[0] = s_Data.WhiteTexture;
+		s_Renderer2DData.TextureSlots[0] = s_Renderer2DData.WhiteTexture;
 
-		s_Data.QuadVertexPosition[0] = { -0.5, -0.5, 0.0f, 1.0f };
-		s_Data.QuadVertexPosition[1] = { 0.5, -0.5, 0.0f, 1.0f };
-		s_Data.QuadVertexPosition[2] = { 0.5,  0.5, 0.0f, 1.0f };
-		s_Data.QuadVertexPosition[3] = { -0.5,  0.5, 0.0f, 1.0f };
+		s_Renderer2DData.QuadVertexPosition[0] = { -0.5, -0.5, 0.0f, 1.0f };
+		s_Renderer2DData.QuadVertexPosition[1] = { 0.5, -0.5, 0.0f, 1.0f };
+		s_Renderer2DData.QuadVertexPosition[2] = { 0.5,  0.5, 0.0f, 1.0f };
+		s_Renderer2DData.QuadVertexPosition[3] = { -0.5,  0.5, 0.0f, 1.0f };
 
-		s_Data.CameraUniformBuffer = UniformBuffer::Create(sizeof(Renderer2DData::CameraData), 0);
+		s_Renderer2DData.CameraUniformBuffer = UniformBuffer::Create(sizeof(Renderer2DData::CameraData), 0);
 
 	}
 
 	void Renderer2D::Shutdown()
 	{
-		delete[] s_Data.QuadVertexBufferBase;
+		delete[] s_Renderer2DData.QuadVertexBufferBase;
 	}
 
 	void Renderer2D::BeginScene(const EditorCamera& camera)
 	{
-		s_Data.CameraBuffer.ViewProjection = camera.GetViewProjection();
-		s_Data.CameraUniformBuffer->SetData(&s_Data.CameraBuffer, sizeof(Renderer2DData::CameraData));
+		s_Renderer2DData.CameraBuffer.ViewProjection = camera.GetViewProjection();
+		s_Renderer2DData.CameraUniformBuffer->SetData(&s_Renderer2DData.CameraBuffer, sizeof(Renderer2DData::CameraData));
 
 		StartBatch();
 	}
 
 	void Renderer2D::BeginScene(const Camera& camera, const glm::mat4& transform)
 	{
-		s_Data.CameraBuffer.ViewProjection = camera.GetProjection() * glm::inverse(transform);
-		s_Data.CameraUniformBuffer->SetData(&s_Data.CameraBuffer, sizeof(Renderer2DData::CameraData));
+		s_Renderer2DData.CameraBuffer.ViewProjection = camera.GetProjection() * glm::inverse(transform);
+		s_Renderer2DData.CameraUniformBuffer->SetData(&s_Renderer2DData.CameraBuffer, sizeof(Renderer2DData::CameraData));
 
 		StartBatch();
 	}
@@ -209,56 +209,56 @@ namespace Volcano {
 
 	void Renderer2D::Flush()
 	{
-		if (s_Data.QuadIndexCount)
+		if (s_Renderer2DData.QuadIndexCount)
 		{
 			// 不加uint8_t转化会得到元素数量, 加uint8_t返回以char为单位占用多少元素
-			uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.QuadVertexBufferPtr - (uint8_t*)s_Data.QuadVertexBufferBase);
-			s_Data.QuadVertexBuffer->SetData(s_Data.QuadVertexBufferBase, dataSize);
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_Renderer2DData.QuadVertexBufferPtr - (uint8_t*)s_Renderer2DData.QuadVertexBufferBase);
+			s_Renderer2DData.QuadVertexBuffer->SetData(s_Renderer2DData.QuadVertexBufferBase, dataSize);
 
 			// Bind textures
-			for (uint32_t i = 0; i < s_Data.TextureSlotIndex; i++)
-				s_Data.TextureSlots[i]->Bind(i);
+			for (uint32_t i = 0; i < s_Renderer2DData.TextureSlotIndex; i++)
+				s_Renderer2DData.TextureSlots[i]->Bind(i);
 
-			s_Data.QuadShader->Bind();
-			Renderer::DrawIndexed(s_Data.QuadVertexArray, s_Data.QuadIndexCount);
-			s_Data.Stats.DrawCalls++;
+			s_Renderer2DData.QuadShader->Bind();
+			Renderer::DrawIndexed(s_Renderer2DData.QuadVertexArray, s_Renderer2DData.QuadIndexCount);
+			s_Renderer2DData.Stats.DrawCalls++;
 		}
 
-		if (s_Data.CircleIndexCount)
+		if (s_Renderer2DData.CircleIndexCount)
 		{
-			uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.CircleVertexBufferPtr - (uint8_t*)s_Data.CircleVertexBufferBase);
-			s_Data.CircleVertexBuffer->SetData(s_Data.CircleVertexBufferBase, dataSize);
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_Renderer2DData.CircleVertexBufferPtr - (uint8_t*)s_Renderer2DData.CircleVertexBufferBase);
+			s_Renderer2DData.CircleVertexBuffer->SetData(s_Renderer2DData.CircleVertexBufferBase, dataSize);
 
-			s_Data.CircleShader->Bind();
-			Renderer::DrawIndexed(s_Data.CircleVertexArray, s_Data.CircleIndexCount);
-			s_Data.Stats.DrawCalls++;
+			s_Renderer2DData.CircleShader->Bind();
+			Renderer::DrawIndexed(s_Renderer2DData.CircleVertexArray, s_Renderer2DData.CircleIndexCount);
+			s_Renderer2DData.Stats.DrawCalls++;
 		}
 
-		if (s_Data.LineVertexCount)
+		if (s_Renderer2DData.LineVertexCount)
 		{
-			uint32_t dataSize = (uint32_t)((uint8_t*)s_Data.LineVertexBufferPtr - (uint8_t*)s_Data.LineVertexBufferBase);
-			s_Data.LineVertexBuffer->SetData(s_Data.LineVertexBufferBase, dataSize);
+			uint32_t dataSize = (uint32_t)((uint8_t*)s_Renderer2DData.LineVertexBufferPtr - (uint8_t*)s_Renderer2DData.LineVertexBufferBase);
+			s_Renderer2DData.LineVertexBuffer->SetData(s_Renderer2DData.LineVertexBufferBase, dataSize);
 
-			s_Data.LineShader->Bind();
-			Renderer::SetLineWidth(s_Data.LineWidth);
-			Renderer::DrawLines(s_Data.LineVertexArray, s_Data.LineVertexCount);
-			s_Data.Stats.DrawCalls++;
+			s_Renderer2DData.LineShader->Bind();
+			Renderer::SetLineWidth(s_Renderer2DData.LineWidth);
+			Renderer::DrawLines(s_Renderer2DData.LineVertexArray, s_Renderer2DData.LineVertexCount);
+			s_Renderer2DData.Stats.DrawCalls++;
 		}
 	}
 
 	void Renderer2D::StartBatch()
 	{
 
-		s_Data.QuadIndexCount = 0;
-		s_Data.QuadVertexBufferPtr = s_Data.QuadVertexBufferBase;
+		s_Renderer2DData.QuadIndexCount = 0;
+		s_Renderer2DData.QuadVertexBufferPtr = s_Renderer2DData.QuadVertexBufferBase;
 
-		s_Data.CircleIndexCount = 0;
-		s_Data.CircleVertexBufferPtr = s_Data.CircleVertexBufferBase;
+		s_Renderer2DData.CircleIndexCount = 0;
+		s_Renderer2DData.CircleVertexBufferPtr = s_Renderer2DData.CircleVertexBufferBase;
 
-		s_Data.LineVertexCount = 0;
-		s_Data.LineVertexBufferPtr = s_Data.LineVertexBufferBase;
+		s_Renderer2DData.LineVertexCount = 0;
+		s_Renderer2DData.LineVertexBufferPtr = s_Renderer2DData.LineVertexBufferBase;
 
-		s_Data.TextureSlotIndex = 1;
+		s_Renderer2DData.TextureSlotIndex = 1;
 	}
 
 	void Renderer2D::NextBatch()
@@ -305,15 +305,15 @@ namespace Volcano {
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position)
 			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
 
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
+		if (s_Renderer2DData.QuadIndexCount >= Renderer2DData::MaxIndices)
 			NextBatch();
 
 		float textureIndex = 0.0f;
 
 		// 遍历纹理，是否已注入
-		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
+		for (uint32_t i = 1; i < s_Renderer2DData.TextureSlotIndex; i++)
 		{
-			if (*s_Data.TextureSlots[i].get() == *texture.get())
+			if (*s_Renderer2DData.TextureSlots[i].get() == *texture.get())
 			{
 				textureIndex = (float)i;
 				break;
@@ -323,28 +323,28 @@ namespace Volcano {
 		//未注入，将texture注入，索引为TextureSlotIndex（从1开始计数）
 		if (textureIndex == 0.0f)
 		{
-			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[s_Data.TextureSlotIndex] = texture;
-			s_Data.TextureSlotIndex++;
+			textureIndex = (float)s_Renderer2DData.TextureSlotIndex;
+			s_Renderer2DData.TextureSlots[s_Renderer2DData.TextureSlotIndex] = texture;
+			s_Renderer2DData.TextureSlotIndex++;
 		}
 
 		for (uint32_t i = 0; i < 4; i++) {
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = textureCoords[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr++;
+			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
+			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
+			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+			s_Renderer2DData.QuadVertexBufferPtr++;
 		}
 
-		s_Data.QuadIndexCount += 6;
+		s_Renderer2DData.QuadIndexCount += 6;
 
-		s_Data.Stats.QuadCount++;
+		s_Renderer2DData.Stats.QuadCount++;
 	}
 	*/
 	void Renderer2D::DrawQuad(const glm::mat4& transform, const glm::vec4& color, int entityID)
 	{
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
+		if (s_Renderer2DData.QuadIndexCount >= Renderer2DData::MaxIndices)
 			NextBatch();
 
 		const float textureIndex = 0.0f; // White Texture
@@ -354,32 +354,32 @@ namespace Volcano {
 		// 逆时针注入顶点数据
 		// 设置顶点的地址指向注入的地址
 		for (uint32_t i = 0; i < 4; i++) {
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = textureCoords[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr->EntityID = entityID;
-			s_Data.QuadVertexBufferPtr++;
+			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
+			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
+			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+			s_Renderer2DData.QuadVertexBufferPtr->EntityID = entityID;
+			s_Renderer2DData.QuadVertexBufferPtr++;
 		}
 
-		s_Data.QuadIndexCount += 6;
+		s_Renderer2DData.QuadIndexCount += 6;
 
-		s_Data.Stats.QuadCount++;
+		s_Renderer2DData.Stats.QuadCount++;
 	}
 
 	void Renderer2D::DrawQuad(const glm::mat4& transform, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& color, int entityID)
 	{
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
+		if (s_Renderer2DData.QuadIndexCount >= Renderer2DData::MaxIndices)
 			NextBatch();
 
 		float textureIndex = 0.0f;
 		constexpr glm::vec2 textureCoords[] = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
 
 		// 遍历纹理，是否已注入
-		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
+		for (uint32_t i = 1; i < s_Renderer2DData.TextureSlotIndex; i++)
 		{
-			if (*s_Data.TextureSlots[i].get() == *texture.get())
+			if (*s_Renderer2DData.TextureSlots[i].get() == *texture.get())
 			{
 				textureIndex = (float)i;
 				break;
@@ -389,26 +389,26 @@ namespace Volcano {
 		//未注入，将texture注入，索引为TextureSlotIndex（从1开始计数）
 		if (textureIndex == 0.0f)
 		{
-			if (s_Data.TextureSlotIndex >= Renderer2DData::MaxTextureSlots)
+			if (s_Renderer2DData.TextureSlotIndex >= Renderer2DData::MaxTextureSlots)
 				NextBatch();
-			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[s_Data.TextureSlotIndex] = texture;
-			s_Data.TextureSlotIndex++;
+			textureIndex = (float)s_Renderer2DData.TextureSlotIndex;
+			s_Renderer2DData.TextureSlots[s_Renderer2DData.TextureSlotIndex] = texture;
+			s_Renderer2DData.TextureSlotIndex++;
 		}
 
 		for (uint32_t i = 0; i < 4; i++) {
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = textureCoords[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr->EntityID = entityID;
-			s_Data.QuadVertexBufferPtr++;
+			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
+			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
+			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+			s_Renderer2DData.QuadVertexBufferPtr->EntityID = entityID;
+			s_Renderer2DData.QuadVertexBufferPtr++;
 		}
 
-		s_Data.QuadIndexCount += 6;
+		s_Renderer2DData.QuadIndexCount += 6;
 
-		s_Data.Stats.QuadCount++;
+		s_Renderer2DData.Stats.QuadCount++;
 	}
 
 	void Renderer2D::DrawRotatedQuad(const glm::vec2& position, const glm::vec2& size, float rotation, const glm::vec4& color)
@@ -439,38 +439,38 @@ namespace Volcano {
 	{
 		// 这里注释是因为，circle一般不会超。。。
 		// TODO: implement for circles
-		// if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
+		// if (s_Renderer2DData.QuadIndexCount >= Renderer2DData::MaxIndices)
 		// 	NextBatch();
 
 		for (size_t i = 0; i < 4; i++)
 		{
-			s_Data.CircleVertexBufferPtr->WorldPosition = transform * s_Data.QuadVertexPosition[i];
-			s_Data.CircleVertexBufferPtr->LocalPosition = s_Data.QuadVertexPosition[i] * 2.0f; // x,y取值范围[-1, 1]
-			s_Data.CircleVertexBufferPtr->Color = color;
-			s_Data.CircleVertexBufferPtr->Thickness = thickness;
-			s_Data.CircleVertexBufferPtr->Fade = fade;
-			s_Data.CircleVertexBufferPtr->EntityID = entityID;
-			s_Data.CircleVertexBufferPtr++;
+			s_Renderer2DData.CircleVertexBufferPtr->WorldPosition = transform * s_Renderer2DData.QuadVertexPosition[i];
+			s_Renderer2DData.CircleVertexBufferPtr->LocalPosition = s_Renderer2DData.QuadVertexPosition[i] * 2.0f; // x,y取值范围[-1, 1]
+			s_Renderer2DData.CircleVertexBufferPtr->Color = color;
+			s_Renderer2DData.CircleVertexBufferPtr->Thickness = thickness;
+			s_Renderer2DData.CircleVertexBufferPtr->Fade = fade;
+			s_Renderer2DData.CircleVertexBufferPtr->EntityID = entityID;
+			s_Renderer2DData.CircleVertexBufferPtr++;
 		}
 
-		s_Data.CircleIndexCount += 6;
+		s_Renderer2DData.CircleIndexCount += 6;
 
-		s_Data.Stats.QuadCount++;
+		s_Renderer2DData.Stats.QuadCount++;
 	}
 
 	void Renderer2D::DrawLine(const glm::vec3& p0, const glm::vec3& p1, const glm::vec4& color, int entityID)
 	{
-		s_Data.LineVertexBufferPtr->Position = p0;
-		s_Data.LineVertexBufferPtr->Color = color;
-		s_Data.LineVertexBufferPtr->EntityID = entityID;
-		s_Data.LineVertexBufferPtr++;
+		s_Renderer2DData.LineVertexBufferPtr->Position = p0;
+		s_Renderer2DData.LineVertexBufferPtr->Color = color;
+		s_Renderer2DData.LineVertexBufferPtr->EntityID = entityID;
+		s_Renderer2DData.LineVertexBufferPtr++;
 
-		s_Data.LineVertexBufferPtr->Position = p1;
-		s_Data.LineVertexBufferPtr->Color = color;
-		s_Data.LineVertexBufferPtr->EntityID = entityID;
-		s_Data.LineVertexBufferPtr++;
+		s_Renderer2DData.LineVertexBufferPtr->Position = p1;
+		s_Renderer2DData.LineVertexBufferPtr->Color = color;
+		s_Renderer2DData.LineVertexBufferPtr->EntityID = entityID;
+		s_Renderer2DData.LineVertexBufferPtr++;
 
-		s_Data.LineVertexCount += 2;
+		s_Renderer2DData.LineVertexCount += 2;
 	}
 
 	// 根据一点中心位置确定4个点的位置绘制rect
@@ -482,10 +482,10 @@ namespace Volcano {
 		glm::vec3 p2 = glm::vec3(position.x + size.x * 0.5f, position.y + size.y * 0.5f, position.z);// 右上角
 		glm::vec3 p3 = glm::vec3(position.x - size.x * 0.5f, position.y + size.y * 0.5f, position.z);// 左上角
 
-		DrawLine(p0, p1, color);
-		DrawLine(p1, p2, color);
-		DrawLine(p2, p3, color);
-		DrawLine(p3, p0, color);
+		DrawLine(p0, p1, color, entityID);
+		DrawLine(p1, p2, color, entityID);
+		DrawLine(p2, p3, color, entityID);
+		DrawLine(p3, p0, color, entityID);
 	}
 
 	// 根据实体的transform确定顶点位置再绘制
@@ -493,12 +493,12 @@ namespace Volcano {
 	{
 		glm::vec3 lineVertices[4];
 		for (size_t i = 0; i < 4; i++)
-			lineVertices[i] = transform * s_Data.QuadVertexPosition[i]; // quad的顶点位置正好是rect的顶点位置
+			lineVertices[i] = transform * s_Renderer2DData.QuadVertexPosition[i]; // quad的顶点位置正好是rect的顶点位置
 
-		DrawLine(lineVertices[0], lineVertices[1], color);
-		DrawLine(lineVertices[1], lineVertices[2], color);
-		DrawLine(lineVertices[2], lineVertices[3], color);
-		DrawLine(lineVertices[3], lineVertices[0], color);
+		DrawLine(lineVertices[0], lineVertices[1], color, entityID);
+		DrawLine(lineVertices[1], lineVertices[2], color, entityID);
+		DrawLine(lineVertices[2], lineVertices[3], color, entityID);
+		DrawLine(lineVertices[3], lineVertices[0], color, entityID);
 	}
 
 	/*
@@ -516,15 +516,15 @@ namespace Volcano {
 			* glm::rotate(glm::mat4(1.0f), rotation, { 0.0f, 0.0f, 1.0f })
 			* glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
 
-		if (s_Data.QuadIndexCount >= Renderer2DData::MaxIndices)
+		if (s_Renderer2DData.QuadIndexCount >= Renderer2DData::MaxIndices)
 			NextBatch();
 
 		float textureIndex = 0.0f;
 
 		// 遍历纹理，是否已注入
-		for (uint32_t i = 1; i < s_Data.TextureSlotIndex; i++)
+		for (uint32_t i = 1; i < s_Renderer2DData.TextureSlotIndex; i++)
 		{
-			if (*s_Data.TextureSlots[i].get() == *texture.get())
+			if (*s_Renderer2DData.TextureSlots[i].get() == *texture.get())
 			{
 				textureIndex = (float)i;
 				break;
@@ -534,22 +534,22 @@ namespace Volcano {
 		//未注入，将texture注入，索引为TextureSlotIndex（从1开始计数）
 		if (textureIndex == 0.0f)
 		{
-			textureIndex = (float)s_Data.TextureSlotIndex;
-			s_Data.TextureSlots[s_Data.TextureSlotIndex] = texture;
-			s_Data.TextureSlotIndex++;
+			textureIndex = (float)s_Renderer2DData.TextureSlotIndex;
+			s_Renderer2DData.TextureSlots[s_Renderer2DData.TextureSlotIndex] = texture;
+			s_Renderer2DData.TextureSlotIndex++;
 		}
 		for (uint32_t i = 0; i < 4; i++) {
-			s_Data.QuadVertexBufferPtr->Position = transform * s_Data.QuadVertexPosition[i];
-			s_Data.QuadVertexBufferPtr->Color = color;
-			s_Data.QuadVertexBufferPtr->TexCoord = textureCoords[i];
-			s_Data.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Data.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Data.QuadVertexBufferPtr++;
+			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
+			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
+			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
+			s_Renderer2DData.QuadVertexBufferPtr++;
 		}
 
-		s_Data.QuadIndexCount += 6;
+		s_Renderer2DData.QuadIndexCount += 6;
 
-		s_Data.Stats.QuadCount++;
+		s_Renderer2DData.Stats.QuadCount++;
 	}
 	*/
 	void Renderer2D::DrawSprite(const glm::mat4& transform, SpriteRendererComponent& src, int entityID)
@@ -562,22 +562,22 @@ namespace Volcano {
 
 	float Renderer2D::GetLineWidth()
 	{
-		return s_Data.LineWidth;
+		return s_Renderer2DData.LineWidth;
 	}
 
 	void Renderer2D::SetLineWidth(float width)
 	{
-		s_Data.LineWidth = width;
+		s_Renderer2DData.LineWidth = width;
 	}
 
 	void Renderer2D::ResetStats()
 	{
-		memset(&s_Data.Stats, 0, sizeof(Statistics));
+		memset(&s_Renderer2DData.Stats, 0, sizeof(Statistics));
 	}
 
 	Renderer2D::Statistics Renderer2D::GetStats()
 	{
-		return s_Data.Stats;
+		return s_Renderer2DData.Stats;
 	}
 
 }

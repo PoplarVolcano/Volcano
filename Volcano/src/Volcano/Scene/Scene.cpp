@@ -3,6 +3,7 @@
 
 #include "Components.h"
 #include "ScriptableEntity.h"
+#include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Renderer/Renderer2D.h"
 #include "glm/glm.hpp"
 #include "Entity.h"
@@ -39,27 +40,46 @@ namespace Volcano {
 	}
 
 	// 将源注册表下实体复制到目标注册表，Map以UUID作为标记获取新实体
-	template<typename Component>
+	template<typename... Component>
 	static void CopyComponent(entt::registry& dst, entt::registry& src, const std::unordered_map<UUID, entt::entity>& enttMap)
-	{
-		auto view = src.view<Component>();
-		for (auto e : view)
+	{ 
+		// 这个lambda会递归调用
+		// [&]表示引用传递方式捕捉所有父作用域的变量（包括this）
+		// 隐式引用捕获dst、src或者"解开的Component包引用"，下面的Component是指具体的单个组件
+		([&]()
 		{
-			UUID uuid = src.get<IDComponent>(e).ID;
-			VOL_CORE_ASSERT(enttMap.find(uuid) != enttMap.end());
-			entt::entity dstEnttID = enttMap.at(uuid);
+			auto view = src.view<Component>();
+			for (auto srcEntity : view)
+			{
+				entt::entity dstEntity = enttMap.at(src.get<IDComponent>(srcEntity).ID);
+				auto& srcComponent = src.get<Component>(srcEntity);
+				dst.emplace_or_replace<Component>(dstEntity, srcComponent);
+			}
 
-			auto& component = src.get<Component>(e);
-			dst.emplace_or_replace<Component>(dstEnttID, component);
-		}
+		}(), ...);// 这三个点应该是解Component包
+	}
+
+	template<typename... Component>
+	static void CopyComponent(ComponentGroup<Component...>, entt::registry& dst, entt::registry& src, const std::unordered_map<UUID, entt::entity>& enttMap)
+	{
+		CopyComponent<Component...>(dst, src, enttMap);
 	}
 
 	// 如果源实体存在则把对应组件复制到目标实体
-	template<typename Component>
+	template<typename... Component>
 	static void CopyComponentIfExists(Entity dst, Entity src)
 	{
-		if (src.HasComponent<Component>())
-			dst.AddOrReplaceComponent<Component>(src.GetComponent<Component>());
+		([&]()
+		{
+			if (src.HasComponent<Component>())
+				dst.AddOrReplaceComponent<Component>(src.GetComponent<Component>());
+		}(), ...);
+	}
+
+	template<typename... Component>
+	static void CopyComponentIfExists(ComponentGroup<Component...>, Entity dst, Entity src)
+	{
+		CopyComponentIfExists<Component...>(dst, src);
 	}
 
 	Ref<Scene> Scene::Copy(Ref<Scene> other)
@@ -85,14 +105,7 @@ namespace Volcano {
 
 		// 获取旧实体的所有组件，然后用API，复制旧实体的所有组件给新实体，复制组件会包括复制组件的属性值
 		// Copy components (except IDComponent and TagComponent)
-		CopyComponent<TransformComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
-		CopyComponent<SpriteRendererComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
-		CopyComponent<CircleRendererComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
-		CopyComponent<CameraComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
-		CopyComponent<NativeScriptComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
-		CopyComponent<Rigidbody2DComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
-		CopyComponent<BoxCollider2DComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
-		CopyComponent<CircleCollider2DComponent>(dstSceneRegistry, srcSceneRegistry, enttMap);
+		CopyComponent(AllComponents{}, dstSceneRegistry, srcSceneRegistry, enttMap);
 
 		return newScene;
 	}
@@ -109,22 +122,39 @@ namespace Volcano {
 		entity.AddComponent<IDComponent>(uuid); // 使用实参uuid，不创建新的
 		auto& tag = entity.AddComponent<TagComponent>();
 		tag.Tag = name.empty() ? "Entity" : name;
+
+		m_EntityMap[uuid] = entity;
+
 		return entity;
 	}
 
 	void Scene::DestroyEntity(Entity entity)
 	{
 		m_Registry.destroy(entity);
+		m_EntityMap.erase(entity.GetUUID());
 	}
 
 	void Scene::OnRuntimeStart()
 	{
 		OnPhysics2DStart();
+
+		// Scripting
+		{
+			ScriptEngine::OnRuntimeStart(this);
+			// Instantiate all script entities
+			auto view = m_Registry.view<ScriptComponent>();
+			for (auto e : view)
+			{
+				Entity entity = { e, this };
+				ScriptEngine::OnCreateEntity(entity);
+			}
+		}
 	}
 
 	void Scene::OnRuntimeStop()
 	{
 		OnPhysics2DStop();
+		ScriptEngine::OnRuntimeStop();
 	}
 
 	void Scene::OnSimulationStart()
@@ -168,17 +198,26 @@ namespace Volcano {
 	void Scene::OnUpdateRuntime(Timestep ts)
 	{
 		//Update scripts
-		m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
+		{
+			// C# Entity OnUpdate
+			auto view = m_Registry.view<ScriptComponent>();
+			for (auto e : view)
 			{
-				if (!nsc.Instance)
-				{
-					nsc.Instance = nsc.InstantiateScript();
-					nsc.Instance->m_Entity = Entity{ entity, this };
-					nsc.Instance->OnCreate();
-				}
-				nsc.Instance->OnUpdate(ts);
-			});
+				Entity entity = { e, this };
+				ScriptEngine::OnUpdateEntity(entity, ts);
+			}
 
+			m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
+				{
+					if (!nsc.Instance)
+					{
+						nsc.Instance = nsc.InstantiateScript();
+						nsc.Instance->m_Entity = Entity{ entity, this };
+						nsc.Instance->OnCreate();
+					}
+					nsc.Instance->OnUpdate(ts);
+				});
+		}
 		// Script - Physic - Render顺序
 		Physics(ts);
 
@@ -234,15 +273,7 @@ namespace Volcano {
 	{
 		std::string name = entity.GetName();
 		Entity newEntity = CreateEntity(name);
-
-		CopyComponentIfExists<TransformComponent>(newEntity, entity);
-		CopyComponentIfExists<SpriteRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<CircleRendererComponent>(newEntity, entity);
-		CopyComponentIfExists<CameraComponent>(newEntity, entity);
-		CopyComponentIfExists<NativeScriptComponent>(newEntity, entity);
-		CopyComponentIfExists<Rigidbody2DComponent>(newEntity, entity);
-		CopyComponentIfExists<BoxCollider2DComponent>(newEntity, entity);
-		CopyComponentIfExists<CircleCollider2DComponent>(newEntity, entity);
+		CopyComponentIfExists(AllComponents{}, newEntity, entity);
 	}
 
 	Entity Scene::GetPrimaryCameraEntity()
@@ -254,6 +285,14 @@ namespace Volcano {
 			if (camera.Primary)
 				return Entity{ entity, this };
 		}
+		return {};
+	}
+
+	Entity Scene::GetEntityByUUID(UUID uuid)
+	{
+		if (m_EntityMap.find(uuid) != m_EntityMap.end())
+			return { m_EntityMap.at(uuid), this };
+
 		return {};
 	}
 
@@ -360,7 +399,7 @@ namespace Volcano {
 	{
 		// 静态断言
 		// bug: 正常不会触发，但不知道在哪触发了
-		//static_assert(false);
+		static_assert(sizeof(T) == 0);
 	}
 
 	template<>
@@ -385,6 +424,11 @@ namespace Volcano {
 	{
 		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 			component.Camera.SetViewportSize(m_ViewportWidth, m_ViewportHeight);
+	}
+
+	template<>
+	void Scene::OnComponentAdded<ScriptComponent>(Entity entity, ScriptComponent& component)
+	{
 	}
 
 	template<>
