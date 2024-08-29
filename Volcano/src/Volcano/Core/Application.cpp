@@ -44,6 +44,8 @@ namespace Volcano {
 			m_Timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
 
+			ExecuteMainThreadQueue();
+
 			if (!m_Minimized)
 			{
 				for (Layer* layer : m_LayerStack)
@@ -62,6 +64,14 @@ namespace Volcano {
 	void Application::Close() 
 	{
 		m_Running = false;
+	}
+
+	// 把方法提交至主线程队列
+	void Application::SubmitToMainThread(const std::function<void()>& function)
+	{
+		std::scoped_lock<std::mutex> lock(m_MainThreadQueueMutex);
+
+		m_MainThreadQueue.emplace_back(function);
 	}
 
 	//事件处理
@@ -110,5 +120,15 @@ namespace Volcano {
 	void Application::PushOverlay(Layer* layer) {
 		m_LayerStack.PushOverlay(layer);
 		layer->OnAttach();
+	}
+
+	void Application::ExecuteMainThreadQueue()
+	{
+		std::scoped_lock<std::mutex> lock(m_MainThreadQueueMutex);
+
+		for (auto& func : m_MainThreadQueue)
+			func();
+
+		m_MainThreadQueue.clear();
 	}
 }

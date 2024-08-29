@@ -11,6 +11,7 @@
 #include "Volcano/Scene/SceneSerializer.h"
 #include "Volcano/Utils/PlatformUtils.h"
 #include "Volcano/Math/Math.h"
+#include "Volcano/Scripting/ScriptEngine.h"
 
 static const uint32_t s_MapWidth = 24;
 static const char* s_MapTiles = 
@@ -81,6 +82,7 @@ namespace Volcano{
         m_IconPause = Texture2D::Create("Resources/Icons/PauseButton.png");
         m_IconStop = Texture2D::Create("Resources/Icons/StopButton.png");
         m_IconSimulate = Texture2D::Create("Resources/Icons/SimulateButton.png");
+        m_IconStep = Texture2D::Create("Resources/Icons/StepButton.png");
         m_AlterTexture = Texture2D::Create("assets/textures/莫斯提马.png");
         m_SpriteSheet = Texture2D::Create("assets/game/textures/RPGpack_sheet_2X.png");
 
@@ -115,15 +117,13 @@ namespace Volcano{
         // 初始化场景
         m_EditorScene = CreateRef<Scene>();
         m_ActiveScene = m_EditorScene;
-        m_ActiveSceneState = SceneState::Edit;
 
         // 从app获取指令行，如果指令行大于1则读取场景
         auto commandLineArgs = Application::Get().GetSpecification().CommandLineArgs;
         if (commandLineArgs.Count > 1)
         {
             auto sceneFilePath = commandLineArgs[1];
-            SceneSerializer serializer(m_EditorScene);
-            serializer.Deserialize(sceneFilePath);
+            OpenScene(sceneFilePath);
         }
 
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
@@ -139,6 +139,10 @@ namespace Volcano{
     {
         PROFILE_SCOPE("ExampleLayer::OnUpdate");
 
+        m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+        if (m_SceneState == SceneState::Play)
+            m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+
         //Resize
         FramebufferSpecification spec = m_Framebuffer->GetSpecification();
         if (m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f && // zero sized Framebuffer is invalid
@@ -148,10 +152,6 @@ namespace Volcano{
             m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
             m_CameraController.OnResize(m_ViewportSize.x, m_ViewportSize.y);
             m_EditorCamera.SetViewportSize(m_ViewportSize.x, m_ViewportSize.y);
-
-            m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-            if(m_SceneState == SceneState::Play)
-                m_ActiveScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
         }
 
         // 重置渲染计数
@@ -331,6 +331,15 @@ namespace Volcano{
 
                 ImGui::EndMenu();
             }
+
+            if (ImGui::BeginMenu("Script"))
+            {
+                if (ImGui::MenuItem("Reload assembly", "Ctrl+R"))
+                    ScriptEngine::ReloadAssembly();
+
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenuBar();
         }
 
@@ -346,7 +355,7 @@ namespace Volcano{
         // 鼠标是否悬浮在窗口上
         m_ViewportHovered = ImGui::IsWindowHovered();
         // 只有同时选中和悬浮才会执行Event
-        Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused && !m_ViewportHovered);
+        Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused);
 
         // 获取视图窗口尺寸
         ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
@@ -518,42 +527,66 @@ namespace Volcano{
         // 按钮应该在中间, 设置按钮的x位置
         ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - size);
 
+        bool hasPlayButton     = m_SceneState == SceneState::Edit || m_SceneState == SceneState::Play;
+        bool hasSimulateButton = m_SceneState == SceneState::Edit || m_SceneState == SceneState::Simulate;
+        bool hasPauseButton    = m_SceneState != SceneState::Edit;
+        
         // 开始暂停按钮
+        if(hasPlayButton)
         {
-            Ref<Texture2D> icon = (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Simulate) ? m_IconPlay : m_IconPause;
-            if (ImGui::ImageButton((ImTextureID)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+            Ref<Texture2D> icon = (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Simulate) ? m_IconPlay : m_IconStop;
+            if (ImGui::ImageButton((ImTextureID)(uint64_t)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
             {
                 if (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Simulate)
                     OnScenePlay();
                 else if (m_SceneState == SceneState::Play)
-                    OnScenePause();
+                    OnSceneStop();
             }
         }
 
-        // 模拟按钮
-        ImGui::SameLine();
+        if (hasSimulateButton)
         {
-            Ref<Texture2D> icon = (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Play) ? m_IconSimulate : m_IconPause;
+            if(hasPlayButton)
+            // 模拟按钮
+                ImGui::SameLine();
+            Ref<Texture2D> icon = (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Play) ? m_IconSimulate : m_IconStop;
 
-            if (ImGui::ImageButton((ImTextureID)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+            if (ImGui::ImageButton((ImTextureID)(uint64_t)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
             {
 
                 if (m_SceneState == SceneState::Edit || m_SceneState == SceneState::Play)
                     OnSceneSimulate();
                 else if (m_SceneState == SceneState::Simulate)
-                    OnScenePause();
+                    OnSceneStop();
             }
         }
 
-        // 重置按钮
-        ImGui::SameLine();
+        if (hasPauseButton)
         {
-            if (ImGui::ImageButton((ImTextureID)m_IconStop->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+            bool isPaused = m_ActiveScene->IsPaused();
+            ImGui::SameLine();
             {
-                OnSceneStop();
+                Ref<Texture2D> icon = isPaused ? m_IconPlay : m_IconPause;
+                if (ImGui::ImageButton((ImTextureID)(uint64_t)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+                {
+                    m_ActiveScene->SetPaused(!isPaused);
+                }
             }
-        }
 
+            // Step button
+            if (isPaused)
+            {
+                ImGui::SameLine();
+                {
+                    Ref<Texture2D> icon = m_IconStep;
+                    if (ImGui::ImageButton((ImTextureID)(uint64_t)icon->GetRendererID(), ImVec2(size, size), ImVec2(0, 0), ImVec2(1, 1), 0, ImVec4(0.0f, 0.0f, 0.0f, 0.0f), tintColor) && toolbarEnabled)
+                    {
+                        m_ActiveScene->Step();
+                    }
+                }
+            }
+
+        }
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(3);
         ImGui::End();
@@ -615,7 +648,15 @@ namespace Volcano{
             m_GizmoType = ImGuizmo::OPERATION::ROTATE;
             break;
         case Key::R:
-            m_GizmoType = ImGuizmo::OPERATION::SCALE;
+            if (control)
+            {
+                ScriptEngine::ReloadAssembly();
+            }
+            else
+            {
+                if (!ImGuizmo::IsUsing())
+                    m_GizmoType = ImGuizmo::OPERATION::SCALE;
+            }
             break;
         }
         return false;
@@ -702,11 +743,9 @@ namespace Volcano{
     void ExampleLayer::NewScene()
     {
         m_EditorScene = CreateRef<Scene>();
-        m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
         m_SceneHierarchyPanel.SetContext(m_EditorScene);
         m_EditorScenePath = std::filesystem::path();
         m_ActiveScene = m_EditorScene;
-        m_ActiveSceneState = SceneState::Edit;
     }
 
     void ExampleLayer::OpenScene()
@@ -733,11 +772,9 @@ namespace Volcano{
         {
             // 编辑器场景获取文件读取场景
             m_EditorScene = newScene;
-            m_EditorScene->OnViewportResize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
             m_SceneHierarchyPanel.SetContext(m_EditorScene);
             m_EditorScenePath = path;
             m_ActiveScene = m_EditorScene;
-            m_ActiveSceneState = SceneState::Edit;
         }
     }
 
@@ -778,18 +815,16 @@ namespace Volcano{
     void ExampleLayer::OnScenePlay()
     {
         // 运行时物理模拟则重置场景
-        if (m_SceneState == SceneState::Simulate || (m_SceneState == SceneState::Edit && m_ActiveSceneState == SceneState::Simulate))
+        if (m_SceneState == SceneState::Simulate)
             OnSceneStop();
 
         // 设置场景状态：播放
         m_SceneState = SceneState::Play;
 
         // 分割活动场景为单独的Scene
-        if (m_ActiveScene == m_EditorScene)
-        {
-            m_ActiveScene = Scene::Copy(m_EditorScene);
-            m_ActiveSceneState = SceneState::Play;
-        }
+        m_ActiveScene = Scene::Copy(m_EditorScene);
+
+        m_ActiveScene->SetRunning(true);
 
         // 设置活动场景物理效果
         m_ActiveScene->OnRuntimeStart();
@@ -800,17 +835,15 @@ namespace Volcano{
     void ExampleLayer::OnSceneSimulate()
     {
         // 物理模拟时运行则重置场景
-        if (m_SceneState == SceneState::Play || (m_SceneState == SceneState::Edit && m_ActiveSceneState == SceneState::Play))
+        if (m_SceneState == SceneState::Play)
             OnSceneStop();
 
         // 设置场景状态：模拟
         m_SceneState = SceneState::Simulate;
 
-        if (m_ActiveScene == m_EditorScene)
-        {
-            m_ActiveScene = Scene::Copy(m_EditorScene);
-            m_ActiveSceneState = SceneState::Simulate;
-        }
+        m_ActiveScene = Scene::Copy(m_EditorScene);
+
+        m_ActiveScene->SetRunning(true);
 
         m_ActiveScene->OnSimulationStart();
 
@@ -822,6 +855,17 @@ namespace Volcano{
     {
         VOL_CORE_ASSERT(m_SceneState == SceneState::Play || m_SceneState == SceneState::Simulate);
 
+        if (m_SceneState == SceneState::Edit)
+            return;
+        m_ActiveScene->SetPaused(true);
+        m_ActiveScene->SetRunning(false);
+    }
+
+    // 重置场景
+    void ExampleLayer::OnSceneStop()
+    {
+        VOL_CORE_ASSERT(m_SceneState == SceneState::Play || m_SceneState == SceneState::Simulate);
+
         // 关闭活动场景物理效果
         if (m_SceneState == SceneState::Play)
             m_ActiveScene->OnRuntimeStop();
@@ -830,23 +874,12 @@ namespace Volcano{
 
         // 设置场景状态：编辑
         m_SceneState = SceneState::Edit;
-    }
-
-    // 重置场景
-    void ExampleLayer::OnSceneStop()
-    {
-        // 关闭活动场景物理效果
-        if (m_ActiveSceneState == SceneState::Play)
-            m_ActiveScene->OnRuntimeStop();
-        else if (m_ActiveSceneState == SceneState::Simulate)
-            m_ActiveScene->OnSimulationStop();
-
-        // 设置场景状态：编辑
-        m_SceneState = SceneState::Edit;
 
         // 活动场景恢复编辑器场景
         m_ActiveScene = m_EditorScene;
-        m_ActiveSceneState = SceneState::Edit;
+
+        // edit模式下running必然false，可删除
+        m_ActiveScene->SetRunning(false);
 
         m_SceneHierarchyPanel.SetContext(m_EditorScene);
     }

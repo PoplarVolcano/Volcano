@@ -1488,6 +1488,7 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Core\FileSystem.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1622,5 +1623,6 @@
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Core\FileSystem.cpp" />
   </ItemGroup>
 </Project>

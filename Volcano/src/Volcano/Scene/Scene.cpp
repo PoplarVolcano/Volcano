@@ -138,7 +138,7 @@ namespace Volcano {
 	{
 		OnPhysics2DStart();
 
-		// Scripting
+		// 脚本初始化Scripting
 		{
 			ScriptEngine::OnRuntimeStart(this);
 			// Instantiate all script entities
@@ -197,29 +197,32 @@ namespace Volcano {
 
 	void Scene::OnUpdateRuntime(Timestep ts)
 	{
-		//Update scripts
+		if (!m_IsPaused || m_StepFrames-- > 0)
 		{
-			// C# Entity OnUpdate
-			auto view = m_Registry.view<ScriptComponent>();
-			for (auto e : view)
+			//Update scripts
 			{
-				Entity entity = { e, this };
-				ScriptEngine::OnUpdateEntity(entity, ts);
-			}
-
-			m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
+				// C# Entity OnUpdate
+				auto view = m_Registry.view<ScriptComponent>();
+				for (auto e : view)
 				{
-					if (!nsc.Instance)
+					Entity entity = { e, this };
+					ScriptEngine::OnUpdateEntity(entity, ts);
+				}
+
+				m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
 					{
-						nsc.Instance = nsc.InstantiateScript();
-						nsc.Instance->m_Entity = Entity{ entity, this };
-						nsc.Instance->OnCreate();
-					}
-					nsc.Instance->OnUpdate(ts);
-				});
+						if (!nsc.Instance)
+						{
+							nsc.Instance = nsc.InstantiateScript();
+							nsc.Instance->m_Entity = Entity{ entity, this };
+							nsc.Instance->OnCreate();
+						}
+						nsc.Instance->OnUpdate(ts);
+					});
+			}
+			// Script - Physic - Render顺序
+			Physics(ts);
 		}
-		// Script - Physic - Render顺序
-		Physics(ts);
 
 		// 获取主摄像头
 		Camera* mainCamera = nullptr;
@@ -242,7 +245,8 @@ namespace Volcano {
 
 	void Scene::OnUpdateSimulation(Timestep ts, EditorCamera& camera)
 	{
-		Physics(ts);
+		if (!m_IsPaused || m_StepFrames-- > 0)
+			Physics(ts);
 		// Render
 		RenderScene(camera, camera.GetViewMatrix());
 	}
@@ -255,6 +259,9 @@ namespace Volcano {
 
 	void Scene::OnViewportResize(uint32_t width, uint32_t height)
 	{
+		if (m_ViewportWidth == width && m_ViewportHeight == height)
+			return;
+
 		m_ViewportWidth = width;
 		m_ViewportHeight = height;
 
@@ -267,6 +274,11 @@ namespace Volcano {
 			if (cameraComponent.FixedAspectRatio)
 				cameraComponent.Camera.SetViewportSize(width, height);
 		}
+	}
+
+	void Scene::Step(int frames)
+	{
+		m_StepFrames = frames;
 	}
 
 	void Scene::DuplicateEntity(Entity entity)
@@ -283,6 +295,18 @@ namespace Volcano {
 		{
 			auto camera = view.get<CameraComponent>(entity);
 			if (camera.Primary)
+				return Entity{ entity, this };
+		}
+		return {};
+	}
+
+	Entity Scene::FindEntityByName(std::string_view name)
+	{
+		auto view = m_Registry.view<TagComponent>();
+		for (auto entity : view)
+		{
+			const TagComponent& tc = view.get<TagComponent>(entity);
+			if (tc.Tag == name)
 				return Entity{ entity, this };
 		}
 		return {};
@@ -398,7 +422,6 @@ namespace Volcano {
 	void Scene::OnComponentAdded(Entity entity, T& component)
 	{
 		// 静态断言
-		// bug: 正常不会触发，但不知道在哪触发了
 		static_assert(sizeof(T) == 0);
 	}
 

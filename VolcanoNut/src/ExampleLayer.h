@@ -94,10 +94,9 @@ namespace Volcano {
 			Edit = 0, Play = 1, Simulate = 2
 		};
 		SceneState m_SceneState = SceneState::Edit;
-		SceneState m_ActiveSceneState = SceneState::Edit;
 		
 		// Editor resources
-		Ref<Texture2D> m_IconPlay, m_IconPause, m_IconStop, m_IconSimulate;
+		Ref<Texture2D> m_IconPlay, m_IconPause, m_IconStep, m_IconStop, m_IconSimulate;
 
 		// Panels
 		SceneHierarchyPanel m_SceneHierarchyPanel;

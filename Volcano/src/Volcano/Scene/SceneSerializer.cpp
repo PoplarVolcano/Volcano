@@ -3,6 +3,9 @@
 
 #include "Entity.h"
 #include "Components.h"
+#include "Volcano/Scripting/ScriptEngine.h"
+#include "Volcano/Core/UUID.h"
+
 #include <fstream>
 #include <yaml-cpp/yaml.h>
 
@@ -77,9 +80,39 @@ namespace YAML {
 		}
 	};
 
+	template<>
+	struct convert<Volcano::UUID>
+	{
+		static Node encode(const Volcano::UUID& uuid)
+		{
+			Node node;
+			node.push_back((uint64_t)uuid);
+			return node;
+		}
+
+		static bool decode(const Node& node, Volcano::UUID& uuid)
+		{
+			uuid = node.as<uint64_t>();
+			return true;
+		}
+	};
+
 }
 
 namespace Volcano {
+
+#define WRITE_SCRIPT_FIELD(FieldType, Type)           \
+			case ScriptFieldType::FieldType:          \
+				out << scriptField.GetValue<Type>();  \
+				break
+
+#define READ_SCRIPT_FIELD(FieldType, Type)             \
+			case ScriptFieldType::FieldType:                   \
+			{                                                  \
+				Type data = scriptField["Data"].as<Type>();    \
+				fieldInstance.SetValue(data);                  \
+				break;                                         \
+			}
 
 	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::vec2& v)
 	{
@@ -191,6 +224,51 @@ namespace Volcano {
 			out << YAML::Key << "ScriptComponent";
 			out << YAML::BeginMap; // ScriptComponent
 			out << YAML::Key << "ClassName" << YAML::Value << scriptComponent.ClassName;
+
+			// 保存字段Fields
+			Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(scriptComponent.ClassName);
+			const auto& fields = entityClass->GetFields();
+			if (fields.size() > 0)
+			{
+				out << YAML::Key << "ScriptFields" << YAML::Value;
+				auto& entityFields = ScriptEngine::GetScriptFieldMap(entity);
+				out << YAML::BeginSeq;
+				for (const auto& [name, field] : fields)
+				{
+					if (entityFields.find(name) == entityFields.end())
+						continue;
+
+					out << YAML::BeginMap; // ScriptField
+					out << YAML::Key << "Name" << YAML::Value << name;
+					out << YAML::Key << "Type" << YAML::Value << Utils::ScriptFieldTypeToString(field.Type);
+
+					out << YAML::Key << "Data" << YAML::Value;
+					ScriptFieldInstance& scriptField = entityFields.at(name);
+
+					switch (field.Type)
+					{
+						WRITE_SCRIPT_FIELD(Float,   float    );
+						WRITE_SCRIPT_FIELD(Double,  double   );
+						WRITE_SCRIPT_FIELD(Bool,    bool     );
+						WRITE_SCRIPT_FIELD(Char,    char     );
+						WRITE_SCRIPT_FIELD(Byte,    int8_t   );
+						WRITE_SCRIPT_FIELD(Short,   int16_t  );
+						WRITE_SCRIPT_FIELD(Int,     int32_t  );
+						WRITE_SCRIPT_FIELD(Long,    int64_t  );
+						WRITE_SCRIPT_FIELD(UByte,   uint8_t  );
+						WRITE_SCRIPT_FIELD(UShort,  uint16_t );
+						WRITE_SCRIPT_FIELD(UInt,    uint32_t );
+						WRITE_SCRIPT_FIELD(ULong,   uint64_t );
+						WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
+						WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
+						WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
+						WRITE_SCRIPT_FIELD(Entity,  UUID     );
+					}
+					out << YAML::EndMap; // ScriptFields
+				}
+				out << YAML::EndSeq;
+			}
+
 			out << YAML::EndMap; // ScriptComponent
 		}
 
@@ -365,6 +443,56 @@ namespace Volcano {
 				{
 					auto& sc = deserializedEntity.AddComponent<ScriptComponent>();
 					sc.ClassName = scriptComponent["ClassName"].as<std::string>();
+
+					// 获取脚本字段数据
+					auto scriptFields = scriptComponent["ScriptFields"];
+					if (scriptFields)
+					{
+						Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(sc.ClassName);
+
+						if (entityClass)
+						{
+							const auto& fields = entityClass->GetFields();
+							auto& entityFields = ScriptEngine::GetScriptFieldMap(deserializedEntity);
+
+							for (auto scriptField : scriptFields)
+							{
+								std::string name = scriptField["Name"].as<std::string>();
+								std::string typeString = scriptField["Type"].as<std::string>();
+								ScriptFieldType type = Utils::ScriptFieldTypeFromString(typeString);
+
+								ScriptFieldInstance& fieldInstance = entityFields[name];
+
+								// TODO(Yan): turn this assert into Hazelnut log warning
+								VOL_CORE_ASSERT(fields.find(name) != fields.end(), "Deserialize.ScriptComponent");
+
+								if (fields.find(name) == fields.end())
+									continue;
+
+								fieldInstance.Field = fields.at(name);
+
+								switch (type)
+								{
+									READ_SCRIPT_FIELD(Float,   float    );
+									READ_SCRIPT_FIELD(Double,  double   );
+									READ_SCRIPT_FIELD(Bool,    bool     );
+									READ_SCRIPT_FIELD(Char,    char     );
+									READ_SCRIPT_FIELD(Byte,    int8_t   );
+									READ_SCRIPT_FIELD(Short,   int16_t  );
+									READ_SCRIPT_FIELD(Int,     int32_t  );
+									READ_SCRIPT_FIELD(Long,    int64_t  );
+									READ_SCRIPT_FIELD(UByte,   uint8_t  );
+									READ_SCRIPT_FIELD(UShort,  uint16_t );
+									READ_SCRIPT_FIELD(UInt,    uint32_t );
+									READ_SCRIPT_FIELD(ULong,   uint64_t );
+									READ_SCRIPT_FIELD(Vector2, glm::vec2);
+									READ_SCRIPT_FIELD(Vector3, glm::vec3);
+									READ_SCRIPT_FIELD(Vector4, glm::vec4);
+									READ_SCRIPT_FIELD(Entity,  UUID     );
+								}
+							}
+						}
+					}
 				}
 
 				auto spriteRendererComponent = entity["SpriteRendererComponent"];

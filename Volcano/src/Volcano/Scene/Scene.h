@@ -20,6 +20,7 @@ namespace Volcano {
 		static Ref<Scene> Copy(Ref<Scene> other);
 		void DuplicateEntity(Entity entity);
 
+		Entity FindEntityByName(std::string_view name);
 		Entity GetEntityByUUID(UUID uuid);
 
 		Entity CreateEntity(const std::string& name = std::string());
@@ -41,6 +42,14 @@ namespace Volcano {
 
 		Entity GetPrimaryCameraEntity();
 
+		bool IsRunning() const { return m_IsRunning; }
+		bool IsPaused() const { return m_IsPaused; }
+
+		void SetRunning(bool running) { m_IsRunning = running; }
+		void SetPaused(bool paused) { m_IsPaused = paused; }
+
+		void Step(int frames = 1);
+
 		template<typename... Components>
 		auto GetAllEntitiesWith()
 		{
@@ -57,6 +66,10 @@ namespace Volcano {
 	private:
 		entt::registry m_Registry;
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
+
+		bool m_IsRunning = false;
+		bool m_IsPaused = false;
+		int m_StepFrames = 0;
 
 		b2World* m_PhysicsWorld = nullptr;
 

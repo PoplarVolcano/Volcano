@@ -12,6 +12,8 @@
 #include <Volcano/Renderer/Framebuffer.h>
 #include <Volcano/Renderer/Texture.h>
 
+int main(int argc, char** argv);
+
 namespace Volcano {
 
 	struct ApplicationCommandLineArgs
@@ -41,6 +43,7 @@ namespace Volcano {
 
 		void Close();
 
+
 		virtual void OnUpdate(Timestep ts) {}
 
 		virtual void OnEvent(Event& e);
@@ -53,10 +56,14 @@ namespace Volcano {
 
 		static inline Application& Get() { return *s_Instance; }
 		const ApplicationSpecification& GetSpecification() const { return m_Specification; }
-		void Run();
+
+		void SubmitToMainThread(const std::function<void()>& function);
 	private:
+		void Run();
 		bool OnWindowResize(WindowResizeEvent& e);
 		bool OnWindowClose(WindowCloseEvent& e);
+		
+		void ExecuteMainThreadQueue();
 	private:
 		ApplicationSpecification m_Specification;
 		Scope<Window> m_Window;
@@ -67,7 +74,11 @@ namespace Volcano {
 
 		float m_LastFrameTime = 0.0f;
 
+		std::vector<std::function<void()>> m_MainThreadQueue;
+		std::mutex m_MainThreadQueueMutex;
+	private:
 		static Application* s_Instance;
+		friend int ::main(int argc, char** argv);
 	};
 
 	// 在客户端定义

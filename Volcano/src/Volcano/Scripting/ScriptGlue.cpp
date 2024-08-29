@@ -25,6 +25,11 @@ namespace Volcano {
 	// C#的Volcano命名空间下的InternalCalls类的#Name函数  被C++的Name给定义
 #define VOL_ADD_INTERNAL_CALL(Name) mono_add_internal_call("Volcano.InternalCalls::" #Name, Name)
 
+	static MonoObject* GetScriptInstance(UUID entityID)
+	{
+		return ScriptEngine::GetManagedInstance(entityID);
+	}
+
 	static bool Entity_HasComponent(UUID entityID, MonoReflectionType* componentType)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
@@ -35,6 +40,21 @@ namespace Volcano {
 		MonoType* managedType = mono_reflection_type_get_type(componentType);
 		VOL_CORE_ASSERT(s_EntityHasComponentFuncs.find(managedType) != s_EntityHasComponentFuncs.end());
 		return s_EntityHasComponentFuncs.at(managedType)(entity);
+	}
+
+	static uint64_t Entity_FindEntityByName(MonoString* name)
+	{
+		char* nameCStr = mono_string_to_utf8(name);
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		VOL_CORE_ASSERT(scene);
+		Entity entity = scene->FindEntityByName(nameCStr);
+		mono_free(nameCStr);
+
+		if (!entity)
+			return 0;
+
+		return entity.GetUUID();
 	}
 
 	static void TransformComponent_GetTranslation(UUID entityID, glm::vec3* outTranslation)
@@ -109,6 +129,7 @@ namespace Volcano {
 	template<typename... Component>
 	static void RegisterComponent(ComponentGroup<Component...>)
 	{
+		s_EntityHasComponentFuncs.clear();
 		RegisterComponent<Component...>();
 	}
 
@@ -119,7 +140,9 @@ namespace Volcano {
 
 	void ScriptGlue::RegisterFunctions()
 	{
+		VOL_ADD_INTERNAL_CALL(GetScriptInstance);
 		VOL_ADD_INTERNAL_CALL(Entity_HasComponent);
+		VOL_ADD_INTERNAL_CALL(Entity_FindEntityByName);
 		VOL_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
 		VOL_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 

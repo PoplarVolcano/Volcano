@@ -9,6 +9,7 @@ Entities:
       Scale: [17.6177158, 1.00006282, 0.999999762]
     SpriteRendererComponent:
       Color: [1, 1, 1, 1]
+      TilingFactor: 1
     Rigidbody2DComponent:
       BodyType: Static
       FixedRotation: false
@@ -28,6 +29,7 @@ Entities:
       Scale: [17.6175919, 1.00005591, 1]
     SpriteRendererComponent:
       Color: [1, 1, 1, 1]
+      TilingFactor: 1
     Rigidbody2DComponent:
       BodyType: Static
       FixedRotation: false
@@ -47,6 +49,7 @@ Entities:
       Scale: [1, 1, 1]
     SpriteRendererComponent:
       Color: [0.188758135, 0.349923223, 0.703910589, 1]
+      TilingFactor: 1
     Rigidbody2DComponent:
       BodyType: Dynamic
       FixedRotation: false
@@ -75,6 +78,10 @@ Entities:
         OrthographicFar: 1
       Primary: true
       FixedAspectRatio: true
+    ScriptComponent:
+      ClassName: SandBox.Camera
+      ScriptFields:
+        []
   - Entity: 4737877732527522491
     TagComponent:
       Tag: Square
@@ -84,6 +91,7 @@ Entities:
       Scale: [0.999999285, 0.999999642, 1]
     SpriteRendererComponent:
       Color: [0.754189968, 0.467682034, 0.467682034, 1]
+      TilingFactor: 1
     Rigidbody2DComponent:
       BodyType: Dynamic
       FixedRotation: false
@@ -103,6 +111,7 @@ Entities:
       Scale: [20.829958, 0.999999881, 0.9999336]
     SpriteRendererComponent:
       Color: [1, 1, 1, 1]
+      TilingFactor: 1
     Rigidbody2DComponent:
       BodyType: Static
       FixedRotation: false
@@ -136,8 +145,31 @@ Entities:
       RestitutionThreshold: 0.5
   - Entity: 5470368074717198126
     TagComponent:
-      Tag: Line
+      Tag: Player
     TransformComponent:
-      Translation: [0, 0, 0]
+      Translation: [-2.5, -1, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
+    ScriptComponent:
+      ClassName: SandBox.Player
+      ScriptFields:
+        - Name: Speed
+          Type: Float
+          Data: 1
+        - Name: Time
+          Type: Float
+          Data: 0
+    SpriteRendererComponent:
+      Color: [1, 1, 1, 1]
+      TexturePath: assets\textures\莫斯提马 - 副本.png
+      TilingFactor: 1
+    Rigidbody2DComponent:
+      BodyType: Dynamic
+      FixedRotation: false
+    BoxCollider2DComponent:
+      Offset: [0, 0]
+      Size: [0.5, 0.5]
+      Density: 1
+      Friction: 0.5
+      Restitution: 0.5
+      RestitutionThreshold: 0.5

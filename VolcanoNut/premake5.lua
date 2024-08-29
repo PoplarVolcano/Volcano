@@ -27,6 +27,7 @@ project "VolcanoNut"
 		"%{wks.location}/Volcano/vendor/spdlog/include",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.filewatch}",
 		"%{IncludeDir.entt}"
 	}
 

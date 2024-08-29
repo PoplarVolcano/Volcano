@@ -37,6 +37,22 @@ namespace Volcano
             return component;
         }
 
+        public Entity FindEntityByName(string name)
+        {
+            // 通过实体名获得实体ID，注：未调用脚本的实体无法在脚本中获得
+            ulong entityID = InternalCalls.Entity_FindEntityByName(name);
+            if (entityID == 0)
+                return null;
+
+            return new Entity(entityID);
+        }
+
+        public T As<T>() where T : Entity, new()
+        {
+            object instance = InternalCalls.GetScriptInstance(ID);
+            return instance as T;
+        }
+
     }
 
 }

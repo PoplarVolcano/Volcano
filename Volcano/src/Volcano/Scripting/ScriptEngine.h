@@ -29,6 +29,7 @@ namespace Volcano {
 		Entity
 	};
 
+	// C#字段：类型，字段名，字段数据
 	struct ScriptField
 	{
 		ScriptFieldType Type;
@@ -37,7 +38,40 @@ namespace Volcano {
 		MonoClassField* ClassField;
 	};
 
-	// 调用C#函数的封装类
+	// ScriptField + data storage
+	struct ScriptFieldInstance
+	{
+		ScriptField Field;
+
+		ScriptFieldInstance()
+		{
+			memset(m_Buffer, 0, sizeof(m_Buffer));
+		}
+
+		template<typename T>
+		T GetValue()
+		{
+			static_assert(sizeof(T) <= 16, "Type too large!");
+			return *(T*)m_Buffer;
+		}
+
+		template<typename T>
+		void SetValue(T value)
+		{
+			static_assert(sizeof(T) <= 16, "Type too large!");
+			memcpy(m_Buffer, &value, sizeof(T));
+		}
+	private:
+		uint8_t m_Buffer[16];
+
+		friend class ScriptEngine;
+		friend class ScriptInstance;
+	};
+
+	using ScriptFieldMap = std::unordered_map<std::string, ScriptFieldInstance>;
+
+
+	// C#类的封装类
 	class ScriptClass
 	{
 	public:
@@ -60,6 +94,7 @@ namespace Volcano {
 		friend class ScriptEngine;
 	};
 
+	// C#类的实例，用于管理ScriptClass
 	class ScriptInstance
 	{
 	public:
@@ -73,6 +108,7 @@ namespace Volcano {
 		template<typename T>
 		T GetFieldValue(const std::string& name)
 		{
+			static_assert(sizeof(T) <= 16, "Type too large!");
 			bool success = GetFieldValueInternal(name, s_FieldValueBuffer);
 			if (!success)
 				return T();
@@ -81,13 +117,15 @@ namespace Volcano {
 		}
 
 		template<typename T>
-		void SetFieldValue(const std::string& name, const T& value)
+		void SetFieldValue(const std::string& name, T& value)
 		{
+			static_assert(sizeof(T) <= 16, "Type too large!");
 			SetFieldValueInternal(name, &value);
 		}
+		MonoObject* GetManagedObject() { return m_Instance; }
 	private:
 		bool GetFieldValueInternal(const std::string& name, void* buffer);
-		bool SetFieldValueInternal(const std::string& name, const	void* value);
+		bool SetFieldValueInternal(const std::string& name, const void* value);
 	private:
 		Ref<ScriptClass> m_ScriptClass;
 
@@ -96,7 +134,10 @@ namespace Volcano {
 		MonoMethod* m_OnCreateMethod = nullptr;
 		MonoMethod* m_OnUpdateMethod = nullptr;
 
-		inline static char s_FieldValueBuffer[8];
+		inline static char s_FieldValueBuffer[16];
+
+		friend class ScriptEngine;
+		friend struct ScriptFieldInstance;
 	};
 
 	class ScriptEngine
@@ -105,36 +146,92 @@ namespace Volcano {
 		static void Init();
 		static void Shutdown();
 
-		// 读取C# dll文件
-		static void LoadAssembly(const std::filesystem::path& filepath);
+		static bool LoadAssembly(const std::filesystem::path& filepath);
 
-		static void LoadAppAssembly(const std::filesystem::path& filepath);
+		static bool LoadAppAssembly(const std::filesystem::path& filepath);
 
-		// 脚本引擎获取Scene
+		static void ReloadAssembly();
+
 		static void OnRuntimeStart(Scene* scene);
 		static void OnRuntimeStop();
 
-		// 已读取类中是否存在fullClassName类
 		static bool EntityClassExists(const std::string& fullClassName);
 		static void OnCreateEntity(Entity entity);
 		static void OnUpdateEntity(Entity entity, Timestep ts);
 
 		static Scene* GetSceneContext();
 		static Ref<ScriptInstance> GetEntityScriptInstance(UUID entityID);
-		static std::unordered_map<std::string, Ref<ScriptClass>> GetEntityClasses();
 
+		static Ref<ScriptClass> GetEntityClass(const std::string& name);
+		static std::unordered_map<std::string, Ref<ScriptClass>> GetEntityClasses();
+		static ScriptFieldMap& GetScriptFieldMap(Entity entity);
 
 		static MonoImage* GetCoreAssemblyImage();
+
+		static MonoObject* GetManagedInstance(UUID uuid);
 	private:
 		static void InitMono();
 		static void ShutdownMono();
 
 		static MonoObject* InstantiateClass(MonoClass* monoClass);
 
-		// 读取C#程序集的类并保存到map
 		static void LoadAssemblyClasses();
 
 		friend class ScriptClass;
 		friend class ScriptGlue;
 	};
+
+	namespace Utils {
+
+		inline const char* ScriptFieldTypeToString(ScriptFieldType fieldType)
+		{
+			switch (fieldType)
+			{
+			case ScriptFieldType::None:    return "None";
+			case ScriptFieldType::Float:   return "Float";
+			case ScriptFieldType::Double:  return "Double";
+			case ScriptFieldType::Bool:    return "Bool";
+			case ScriptFieldType::Char:    return "Char";
+			case ScriptFieldType::Byte:    return "Byte";
+			case ScriptFieldType::Short:   return "Short";
+			case ScriptFieldType::Int:     return "Int";
+			case ScriptFieldType::Long:    return "Long";
+			case ScriptFieldType::UByte:   return "UByte";
+			case ScriptFieldType::UShort:  return "UShort";
+			case ScriptFieldType::UInt:    return "UInt";
+			case ScriptFieldType::ULong:   return "ULong";
+			case ScriptFieldType::Vector2: return "Vector2";
+			case ScriptFieldType::Vector3: return "Vector3";
+			case ScriptFieldType::Vector4: return "Vector4";
+			case ScriptFieldType::Entity:  return "Entity";
+			}
+			VOL_CORE_ASSERT(false, "Unknown ScriptFieldType");
+			return "None";
+		}
+
+		inline ScriptFieldType ScriptFieldTypeFromString(std::string_view fieldType)
+		{
+			if (fieldType == "None")    return ScriptFieldType::None;
+			if (fieldType == "Float")   return ScriptFieldType::Float;
+			if (fieldType == "Double")  return ScriptFieldType::Double;
+			if (fieldType == "Bool")    return ScriptFieldType::Bool;
+			if (fieldType == "Char")    return ScriptFieldType::Char;
+			if (fieldType == "Byte")    return ScriptFieldType::Byte;
+			if (fieldType == "Short")   return ScriptFieldType::Short;
+			if (fieldType == "Int")     return ScriptFieldType::Int;
+			if (fieldType == "Long")    return ScriptFieldType::Long;
+			if (fieldType == "UByte")   return ScriptFieldType::UByte;
+			if (fieldType == "UShort")  return ScriptFieldType::UShort;
+			if (fieldType == "UInt")    return ScriptFieldType::UInt;
+			if (fieldType == "ULong")   return ScriptFieldType::ULong;
+			if (fieldType == "Vector2") return ScriptFieldType::Vector2;
+			if (fieldType == "Vector3") return ScriptFieldType::Vector3;
+			if (fieldType == "Vector4") return ScriptFieldType::Vector4;
+			if (fieldType == "Entity")  return ScriptFieldType::Entity;
+
+			VOL_CORE_ASSERT(false, "Unknown ScriptFieldType");
+			return ScriptFieldType::None;
+		}
+
+	}
 }

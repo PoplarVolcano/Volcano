@@ -47,6 +47,7 @@ project "Volcano"	--ÏîÄ¿Ãû³Æ
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.mono}",
 		"%{IncludeDir.yaml_cpp}",
+		"%{IncludeDir.filewatch}",
 		"%{IncludeDir.VulkanSDK}"
 	}
 	
