@@ -22,6 +22,9 @@
     <Filter Include="src\Volcano\Math">
       <UniqueIdentifier>{E7142F10-D30D-4E62-FC3F-33E7E8972D6E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Volcano\Physics">
+      <UniqueIdentifier>{C060EAD8-2CC2-C7E6-B52F-0E992190FEA5}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Volcano\Platform">
       <UniqueIdentifier>{624334F2-4ED2-BDBB-F7F0-D1B6E35ECE61}</UniqueIdentifier>
     </Filter>
@@ -31,6 +34,9 @@
     <Filter Include="src\Volcano\Platform\Windows">
       <UniqueIdentifier>{9C2F7895-88EA-6741-31A2-E08B1D3CB2D1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Volcano\Project">
+      <UniqueIdentifier>{940184EF-0063-61FD-89D0-A7AFF53098BC}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Volcano\Renderer">
       <UniqueIdentifier>{B44A11CD-A0D9-9A96-49F8-AE913566AB3C}</UniqueIdentifier>
     </Filter>
@@ -39,6 +45,12 @@
     </Filter>
     <Filter Include="src\Volcano\Scripting">
       <UniqueIdentifier>{D05D8E4B-3CCA-4946-05BE-E1A371E96BAE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Volcano\Scripting\Component">
+      <UniqueIdentifier>{32BA2B1D-9E9D-3A5D-A7A0-6899130301AE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Volcano\UI">
+      <UniqueIdentifier>{BB270AA5-A7F5-FDAA-9089-6ED17CF6D90F}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\Volcano\Utils">
       <UniqueIdentifier>{2EB3AC16-9AC9-AAAC-E340-36CE4F967B34}</UniqueIdentifier>
@@ -93,6 +105,9 @@
     <ClInclude Include="src\Volcano\Core\Events\MouseEvent.h">
       <Filter>src\Volcano\Core\Events</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Core\FileSystem.h">
+      <Filter>src\Volcano\Core</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Core\Input.h">
       <Filter>src\Volcano\Core</Filter>
     </ClInclude>
@@ -106,6 +121,9 @@
       <Filter>src\Volcano\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Core\Log.h">
+      <Filter>src\Volcano\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Core\MouseBuffer.h">
       <Filter>src\Volcano\Core</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Core\MouseCodes.h">
@@ -138,6 +156,9 @@
     <ClInclude Include="src\Volcano\Math\Math.h">
       <Filter>src\Volcano\Math</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Physics\Physics2D.h">
+      <Filter>src\Volcano\Physics</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.h">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClInclude>
@@ -162,6 +183,12 @@
     <ClInclude Include="src\Volcano\Platform\Windows\WindowsWindow.h">
       <Filter>src\Volcano\Platform\Windows</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Project\Project.h">
+      <Filter>src\Volcano\Project</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Project\ProjectSerializer.h">
+      <Filter>src\Volcano\Project</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Buffer.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
@@ -177,19 +204,13 @@
     <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\OrthographicCamera.h">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\OrthographicCameraController.h">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\RenderCommandQueue.h">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Renderer.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Renderer2D.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Renderer3D.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h">
@@ -228,11 +249,17 @@
     <ClInclude Include="src\Volcano\Scene\ScriptableEntity.h">
       <Filter>src\Volcano\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Scripting\ComponentRegister.h">
+      <Filter>src\Volcano\Scripting</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Scripting\ScriptEngine.h">
       <Filter>src\Volcano\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Scripting\ScriptGlue.h">
       <Filter>src\Volcano\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\UI\UI.h">
+      <Filter>src\Volcano\UI</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Utils\PlatformUtils.h">
       <Filter>src\Volcano\Utils</Filter>
@@ -1488,13 +1515,17 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Core\FileSystem.h" />
+    <ClInclude Include="src\Volcano\Scripting\MathFRegister.h" />
+    <ClInclude Include="src\Volcano\Scripting\InputRegister.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
       <Filter>src\Volcano\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Core\Base.cpp">
+      <Filter>src\Volcano\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Core\FileSystem.cpp">
       <Filter>src\Volcano\Core</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Core\Layer.cpp">
@@ -1560,6 +1591,12 @@
     <ClCompile Include="src\Volcano\Platform\Windows\WindowsWindow.cpp">
       <Filter>src\Volcano\Platform\Windows</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Project\Project.cpp">
+      <Filter>src\Volcano\Project</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Project\ProjectSerializer.cpp">
+      <Filter>src\Volcano\Project</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Buffer.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
@@ -1572,19 +1609,13 @@
     <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\OrthographicCamera.cpp">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\OrthographicCameraController.cpp">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\RenderCommandQueue.cpp">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Renderer3D.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Shader.cpp">
@@ -1614,6 +1645,12 @@
     <ClCompile Include="src\Volcano\Scene\SceneSerializer.cpp">
       <Filter>src\Volcano\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Scripting\Component\Rigidbody2DComponent.cpp">
+      <Filter>src\Volcano\Scripting\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Scripting\Component\TransformComponent.cpp">
+      <Filter>src\Volcano\Scripting\Component</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Scripting\ScriptEngine.cpp">
       <Filter>src\Volcano\Scripting</Filter>
     </ClCompile>
@@ -1623,6 +1660,8 @@
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Core\FileSystem.cpp" />
+    <ClCompile Include="src\Volcano\Scripting\MathFRegister.cpp" />
+    <ClCompile Include="src\Volcano\Scripting\InputRegister.cpp" />
+    <ClCompile Include="src\Volcano\Scripting\Component\CameraComponent.cpp" />
   </ItemGroup>
 </Project>

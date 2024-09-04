@@ -26,6 +26,14 @@ namespace Volcano {
         Shutdown();
     }
 
+    void WindowsWindow::SetMouseActive(bool mouseOnActive)
+    {
+        if(mouseOnActive)
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        else
+            glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    }
+
     void WindowsWindow::Init(const WindowProps& props)
     {
         m_Data.Title = props.Title;
@@ -163,8 +171,9 @@ namespace Volcano {
         m_Context->SwapBuffers();
 
         ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
+        // 给window传递ImGui中鼠标坐标
         glfwSetCursor(m_Window, m_ImGuiMouseCursors[imgui_cursor] ? m_ImGuiMouseCursors[imgui_cursor] : m_ImGuiMouseCursors[ImGuiMouseCursor_Arrow]);
-        glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+       // glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
 
     void WindowsWindow::SetVSync(bool enabled)

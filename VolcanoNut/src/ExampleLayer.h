@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Volcano.h"
-#include <Volcano/Renderer/OrthographicCameraController.h>
 #include <ParticleSystem.h>
 #include <Panels/SceneHierarchyPanel.h>
 #include <Panels/ContentBrowserPanel.h>
@@ -23,8 +22,15 @@ namespace Volcano {
 	private:
 		bool OnKeyPressed(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
+		bool OnMouseMoved(MouseMovedEvent& e);
+		//bool OnMouseMoved(MouseMovedEvent& e);
 
 		void OnOverlayRender();
+
+		void NewProject();
+		void OpenProject(const std::filesystem::path& path);
+		bool OpenProject();
+		void SaveProject();
 
 		void NewScene();
 		void OpenScene();
@@ -44,8 +50,6 @@ namespace Volcano {
 		// UI Panels
 		void UI_Toolbar();
 	private:
-		OrthographicCameraController m_CameraController;
-
 		Ref<VertexArray> m_VertexArray;
 		Ref<Texture2D> m_Texture, m_AlterTexture;
 		Ref<Texture2D> m_SpriteSheet;
@@ -100,6 +104,6 @@ namespace Volcano {
 
 		// Panels
 		SceneHierarchyPanel m_SceneHierarchyPanel;
-		ContentBrowserPanel m_ContentBrowserPanel;
+		Scope<ContentBrowserPanel> m_ContentBrowserPanel;
 	};
 }

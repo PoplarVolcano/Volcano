@@ -16,13 +16,15 @@
 
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/Renderer2D.h"
+#include "Volcano/Renderer/Renderer3D.h"
 #include "Volcano/Renderer/Framebuffer.h"
 #include "Volcano/Renderer/VertexArray.h"
 #include "Volcano/Renderer/Texture.h"
 #include "Volcano/Renderer/SubTexture2D.h"
-#include "Volcano/Renderer/OrthographicCamera.h"
 
 #include "Volcano/Scene/Scene.h"
 #include "Volcano/Scene/Entity.h"
 #include "Volcano/Scene/ScriptableEntity.h"
 #include "Volcano/Scene/Components.h"
+
+#include "Volcano/Project/Project.h"

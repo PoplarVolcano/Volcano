@@ -15,6 +15,7 @@
 #include "Volcano/Core/Timer.h"
 #include "Volcano/Core/Buffer.h"
 #include "Volcano/Core/FileSystem.h"
+#include "Volcano/Project/Project.h"
 
 namespace Volcano {
 
@@ -22,23 +23,25 @@ namespace Volcano {
 	// 自定义C#类类型名称
 	static std::unordered_map<std::string, ScriptFieldType> s_ScriptFieldTypeMap =
 	{
-		{ "System.Single",   ScriptFieldType::Float   },
-		{ "System.Double",   ScriptFieldType::Double  },
-		{ "System.Boolean",  ScriptFieldType::Bool    },
-		{ "System.Char",     ScriptFieldType::Char    },
-		{ "System.Int16",    ScriptFieldType::Short   },
-		{ "System.Int32",    ScriptFieldType::Int     },
-		{ "System.Int64",    ScriptFieldType::Long    },
-		{ "System.Byte",     ScriptFieldType::Byte    },
-		{ "System.UInt16",   ScriptFieldType::UShort  },
-		{ "System.UInt32",   ScriptFieldType::UInt    },
-		{ "System.UInt64",   ScriptFieldType::ULong   },
+		{ "System.Single",      ScriptFieldType::Float      },
+		{ "System.Double",      ScriptFieldType::Double     },
+		{ "System.Boolean",     ScriptFieldType::Bool       },
+		{ "System.Char",        ScriptFieldType::Char       },
+		{ "System.Int16",       ScriptFieldType::Short      },
+		{ "System.Int32",       ScriptFieldType::Int        },
+		{ "System.Int64",       ScriptFieldType::Long       },
+		{ "System.Byte",        ScriptFieldType::Byte       },
+		{ "System.UInt16",      ScriptFieldType::UShort     },
+		{ "System.UInt32",      ScriptFieldType::UInt       },
+		{ "System.UInt64",      ScriptFieldType::ULong      },
+							  	 					 	    
+		{ "Volcano.Vector2",    ScriptFieldType::Vector2    },
+		{ "Volcano.Vector3",    ScriptFieldType::Vector3    },
+		{ "Volcano.Vector4",    ScriptFieldType::Vector4    },
+		{ "Volcano.Quaternion", ScriptFieldType::Quaternion },
+		{ "Volcano.Matrix4x4",  ScriptFieldType::Matrix4x4  },
 													 
-		{ "Volcano.Vector2", ScriptFieldType::Vector2 },
-		{ "Volcano.Vector3", ScriptFieldType::Vector3 },
-		{ "Volcano.Vector4", ScriptFieldType::Vector4 },
-													 
-		{ "Volcano.Entity",  ScriptFieldType::Entity  },
+		{ "Volcano.Entity",     ScriptFieldType::Entity     },
 	};
 
 	namespace Utils {
@@ -48,7 +51,7 @@ namespace Volcano {
 			ScopedBuffer fileData = FileSystem::ReadFileBinary(assemblyPath);
 
 			MonoImageOpenStatus status;
-			MonoImage* image = mono_image_open_from_data_full(fileData.As<char>(), fileData.Size(), 1, &status, 0);
+			MonoImage* image = mono_image_open_from_data_full(fileData.As<char>(), (uint32_t)fileData.Size(), 1, &status, 0);
 
 			if (status != MONO_IMAGE_OK)
 			{
@@ -65,8 +68,8 @@ namespace Volcano {
 				if (std::filesystem::exists(pdbPath))
 				{
 					ScopedBuffer pdbFileData = FileSystem::ReadFileBinary(pdbPath);
-					mono_debug_open_image_from_memory(image, pdbFileData.As<const mono_byte>(), pdbFileData.Size());
-					std::cout << "Loaded PDB " << pdbPath.generic_string() << std::endl;
+					mono_debug_open_image_from_memory(image, pdbFileData.As<const mono_byte>(), (uint32_t)pdbFileData.Size());
+					VOL_CORE_INFO("Loaded PDB：{0} ", pdbPath.generic_string());
 				}
 			}
 			
@@ -77,6 +80,7 @@ namespace Volcano {
 			return assembly;
 		}
 
+		// 打印程序集读取了哪些类
 		void PrintAssemblyTypes(MonoAssembly* assembly)
 		{
 			MonoImage* image = mono_assembly_get_image(assembly);
@@ -148,7 +152,11 @@ namespace Volcano {
 		Scope<filewatch::FileWatch<std::string>> AppAssemblyFileWatcher;
 		bool AssemblyReloadPending = false;
 
+#ifdef VOL_DEBUG
 		bool EnableDebugging = true;
+#else
+		bool EnableDebugging = false;
+#endif
 
 		// Runtime
 		Scene* SceneContext = nullptr;
@@ -187,7 +195,9 @@ namespace Volcano {
 			VOL_CORE_ERROR("[ScriptEngine] Could not load Volcano-ScriptCore assembly.");
 			return;
 		}
-		status = LoadAppAssembly("SandboxProject/Assets/Scripts/Binaries/Sandbox.dll");
+
+		auto scriptModulePath = Project::GetAssetDirectory() / Project::GetActive()->GetConfig().ScriptModulePath;
+		status = LoadAppAssembly(scriptModulePath);
 		if (!status)
 		{
 			VOL_CORE_ERROR("[ScriptEngine] Could not load app assembly.");
@@ -441,7 +451,6 @@ namespace Volcano {
 			Ref<ScriptClass> scriptClass = CreateRef<ScriptClass>(nameSpace, className);
 			// 把mono类放进data的map里
 			s_ScriptEngineData->EntityClasses[fullName] = scriptClass;
-			VOL_TRACE(fullName);
 			
 			// This routine is an iterator routine for retrieving the fields in a class.
 			// You must pass a gpointer that points to zero and is treated as an opaque handle
@@ -453,7 +462,7 @@ namespace Volcano {
 
 			// 获取mono类有多少字段
 			int fieldCount = mono_class_num_fields(monoClass);
-			VOL_CORE_WARN("{} has {} fields:", className, fieldCount);
+			VOL_CORE_WARN("{}.{} has {} fields:", nameSpace, className, fieldCount);
 			void* iterator = nullptr;
 
 			while (MonoClassField* field = mono_class_get_fields(monoClass, &iterator))
@@ -473,8 +482,6 @@ namespace Volcano {
 		}
 
 		auto& entityClasses = s_ScriptEngineData->EntityClasses;
-
-		//mono_field_get_value()
 	}
 
 	MonoImage* ScriptEngine::GetCoreAssemblyImage()

@@ -43,7 +43,6 @@ namespace Volcano {
 
 		void Close();
 
-
 		virtual void OnUpdate(Timestep ts) {}
 
 		virtual void OnEvent(Event& e);
@@ -56,6 +55,8 @@ namespace Volcano {
 
 		static inline Application& Get() { return *s_Instance; }
 		const ApplicationSpecification& GetSpecification() const { return m_Specification; }
+
+		void SetMouseActive(bool mouseOnActive);
 
 		void SubmitToMainThread(const std::function<void()>& function);
 	private:

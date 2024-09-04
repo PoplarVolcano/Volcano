@@ -48,11 +48,40 @@ project "VolcanoNut"
 		defines "VOL_DEBUG"
 		symbols "On"
 		
+		links
+		{
+			"../Volcano/vendor/assimp/lib/Debug/assimp-vc143-mtd.lib"
+		}
+
+		postbuildcommands	
+		{
+			'{COPY} "../Volcano/vendor/assimp/bin/Debug/assimp-vc143-mtd.dll" "%{cfg.targetdir}"'
+		}
+
 	filter "configurations:Release"
 		defines "VOL_RELEASE"
 		symbols "On"
 		
+		links
+		{
+			"../Volcano/vendor/assimp/lib/Release/assimp-vc143-mt.lib"
+		}
+
+		postbuildcommands 
+		{
+			'{COPY} "../Volcano/vendor/assimp/bin/Release/assimp-vc143-mt.dll" "%{cfg.targetdir}"'
+		}
+
 	filter "configurations:Dist"
 		defines "VOL_DIST"
 		symbols "On"
 		
+		links
+		{
+			"../Volcano/vendor/assimp/lib/Release/assimp-vc143-mt.lib"
+		}
+
+		postbuildcommands 
+		{
+			'{COPY} "../Volcano/vendor/assimp/bin/Release/assimp-vc143-mt.dll" "%{cfg.targetdir}"'
+		}

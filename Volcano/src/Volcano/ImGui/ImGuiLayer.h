@@ -21,6 +21,9 @@ namespace Volcano {
 		void BlockEvents(bool block) { m_BlockEvents = block; }
 		
 		void SetDarkThemColors();
+		void SetMouseActive(bool mouseOnActive);
+
+		uint32_t GetActiveWidgetID() const;
 	private:
 		bool m_BlockEvents = true;
 		float m_Time = 0.0f;

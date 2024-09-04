@@ -25,6 +25,7 @@ namespace Volcano {
         bool IsVSync() const override;
         
         inline virtual void* GetNativeWindow() const { return m_Window; }
+        virtual void SetMouseActive(bool mouseActive) override;
     private:
         virtual void Init(const WindowProps& props);
         virtual void Shutdown();

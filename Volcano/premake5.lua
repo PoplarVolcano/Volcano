@@ -36,7 +36,6 @@ project "Volcano"	--项目名称
 	{
 		"src",
 		"vendor",
-		"vendor/assimp/include",
 		"vendor/spdlog/include",
 		"vendor/stb/include",
 		"%{IncludeDir.box2d}",
@@ -44,10 +43,13 @@ project "Volcano"	--项目名称
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
+		"%{IncludeDir.msdfgen}",
+		"%{IncludeDir.msdf_atlas_gen}",
 		"%{IncludeDir.entt}",
 		"%{IncludeDir.mono}",
 		"%{IncludeDir.yaml_cpp}",
 		"%{IncludeDir.filewatch}",
+		"%{IncludeDir.assimp}",
 		"%{IncludeDir.VulkanSDK}"
 	}
 	

@@ -35,7 +35,7 @@ namespace Volcano {
 	struct TransformComponent
 	{
 		glm::vec3 Translation = { 0.0f, 0.0f, 0.0f };
-		glm::vec3 Rotation = { 0.0f, 0.0f, 0.0f };
+		glm::vec3 Rotation = { 0.0f, 0.0f, 0.0f }; // »¡¶È£¡£¡£¡
 		glm::vec3 Scale = { 1.0f, 1.0f, 1.0f };
 
 		TransformComponent() = default;
@@ -74,6 +74,18 @@ namespace Volcano {
 
 		CircleRendererComponent() = default;
 		CircleRendererComponent(const CircleRendererComponent&) = default;
+	};
+
+	struct CubeRendererComponent
+	{
+		glm::vec4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+		Ref<Texture2D> Diffuse;
+		Ref<Texture2D> Specular;
+
+		CubeRendererComponent() = default;
+		CubeRendererComponent(const CubeRendererComponent&) = default;
+		CubeRendererComponent(const glm::vec4 color)
+			: Color(color) {}
 	};
 
 	struct CameraComponent
@@ -179,8 +191,10 @@ namespace Volcano {
 	using AllComponents = ComponentGroup<
 								TransformComponent, 
 								SpriteRendererComponent,
-								CircleRendererComponent, 
+								CircleRendererComponent,
+								CubeRendererComponent,
 								CameraComponent, 
+								ScriptComponent,
 								ScriptComponent,
 								NativeScriptComponent,
 								Rigidbody2DComponent, 

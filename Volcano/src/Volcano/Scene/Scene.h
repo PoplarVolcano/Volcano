@@ -18,7 +18,7 @@ namespace Volcano {
 		~Scene();
 
 		static Ref<Scene> Copy(Ref<Scene> other);
-		void DuplicateEntity(Entity entity);
+		Entity DuplicateEntity(Entity entity);
 
 		Entity FindEntityByName(std::string_view name);
 		Entity GetEntityByUUID(UUID uuid);
@@ -62,7 +62,7 @@ namespace Volcano {
 		void OnPhysics2DStart();
 		void OnPhysics2DStop();
 
-		void RenderScene(Camera& camera, const glm::mat4& transform);
+		void RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
 	private:
 		entt::registry m_Registry;
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;

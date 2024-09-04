@@ -1,0 +1,63 @@
+Scene: Untitled
+Entities:
+  - Entity: 12508928728100354463
+    TagComponent:
+      Tag: Box
+    TransformComponent:
+      Translation: [1.5, 2, 0.5]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      TexturePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
+      TilingFactor: 1
+  - Entity: 3301722378750898330
+    TagComponent:
+      Tag: Mostima
+    TransformComponent:
+      Translation: [-2, 0, -0.5]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      TexturePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\莫斯提马 - 副本.png
+      TilingFactor: 1
+  - Entity: 13926298519586432083
+    TagComponent:
+      Tag: Rhodes
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1.5, 1.5, 1.5]
+    ScriptComponent:
+      ClassName: SandBox.Player
+      ScriptFields:
+        - Name: Speed
+          Type: Float
+          Data: 100
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      TexturePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Triangle_old.png
+      TilingFactor: 1
+  - Entity: 5205999706743253296
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [1, 1.47985828, 5.52895737]
+      Rotation: [-0.16406098, 0.183259577, 0]
+      Scale: [1, 0.99999994, 0.99999994]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 0.785398185
+        PerspectiveNear: 0.00100000005
+        PerspectiveFar: 1000
+        OrthographicSize: 10
+        OrthographicNear: -1
+        OrthographicFar: 1
+      Primary: true
+      FixedAspectRatio: true
+    ScriptComponent:
+      ClassName: SandBox.Camera
+      ScriptFields:
+        []

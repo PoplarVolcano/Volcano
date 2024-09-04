@@ -31,17 +31,17 @@ namespace SandBox
 
             float speed = Speed;
 
-            Vector3 velocity = Vector3.Zero;
+            Vector3 velocity = Vector3.zero;
 
-            if (Input.IsKeyDown(KeyCode.W))
-                velocity.Y = 1.0f;
-            else if (Input.IsKeyDown(KeyCode.S))
-                velocity.Y = -1.0f;
+            if (Input.IsKeyPressed(KeyCode.W))
+                velocity.y = 1.0f;
+            else if (Input.IsKeyPressed(KeyCode.S))
+                velocity.y = -1.0f;
 
-            if (Input.IsKeyDown(KeyCode.A))
-                velocity.X = -1.0f;
-            else if (Input.IsKeyDown(KeyCode.D))
-                velocity.X = 1.0f;
+            if (Input.IsKeyPressed(KeyCode.A))
+                velocity.x = -1.0f;
+            else if (Input.IsKeyPressed(KeyCode.D))
+                velocity.x = 1.0f;
 
             Entity cameraEntity = FindEntityByName("Camera");
             
@@ -50,9 +50,9 @@ namespace SandBox
                 // 如果没有camera实体调用camera脚本，则无法获得camera实体而报错
                 Camera camera = cameraEntity.As<Camera>();
 
-                if (Input.IsKeyDown(KeyCode.Q))
+                if (Input.IsKeyPressed(KeyCode.Q))
                     camera.DistanceFromPlayer += speed * 2.0f * ts;
-                else if (Input.IsKeyDown(KeyCode.E))
+                else if (Input.IsKeyPressed(KeyCode.E))
                     camera.DistanceFromPlayer -= speed * 2.0f * ts;
             }
 
@@ -63,9 +63,9 @@ namespace SandBox
                 m_Rigidbody.ApplyLinearImpulse(velocity.XY, true);
             else
             {
-                Vector3 translation = m_Transform.Translation;
+                Vector3 translation = m_Transform.translation;
                 translation += velocity * ts;
-                m_Transform.Translation = translation;
+                m_Transform.translation = translation;
             }
         }
 

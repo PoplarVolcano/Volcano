@@ -2,7 +2,7 @@
 #include "ImGuiLayer.h"
 
 #include "imgui.h"
-#include "ImGuizmo.h"
+#include <imgui_internal.h>
 
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
@@ -10,6 +10,7 @@
 #include "Volcano/Core/Application.h"
 #include "GLFW/glfw3.h"
 
+#include "ImGuizmo.h"
 
 namespace Volcano {
 	ImGuiLayer::ImGuiLayer()
@@ -171,5 +172,18 @@ namespace Volcano {
 		colors[ImGuiCol_NavHighlight] = ImVec4(0.60f, 0.6f, 0.6f, 1.0f);
 		colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
 
+	}
+
+	void ImGuiLayer::SetMouseActive(bool mouseOnActive)
+	{
+		if (!mouseOnActive)
+			ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NoMouse;
+		else
+			ImGui::GetIO().ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+	}
+
+	uint32_t ImGuiLayer::GetActiveWidgetID() const
+	{
+		return GImGui->ActiveId;
 	}
 }

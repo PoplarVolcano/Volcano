@@ -10,10 +10,7 @@ namespace SandBox
 {
     internal class Camera : Entity
     {
-        public Entity OtherEntity;
-
         public float DistanceFromPlayer = 5.0f;
-
         private Entity m_Player;
 
         void OnCreate()
@@ -23,27 +20,34 @@ namespace SandBox
 
         void OnUpdate(float ts)
         {
+            Mouse.Instance.OnActive = Input.IsKeyPressed(KeyCode.LeftAlt) || Input.IsKeyPressed(KeyCode.RightAlt);
+
+            TransformComponent tc = GetComponent<TransformComponent>();
             if (m_Player != null)
-                Translation = new Vector3(m_Player.Translation.XY, DistanceFromPlayer);
+                transform.translation = new Vector3(m_Player.transform.translation.XY, DistanceFromPlayer);
 
             float speed = 1.0f;
-            Vector3 velocity = Vector3.Zero;
+            Vector3 velocity = Vector3.zero;
 
-            if (Input.IsKeyDown(KeyCode.Up))
-                velocity.Y = 1.0f;
-            else if (Input.IsKeyDown(KeyCode.Down))
-                velocity.Y = -1.0f;
+            if (Input.IsKeyPressed(KeyCode.Up))
+                velocity.z -= 1.0f;
+            if (Input.IsKeyPressed(KeyCode.Down))
+                velocity.z += 1.0f;
 
-            if (Input.IsKeyDown(KeyCode.Left))
-                velocity.X = -1.0f;
-            else if (Input.IsKeyDown(KeyCode.Right))
-                velocity.X = 1.0f;
+            if (Input.IsKeyPressed(KeyCode.Left))
+                velocity.x -= 1.0f;
+            if (Input.IsKeyPressed(KeyCode.Right))
+                velocity.x += 1.0f;
 
-            velocity *= speed;
+            if (Input.IsKeyPressed(KeyCode.LeftControl))
+                velocity.y -= 1.0f;
+            if (Input.IsKeyPressed(KeyCode.Space))
+                velocity.y += 1.0f;
 
-            Vector3 translation = Translation;
-            translation += velocity * ts;
-            Translation = translation;
+
+            Vector3 translation = transform.translation;
+            translation += velocity * speed * ts;
+            transform.translation = translation;
         }
     }
 }

@@ -7,20 +7,13 @@ namespace Volcano
     {
         public readonly ulong ID;
         protected Entity() { ID = 0; }
-        internal Entity(ulong id) { ID = id; }
-
-        public Vector3 Translation
-        {
-            get
-            {
-                InternalCalls.TransformComponent_GetTranslation(ID, out Vector3 result);
-                return result;
-            }
-            set
-            {
-                InternalCalls.TransformComponent_SetTranslation(ID, ref value);
-            }
+        internal Entity(ulong id) 
+        { 
+            ID = id;
+            transform = GetComponent<TransformComponent>();
         }
+
+        public TransformComponent transform;
 
         public bool HasComponent<T>() where T : Component, new()
         {

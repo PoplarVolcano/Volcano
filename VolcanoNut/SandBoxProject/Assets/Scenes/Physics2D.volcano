@@ -161,7 +161,7 @@ Entities:
           Data: 0
     SpriteRendererComponent:
       Color: [1, 1, 1, 1]
-      TexturePath: assets\textures\莫斯提马 - 副本.png
+      TexturePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\莫斯提马 - 副本.png
       TilingFactor: 1
     Rigidbody2DComponent:
       BodyType: Dynamic
@@ -173,3 +173,14 @@ Entities:
       Friction: 0.5
       Restitution: 0.5
       RestitutionThreshold: 0.5
+  - Entity: 7341712713414231514
+    TagComponent:
+      Tag: Cube
+    TransformComponent:
+      Translation: [1.67487955, 1.25615644, 0]
+      Rotation: [0.469879627, -0.545952737, -0.633936465]
+      Scale: [0.99999994, 1.0000006, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      TexturePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Triangle_old.png
+      TilingFactor: 1

@@ -14,8 +14,8 @@ IncludeDir["yaml_cpp"] = "%{wks.location}/Volcano/vendor/yaml-cpp/include"
 IncludeDir["shaderc"] = "%{wks.location}/Volcano/vendor/shaderc/include"
 IncludeDir["SPIRV_Cross"] = "%{wks.location}/Volcano/vendor/SPIRV-Cross"
 IncludeDir["filewatch"] = "%{wks.location}/Volcano/vendor/filewatch"
+IncludeDir["assimp"] = "%{wks.location}/Volcano/vendor/assimp/include"
 IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/Include"
-
 
 LibraryDir = {}
 LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/Lib"

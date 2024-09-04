@@ -2,13 +2,12 @@
 #include "ContentBrowserPanel.h"
 #include <imgui/imgui.h>
 
+#include "Volcano/Project/Project.h"
+
 namespace Volcano {
 
-	// Once we have projects, change this
-    extern const std::filesystem::path g_AssetPath = "assets";
-
-    ContentBrowserPanel::ContentBrowserPanel()
-        : m_CurrentDirectory(g_AssetPath)
+    ContentBrowserPanel::ContentBrowserPanel() 
+        : m_BaseDirectory(Project::GetAssetDirectory()), m_CurrentDirectory(m_BaseDirectory)
     {
         m_DirectoryIcon = Texture2D::Create("Resources/Icons/ContentBrowser/DirectoryIcon.png");
         m_FileIcon = Texture2D::Create("Resources/Icons/ContentBrowser/FileIcon.png");
@@ -20,7 +19,7 @@ namespace Volcano {
 
         // 为了返回上一级目录
         // 当前目录！= assets目录
-        if (m_CurrentDirectory != std::filesystem::path(g_AssetPath)) {
+        if (m_CurrentDirectory != std::filesystem::path(m_BaseDirectory)) {
             // 如果点击了按钮
             if (ImGui::Button("<-")) {
                 // 当前目录 = 当前目录的父目录
@@ -63,7 +62,7 @@ namespace Volcano {
             if (ImGui::BeginDragDropSource())
             {
                 // 得到子文件与assets文件夹的相对位置path。	    relativePath = cache\shader
-                auto relativePath = std::filesystem::relative(path, g_AssetPath);
+                std::filesystem::path relativePath(path);
                 // 设置数据源，c_str返回以空字符结尾的const的宽字符串
                 const wchar_t* itemPath = relativePath.c_str();
                 // wcslen: returns the length of a wide string, that is the number of non-null wide characters that precedethe terminating null wide character

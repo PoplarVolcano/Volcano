@@ -12,23 +12,7 @@
 #include "Volcano/Utils/PlatformUtils.h"
 #include "Volcano/Math/Math.h"
 #include "Volcano/Scripting/ScriptEngine.h"
-
-static const uint32_t s_MapWidth = 24;
-static const char* s_MapTiles = 
-"WWWWWWWWWWWWWWWWWWWWWWWW"
-"WWWWWWWDDDDDDWWWWWWWWWWW"
-"WWWWWDDDDDDDDDDWWWWWWWWW"
-"WWWWDDDDDDDDDDDDDDWWWWWW"
-"WWWDDDDDDDDDDDDDBDDDWWWW"
-"WWDDDDDDDDDDDDDDDDDDWWWW"
-"WDDDDDWWWDDDDDDDDDDDDWWW"
-"WWDDDDWWWDDDDDDDDDDDWWWW"
-"WWWDDDDDDDDDDDDDDDDWWWWW"
-"WWWWDDDDDDDDDDDDDDWWWWWW"
-"WWWWWDDDDDDDDDDDDWWWWWWW"
-"WWWWWWWDDDDDDDDWWWWWWWWW"
-"WWWWWWWWWDDDDWWWWWWWWWWW"
-"WWWWWWWWWWWWWWWWWWWWWWWW";
+#include "Volcano/Core/MouseBuffer.h"
 
 namespace Volcano{
 
@@ -64,10 +48,7 @@ namespace Volcano{
 
 #define PROFILE_SCOPE(name) Timer timer##__LINE__(name, [&](ProfileResult profileResult) { m_ProfileResults.push_back(profileResult); })
 
-    extern const std::filesystem::path g_AssetPath;
-
     ExampleLayer::ExampleLayer()
-        : m_CameraController(1280.0f / 720.0f, true)
     {
     }
 
@@ -77,14 +58,11 @@ namespace Volcano{
 
     void ExampleLayer::OnAttach()
     {
-        m_Texture = Texture2D::Create("assets/textures/Mostima.png");
-        m_IconPlay = Texture2D::Create("Resources/Icons/PlayButton.png");
-        m_IconPause = Texture2D::Create("Resources/Icons/PauseButton.png");
-        m_IconStop = Texture2D::Create("Resources/Icons/StopButton.png");
+        m_IconPlay     = Texture2D::Create("Resources/Icons/PlayButton.png");
+        m_IconPause    = Texture2D::Create("Resources/Icons/PauseButton.png");
+        m_IconStop     = Texture2D::Create("Resources/Icons/StopButton.png");
         m_IconSimulate = Texture2D::Create("Resources/Icons/SimulateButton.png");
-        m_IconStep = Texture2D::Create("Resources/Icons/StepButton.png");
-        m_AlterTexture = Texture2D::Create("assets/textures/莫斯提马.png");
-        m_SpriteSheet = Texture2D::Create("assets/game/textures/RPGpack_sheet_2X.png");
+        m_IconStep     = Texture2D::Create("Resources/Icons/StepButton.png");
 
         FramebufferSpecification fbSpec;
         fbSpec.Attachments = { 
@@ -96,24 +74,6 @@ namespace Volcano{
         fbSpec.Height = 720;
         m_Framebuffer = Framebuffer::Create(fbSpec);
 
-        m_TextureStairs = SubTexture2D::CreateFromCoords(m_SpriteSheet, { 7, 6 },  { 128, 128 });
-        m_TextureTree = SubTexture2D::CreateFromCoords(m_SpriteSheet, { 2, 1 }, { 128, 128 }, { 1, 2 });
-
-        m_MapWidth = s_MapWidth;
-        m_MapHeight = strlen(s_MapTiles) / s_MapWidth;
-        s_TextureMap['D'] = SubTexture2D::CreateFromCoords(m_SpriteSheet, { 6, 11}, {128, 128});
-        s_TextureMap['W'] = SubTexture2D::CreateFromCoords(m_SpriteSheet, { 11, 11 }, { 128, 128 });
-
-        // Flames
-        m_Particle.Position = { 0.0f, 0.0f };
-        m_Particle.Velocity = { 0.0f, 0.0f }, m_Particle.VelocityVariation = { 1.0f, 1.0f };
-        m_Particle.SizeBegin = 0.2f, m_Particle.SizeEnd = 0.0f, m_Particle.SizeVariation = 0.3f;
-        m_Particle.ColorBegin = { 176 / 255.0f, 243 / 255.0f, 253 / 255.0f, 1.0f };
-        m_Particle.ColorEnd = { 22 / 255.0f, 58 / 255.0f, 142 / 255.0f , 1.0f };
-        m_Particle.LifeTime = 1.0f;
-
-        //m_CameraController.SetZoomLevel(5.5f);
-
         // 初始化场景
         m_EditorScene = CreateRef<Scene>();
         m_ActiveScene = m_EditorScene;
@@ -122,8 +82,15 @@ namespace Volcano{
         auto commandLineArgs = Application::Get().GetSpecification().CommandLineArgs;
         if (commandLineArgs.Count > 1)
         {
-            auto sceneFilePath = commandLineArgs[1];
-            OpenScene(sceneFilePath);
+            auto projectFilePath = commandLineArgs[1];
+            OpenProject(projectFilePath);
+        }
+        else {
+            // NOTE: this is while we don't have a new project path
+            // 引导用户选择一个项目路径prompt the user to select a directory
+            // 如果没有打开项目则关闭VolcanoNut If no project is opened, close VolcanoNut
+            if (!OpenProject())
+                Application::Get().Close();
         }
 
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
@@ -150,7 +117,6 @@ namespace Volcano{
         {
             // 将视图的尺寸同步到帧缓冲尺寸
             m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
-            m_CameraController.OnResize(m_ViewportSize.x, m_ViewportSize.y);
             m_EditorCamera.SetViewportSize(m_ViewportSize.x, m_ViewportSize.y);
         }
 
@@ -168,9 +134,6 @@ namespace Volcano{
         {
             case SceneState::Edit:
             {
-                // 当焦点聚焦，才能wasd
-                if (m_ViewportFocused)
-                    m_CameraController.OnUpdate(ts);
                 m_EditorCamera.OnUpdate(ts);
                 m_ActiveScene->OnUpdateEditor(ts, m_EditorCamera);
                 break;
@@ -314,17 +277,21 @@ namespace Volcano{
                 ImGui::MenuItem("Padding", NULL, &opt_padding);
                 ImGui::Separator();
 
-                if (ImGui::MenuItem("New", "Ctrl+N"))
-                    NewScene();
+                if (ImGui::MenuItem("Open Project...", "Ctrl+O"))
+					OpenProject();
 
-                if (ImGui::MenuItem("Open...", "Ctrl+O"))
-                    OpenScene();
+				ImGui::Separator();
 
-                if (ImGui::MenuItem("Save", "Ctrl+S"))
-                    SaveScene();
+				if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+					NewScene();
 
-                if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S"))
-                    SaveSceneAs();
+				if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
+					SaveScene();
+
+				if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S"))
+					SaveSceneAs();
+
+				ImGui::Separator();
 
                 if (ImGui::MenuItem("Exit")) 
                     Application::Get().Close();
@@ -373,7 +340,7 @@ namespace Volcano{
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) 
             {
                 const wchar_t* path = (const wchar_t*)payload->Data;
-                OpenScene(std::filesystem::path(g_AssetPath) / path);
+                OpenScene(path);
             }
             ImGui::EndDragDropTarget();
         }
@@ -393,7 +360,7 @@ namespace Volcano{
 
         //Gizmos
         Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
-        if (selectedEntity && m_GizmoType != -1)
+        if (selectedEntity && m_GizmoType != -1 && m_SceneState == SceneState::Edit)
         {
             ImGuizmo::SetOrthographic(false);
             ImGuizmo::SetDrawlist();
@@ -401,14 +368,6 @@ namespace Volcano{
             float windowHeight = (float)ImGui::GetWindowHeight();
             ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
             
-            // Camera
-
-            // Runtime camera from entity
-            // auto cameraEntity = m_ActiveScene->GetPrimaryCameraEntity();
-            // const auto& camera = cameraEntity.GetComponent<CameraComponent>().Camera;
-            // const glm::mat4& cameraProjection = camera.GetProjection();
-            // glm::mat4 cameraView = glm::inverse(cameraEntity.GetComponent<TransformComponent>().GetTransform());
-
             //Editor Camera
             const glm::mat4& cameraProjection = m_EditorCamera.GetProjection();
             glm::mat4 cameraView = m_EditorCamera.GetViewMatrix();
@@ -455,7 +414,7 @@ namespace Volcano{
         ImGui::PopStyleVar();
 
         m_SceneHierarchyPanel.OnImGuiRender();
-        m_ContentBrowserPanel.OnImGuiRender();
+        m_ContentBrowserPanel->OnImGuiRender();
 
         // =====================================================Settings=====================================================
         ImGui::Begin("Stats");
@@ -594,7 +553,6 @@ namespace Volcano{
 
     void ExampleLayer::OnEvent(Event& event)
     {
-        m_CameraController.OnEvent(event);
         if (m_SceneState == SceneState::Edit)
         {
             m_EditorCamera.OnEvent(event);
@@ -603,6 +561,7 @@ namespace Volcano{
         EventDispatcher dispatcher(event);
         dispatcher.Dispatch<KeyPressedEvent>(VOL_BIND_EVENT_FN(ExampleLayer::OnKeyPressed));
         dispatcher.Dispatch<MouseButtonPressedEvent>(VOL_BIND_EVENT_FN(ExampleLayer::OnMouseButtonPressed));
+        //dispatcher.Dispatch<MouseMovedEvent>(VOL_BIND_EVENT_FN(ExampleLayer::OnMouseMoved));
 
     }
 
@@ -624,7 +583,7 @@ namespace Volcano{
             break;
         case Key::O:
             if (control)
-                OpenScene();
+                OpenProject();
             break;
         case Key::S:
             if (control)
@@ -658,7 +617,21 @@ namespace Volcano{
                     m_GizmoType = ImGuizmo::OPERATION::SCALE;
             }
             break;
+
+            // TODO: 只有鼠标点击viewport的实体会被选中删除，SceneHierarchyPanel选中实体delete不能删除
+        case Key::Delete:
+            if (Application::Get().GetImGuiLayer()->GetActiveWidgetID() == 0)
+            {
+                Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
+                if (selectedEntity)
+                {
+                    m_SceneHierarchyPanel.SetSelectedEntity({});
+                    m_ActiveScene->DestroyEntity(selectedEntity);
+                }
+            }
+            break;
         }
+
         return false;
     }
 
@@ -666,11 +639,40 @@ namespace Volcano{
     {
         if (e.GetMouseButton() == Mouse::ButtonLeft)
         {
+            // 鼠标悬浮，没按Alt
             if (m_ViewportHovered && !ImGuizmo::IsOver() && !Input::IsKeyPressed(Key::LeftAlt))
                 m_SceneHierarchyPanel.SetSelectedEntity(m_HoveredEntity);
         }
         return false;
     }
+
+    /*
+    bool ExampleLayer::OnMouseMoved(MouseMovedEvent& e)
+    {
+        MouseBuffer& mouse = MouseBuffer::instance();
+
+        if (mouse.GetOnActive()) {
+            if (mouse.GetFirstMouse())
+            {
+                mouse.SetLastX(e.GetX());
+                mouse.SetLastY(e.GetY());
+                mouse.SetFirstMouse(false);
+            }
+
+            float xoffset = e.GetX() - mouse.GetLastX();
+            float yoffset = mouse.GetLastY() - e.GetY();
+            mouse.SetLastX(e.GetX());
+            mouse.SetLastY(e.GetY());
+
+            float sensitivity = 0.05;
+            xoffset *= sensitivity;
+            yoffset *= sensitivity;
+
+            mouse.SetYaw(mouse.GetYaw() + xoffset);
+            mouse.SetPitch(mouse.GetPitch() + yoffset);
+        }
+    
+    }*/
 
     void ExampleLayer::OnOverlayRender()
     {
@@ -738,6 +740,38 @@ namespace Volcano{
         }
 
         Renderer2D::EndScene();
+    }
+
+    void ExampleLayer::NewProject()
+    {
+        Project::New();
+    }
+
+    void ExampleLayer::OpenProject(const std::filesystem::path& path)
+    {
+        if (Project::Load(path))
+        {
+            ScriptEngine::Init();
+            auto startScenePath = Project::GetAssetFileSystemPath(Project::GetActive()->GetConfig().StartScene);
+            OpenScene(startScenePath);
+            m_ContentBrowserPanel = CreateScope<ContentBrowserPanel>();
+        }
+    }
+
+    bool ExampleLayer::OpenProject()
+    {
+        // 打开.hproj文件读取Project
+        std::string filepath = FileDialogs::OpenFile("Volcano Project (*.hproj)\0*.hproj\0");
+        if (filepath.empty())
+            return false;
+
+        OpenProject(filepath);
+        return true;
+    }
+
+    void ExampleLayer::SaveProject()
+    {
+        // Project::SaveActive();
     }
 
     void ExampleLayer::NewScene()
@@ -824,6 +858,12 @@ namespace Volcano{
         // 分割活动场景为单独的Scene
         m_ActiveScene = Scene::Copy(m_EditorScene);
 
+        if (m_SceneHierarchyPanel.GetSelectedEntity())
+        {
+            UUID selectedEntityID = m_SceneHierarchyPanel.GetSelectedEntity().GetUUID();
+            m_SceneHierarchyPanel.SetSelectedEntity(m_ActiveScene->GetEntityByUUID(selectedEntityID));
+        }
+
         m_ActiveScene->SetRunning(true);
 
         // 设置活动场景物理效果
@@ -843,11 +883,12 @@ namespace Volcano{
 
         m_ActiveScene = Scene::Copy(m_EditorScene);
 
+        m_SceneHierarchyPanel.SetContext(m_ActiveScene);
+
         m_ActiveScene->SetRunning(true);
 
         m_ActiveScene->OnSimulationStart();
 
-        m_SceneHierarchyPanel.SetContext(m_ActiveScene);
     }
 
     // 暂停场景
@@ -875,13 +916,15 @@ namespace Volcano{
         // 设置场景状态：编辑
         m_SceneState = SceneState::Edit;
 
+        m_SceneHierarchyPanel.SetContext(m_EditorScene);
+
         // 活动场景恢复编辑器场景
         m_ActiveScene = m_EditorScene;
 
         // edit模式下running必然false，可删除
         m_ActiveScene->SetRunning(false);
 
-        m_SceneHierarchyPanel.SetContext(m_EditorScene);
+        MouseBuffer::instance().SetOnActive(true);
     }
 
     // 编辑模式可用，如果选中实体，将实体复制
@@ -892,7 +935,10 @@ namespace Volcano{
 
         Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
         if (selectedEntity)
-            m_ActiveScene->DuplicateEntity(selectedEntity);
+        {
+            Entity newEntity = m_ActiveScene->DuplicateEntity(selectedEntity);
+            m_SceneHierarchyPanel.SetSelectedEntity(newEntity);
+        }
     }
 
 

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Volcano.h"
-#include <Volcano/Renderer/OrthographicCameraController.h>
 #include <ParticleSystem.h>
 
 namespace Volcano {
@@ -19,7 +18,6 @@ namespace Volcano {
 		virtual void OnEvent(Event& event) override;
 
 	private:
-		OrthographicCameraController m_CameraController;
 
 		Ref<Texture2D> m_Texture;
 

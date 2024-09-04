@@ -2,6 +2,7 @@
 #include "Volcano/Core/Application.h"
 #include "Volcano/Core/Log.h"
 #include "Volcano/Core/Input.h"
+#include "Volcano/Core/MouseBuffer.h"
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Utils/PlatformUtils.h"
@@ -17,7 +18,7 @@ namespace Volcano {
 		VOL_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
 
-		// Set working directory here
+		// 把工作路径放入ApplicationSpecification
 		if (!m_Specification.WorkingDirectory.empty())
 			std::filesystem::current_path(m_Specification.WorkingDirectory);
 
@@ -25,7 +26,6 @@ namespace Volcano {
 		m_Window->SetEventCallback(BIND_EVENT_FN(OnEvent));
 
 		Renderer::Init();
-		ScriptEngine::Init();
 
 		m_ImGuiLayer = new ImGuiLayer("ImGui");
 		PushOverlay(m_ImGuiLayer);
@@ -40,6 +40,8 @@ namespace Volcano {
 	{
 		while (m_Running)
 		{
+			SetMouseActive(MouseBuffer::instance().GetOnActive());
+
 			float time = Time::GetTime();
 			m_Timestep = time - m_LastFrameTime;
 			m_LastFrameTime = time;
@@ -64,6 +66,12 @@ namespace Volcano {
 	void Application::Close() 
 	{
 		m_Running = false;
+	}
+
+	void Application::SetMouseActive(bool mouseOnActive)
+	{
+		m_Window->SetMouseActive(mouseOnActive);
+		m_ImGuiLayer->SetMouseActive(mouseOnActive);
 	}
 
 	// 把方法提交至主线程队列

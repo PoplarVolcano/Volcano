@@ -19,10 +19,11 @@ namespace Volcano {
 		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 		VOL_CORE_ASSERT(status, "glad初始化错误");
 
-		VOL_CORE_INFO("OpenGL Info:");
-		VOL_CORE_INFO("  Vendor: {0}", (const char*)glGetString(GL_VENDOR));
-		VOL_CORE_INFO("  Renderer: {0}", (const char*)glGetString(GL_RENDERER));
-		VOL_CORE_INFO("  Version: {0}", (const char*)glGetString(GL_VERSION));
+		// 输出显卡信息，供应商，显卡驱动，版本
+		//VOL_CORE_INFO("OpenGL Info:");
+		//VOL_CORE_INFO("  Vendor: {0}", (const char*)glGetString(GL_VENDOR));
+		//VOL_CORE_INFO("  Renderer: {0}", (const char*)glGetString(GL_RENDERER));
+		//VOL_CORE_INFO("  Version: {0}", (const char*)glGetString(GL_VERSION));
 	}
 	void OpenGLContext::SwapBuffers()
 	{

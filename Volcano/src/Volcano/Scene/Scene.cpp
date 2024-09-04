@@ -5,6 +5,9 @@
 #include "ScriptableEntity.h"
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Renderer/Renderer2D.h"
+#include "Volcano/Renderer/Renderer3D.h"
+#include "Volcano/Physics/Physics2D.h"
+
 #include "glm/glm.hpp"
 #include "Entity.h"
 
@@ -16,19 +19,6 @@
 #include "box2d/b2_circle_shape.h"
 
 namespace Volcano {
-
-	static b2BodyType Rigidbody2DTypeToBox2DBody(Rigidbody2DComponent::BodyType bodyType)
-	{
-		switch (bodyType)
-		{
-		case Rigidbody2DComponent::BodyType::Static:    return b2_staticBody;
-		case Rigidbody2DComponent::BodyType::Dynamic:   return b2_dynamicBody;
-		case Rigidbody2DComponent::BodyType::Kinematic: return b2_kinematicBody;
-		}
-
-		VOL_CORE_ASSERT(false, "Unknown body type");
-		return b2_staticBody;
-	}
 
 	Scene::Scene()
 	{
@@ -130,8 +120,8 @@ namespace Volcano {
 
 	void Scene::DestroyEntity(Entity entity)
 	{
-		m_Registry.destroy(entity);
 		m_EntityMap.erase(entity.GetUUID());
+		m_Registry.destroy(entity);
 	}
 
 	void Scene::OnRuntimeStart()
@@ -227,6 +217,8 @@ namespace Volcano {
 		// 获取主摄像头
 		Camera* mainCamera = nullptr;
 		glm::mat4 cameraTransform;
+		glm::vec3 cameraPosition;
+		glm::vec3 cameraDirection;
 		{
 			Entity mainCameraEntity = GetPrimaryCameraEntity();
 			if (mainCameraEntity)
@@ -235,12 +227,14 @@ namespace Volcano {
 				auto& camera = mainCameraEntity.GetComponent<CameraComponent>();
 				mainCamera = &camera.Camera;
 				cameraTransform = transform.GetTransform();
+				cameraPosition = transform.Translation;
+				cameraDirection = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
 			}
 		}
 
 		// 主摄像头渲染场景
 		if (mainCamera)
-			RenderScene(*mainCamera, cameraTransform);
+			RenderScene(*mainCamera, cameraTransform, cameraPosition, cameraDirection);
 	}
 
 	void Scene::OnUpdateSimulation(Timestep ts, EditorCamera& camera)
@@ -248,13 +242,13 @@ namespace Volcano {
 		if (!m_IsPaused || m_StepFrames-- > 0)
 			Physics(ts);
 		// Render
-		RenderScene(camera, camera.GetViewMatrix());
+		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetForwardDirection());
 	}
 
 	void Scene::OnUpdateEditor(Timestep ts, EditorCamera& camera)
 	{
 		// Render
-		RenderScene(camera, camera.GetViewMatrix());
+		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetForwardDirection());
 	}
 
 	void Scene::OnViewportResize(uint32_t width, uint32_t height)
@@ -281,11 +275,13 @@ namespace Volcano {
 		m_StepFrames = frames;
 	}
 
-	void Scene::DuplicateEntity(Entity entity)
+	Entity Scene::DuplicateEntity(Entity entity)
 	{
+		// Copy name because we're going to modify component data structure
 		std::string name = entity.GetName();
 		Entity newEntity = CreateEntity(name);
 		CopyComponentIfExists(AllComponents{}, newEntity, entity);
+		return newEntity;
 	}
 
 	Entity Scene::GetPrimaryCameraEntity()
@@ -336,7 +332,7 @@ namespace Volcano {
 
 			// 主体定义用来指定动态类型和参数
 			b2BodyDef bodyDef;
-			bodyDef.type = Rigidbody2DTypeToBox2DBody(rb2d.Type);
+			bodyDef.type = Utils::Rigidbody2DTypeToBox2DBody(rb2d.Type);
 			bodyDef.position.Set(transform.Translation.x, transform.Translation.y);
 			// 绕着z轴旋转
 			bodyDef.angle = transform.Rotation.z;
@@ -390,10 +386,11 @@ namespace Volcano {
 		m_PhysicsWorld = nullptr;
 	}
 
-	// 摄像头渲染场景
-	void Scene::RenderScene(Camera& camera, const glm::mat4& transform)
+	// 摄像头渲染场景，摄像头，摄像头TRS，摄像头位置（translation），摄像头方向
+	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
 	{
 		Renderer2D::BeginScene(camera, transform);
+		Renderer3D::BeginScene(camera, transform, position, direction);
 
 		// Draw sprites
 		{
@@ -415,7 +412,18 @@ namespace Volcano {
 			}
 		}
 
+		// Draw cube
+		{
+			auto view = m_Registry.view<TransformComponent, CubeRendererComponent>();
+			for (auto entity : view)
+			{
+				auto [transform, cube] = view.get<TransformComponent, CubeRendererComponent>(entity);
+				Renderer3D::DrawCube(transform.GetTransform(), cube, (int)entity);
+			}
+		}
+
 		Renderer2D::EndScene();
+		Renderer3D::EndScene();
 	}
 
 	template<typename T>
@@ -456,6 +464,11 @@ namespace Volcano {
 
 	template<>
 	void Scene::OnComponentAdded<CircleRendererComponent>(Entity entity, CircleRendererComponent& component)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<CubeRendererComponent>(Entity entity, CubeRendererComponent& component)
 	{
 	}
 

@@ -1,7 +1,7 @@
 project "Volcano-ScriptCore"
 	kind "SharedLib"
 	language "C#"
-	dotnetframework "4.7.2"
+	dotnetframework "4.8.0"
 
 	targetdir ("../VolcanoNut/Resources/Scripts")
 	objdir ("../VolcanoNut/Resources/Scripts/Intermediates")

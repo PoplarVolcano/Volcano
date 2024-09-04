@@ -1,14 +1,13 @@
 #include "SceneHierarchyPanel.h"
 #include "Volcano/Scene/Components.h"
 #include "Volcano/Scripting/ScriptEngine.h"
+#include "Volcano/UI/UI.h"
 
 #include "imgui/imgui.h"
 #include <imgui/imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Volcano {
-
-	extern const std::filesystem::path g_AssetPath;
 
 	SceneHierarchyPanel::SceneHierarchyPanel(Ref<Scene>& context)
 	{
@@ -18,7 +17,17 @@ namespace Volcano {
 	void SceneHierarchyPanel::SetContext(const Ref<Scene>& context)
 	{
 		m_Context = context;
-		m_SelectionContext = {};
+		if (m_SelectionContext)
+		{
+			UUID SelectedEntityID = m_SelectionContext.GetUUID();
+			Entity target = m_Context->GetEntityByUUID(SelectedEntityID);
+			if(target)
+				m_SelectionContext = target;
+			else
+				m_SelectionContext = {};
+		}
+		else
+			m_SelectionContext = {};
 	}
 
 	void SceneHierarchyPanel::OnImGuiRender()
@@ -241,6 +250,7 @@ namespace Volcano {
 			DisplayAddComponentEntry<ScriptComponent>("Script");
 			DisplayAddComponentEntry<SpriteRendererComponent>("Sprite Renderer");
 			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
+			DisplayAddComponentEntry<CubeRendererComponent>("Cube Renderer");
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
 			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
 			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");
@@ -327,12 +337,14 @@ namespace Volcano {
 				strcpy_s(buffer, sizeof(buffer), component.ClassName.c_str());
 
 				// 如果mono类不存在则红框
-				if (!scriptClassExists)
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.9f, 0.2f, 0.3f, 1.0f));
+				UI::ScopedStyleColor textColor(ImGuiCol_Text, ImVec4(0.9f, 0.2f, 0.3f, 1.0f), !scriptClassExists);
 
 				// 把buffer写入组件的ClassName
 				if (ImGui::InputText("Class", buffer, sizeof(buffer)))
+				{
 					component.ClassName = buffer;
+					return;
+				}
 
 				// Fields
 				bool sceneRunning = scene->IsRunning();
@@ -403,9 +415,6 @@ namespace Volcano {
 						}
 					}
 				}
-
-				if (!scriptClassExists)
-					ImGui::PopStyleColor();
 			});
 
 		DrawComponent<SpriteRendererComponent>("Sprite Renderer", entity, [](auto& component)
@@ -418,7 +427,7 @@ namespace Volcano {
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
 					{
 						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path texturePath = std::filesystem::path(g_AssetPath) / path;
+						std::filesystem::path texturePath(path);
 						component.Texture = Texture2D::Create(texturePath.string());
 					}
 					ImGui::EndDragDropTarget();
@@ -436,7 +445,7 @@ namespace Volcano {
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
 					{
 						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path texturePath = std::filesystem::path(g_AssetPath) / path;
+						std::filesystem::path texturePath = path;
 						component.Texture = Texture2D::Create(texturePath.string());
 					}
 					ImGui::EndDragDropTarget();
@@ -444,6 +453,35 @@ namespace Volcano {
 
 				ImGui::DragFloat("Thickness", &component.Thickness, 0.025f, 0.0f, 1.0f);
 				ImGui::DragFloat("Fade", &component.Fade, 0.00025f, 0.0f, 1.0f);
+			});
+
+		DrawComponent<CubeRendererComponent>("Cube Renderer", entity, [](auto& component)
+			{
+				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+
+				ImGui::Button("Diffuse", ImVec2(100.0f, 100.0f));
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path diffusePath = path;
+						component.Diffuse = Texture2D::Create(diffusePath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				ImGui::Button("Specular", ImVec2(100.0f, 100.0f));
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path specularPath = path;
+						component.Specular = Texture2D::Create(specularPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
 			});
 
 		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity, [](auto& component)

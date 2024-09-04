@@ -5,6 +5,7 @@
 #include "Components.h"
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/UUID.h"
+#include "Volcano/Project/Project.h"
 
 #include <fstream>
 #include <yaml-cpp/yaml.h>
@@ -81,6 +82,52 @@ namespace YAML {
 	};
 
 	template<>
+	struct convert<glm::quat>
+	{
+		static Node encode(const glm::quat& rhs)
+		{
+			Node node;
+			node.push_back(rhs.x);
+			node.push_back(rhs.y);
+			node.push_back(rhs.z);
+			node.push_back(rhs.w);
+		}
+		static bool decode(const Node& node, glm::quat& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 4)
+				return false;
+
+			rhs.x = node[0].as<float>();
+			rhs.y = node[1].as<float>();
+			rhs.z = node[2].as<float>();
+			rhs.w = node[3].as<float>();
+			return true;
+		}
+	};
+
+	template<>
+	struct convert<glm::mat4>
+	{
+		static Node encode(const glm::mat4& rhs)
+		{
+			Node node;
+			for(uint32_t i = 0; i < 4; i++)
+				for(uint32_t j = 0; j < 4; j++)
+					node.push_back(rhs[i][j]);
+		}
+		static bool decode(const Node& node, glm::mat4& rhs)
+		{
+			if (!node.IsSequence() || node.size() != 4)
+				return false;
+
+			for (uint32_t i = 0; i < 4; i++)
+				for (uint32_t j = 0; j < 4; j++)
+					rhs[i][j] = node[i * 4 + j].as<float>();
+			return true;
+		}
+	};
+
+	template<>
 	struct convert<Volcano::UUID>
 	{
 		static Node encode(const Volcano::UUID& uuid)
@@ -133,6 +180,24 @@ namespace Volcano {
 	{
 		out << YAML::Flow;
 		out << YAML::BeginSeq << v.x << v.y << v.z  << v.w << YAML::EndSeq;
+		return out;
+	}
+
+	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::quat& q)
+	{
+		out << YAML::Flow;
+		out << YAML::BeginSeq << q.x << q.y << q.z << q.w << YAML::EndSeq;
+		return out;
+	}
+
+	YAML::Emitter& operator<<(YAML::Emitter& out, const glm::mat4& m)
+	{
+		out << YAML::Flow;
+		out << YAML::BeginSeq << 
+			m[0][0] << m[0][1] << m[0][2] << m[0][3] <<
+			m[1][0] << m[1][1] << m[1][2] << m[1][3] <<
+			m[2][0] << m[2][1] << m[2][2] << m[2][3] <<
+			m[3][0] << m[3][1] << m[3][2] << m[3][3] << YAML::EndSeq;
 		return out;
 	}
 
@@ -247,22 +312,24 @@ namespace Volcano {
 
 					switch (field.Type)
 					{
-						WRITE_SCRIPT_FIELD(Float,   float    );
-						WRITE_SCRIPT_FIELD(Double,  double   );
-						WRITE_SCRIPT_FIELD(Bool,    bool     );
-						WRITE_SCRIPT_FIELD(Char,    char     );
-						WRITE_SCRIPT_FIELD(Byte,    int8_t   );
-						WRITE_SCRIPT_FIELD(Short,   int16_t  );
-						WRITE_SCRIPT_FIELD(Int,     int32_t  );
-						WRITE_SCRIPT_FIELD(Long,    int64_t  );
-						WRITE_SCRIPT_FIELD(UByte,   uint8_t  );
-						WRITE_SCRIPT_FIELD(UShort,  uint16_t );
-						WRITE_SCRIPT_FIELD(UInt,    uint32_t );
-						WRITE_SCRIPT_FIELD(ULong,   uint64_t );
-						WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
-						WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
-						WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
-						WRITE_SCRIPT_FIELD(Entity,  UUID     );
+						WRITE_SCRIPT_FIELD(Float,      float    );
+						WRITE_SCRIPT_FIELD(Double,     double   );
+						WRITE_SCRIPT_FIELD(Bool,       bool     );
+						WRITE_SCRIPT_FIELD(Char,       char     );
+						WRITE_SCRIPT_FIELD(Byte,       int8_t   );
+						WRITE_SCRIPT_FIELD(Short,      int16_t  );
+						WRITE_SCRIPT_FIELD(Int,        int32_t  );
+						WRITE_SCRIPT_FIELD(Long,       int64_t  );
+						WRITE_SCRIPT_FIELD(UByte,      uint8_t  );
+						WRITE_SCRIPT_FIELD(UShort,     uint16_t );
+						WRITE_SCRIPT_FIELD(UInt,       uint32_t );
+						WRITE_SCRIPT_FIELD(ULong,      uint64_t );
+						WRITE_SCRIPT_FIELD(Vector2,    glm::vec2);
+						WRITE_SCRIPT_FIELD(Vector3,    glm::vec3);
+						WRITE_SCRIPT_FIELD(Vector4,    glm::vec4);
+						WRITE_SCRIPT_FIELD(Quaternion, glm::quat);
+						WRITE_SCRIPT_FIELD(Matrix4x4,  glm::mat4);
+						WRITE_SCRIPT_FIELD(Entity,     UUID     );
 					}
 					out << YAML::EndMap; // ScriptFields
 				}
@@ -298,6 +365,19 @@ namespace Volcano {
 			out << YAML::Key << "Fade" << YAML::Value << circleRendererComponent.Fade;
 
 			out << YAML::EndMap; // CircleRendererComponent
+		}
+
+		if (entity.HasComponent<CubeRendererComponent>())
+		{
+			out << YAML::Key << "CubeRendererComponent";
+			out << YAML::BeginMap;//CubeRendererComponent
+			auto& cubeRendererComponent = entity.GetComponent<CubeRendererComponent>();
+			out << YAML::Key << "Color" << YAML::Value << cubeRendererComponent.Color;
+			if (cubeRendererComponent.Diffuse)
+				out << YAML::Key << "DiffusePath" << YAML::Value << cubeRendererComponent.Diffuse->GetPath();
+			if (cubeRendererComponent.Specular)
+				out << YAML::Key << "SpecularPath" << YAML::Value << cubeRendererComponent.Specular->GetPath();
+			out << YAML::EndMap;//CubeRendererComponent
 		}
 
 		if (entity.HasComponent<Rigidbody2DComponent>())
@@ -473,22 +553,24 @@ namespace Volcano {
 
 								switch (type)
 								{
-									READ_SCRIPT_FIELD(Float,   float    );
-									READ_SCRIPT_FIELD(Double,  double   );
-									READ_SCRIPT_FIELD(Bool,    bool     );
-									READ_SCRIPT_FIELD(Char,    char     );
-									READ_SCRIPT_FIELD(Byte,    int8_t   );
-									READ_SCRIPT_FIELD(Short,   int16_t  );
-									READ_SCRIPT_FIELD(Int,     int32_t  );
-									READ_SCRIPT_FIELD(Long,    int64_t  );
-									READ_SCRIPT_FIELD(UByte,   uint8_t  );
-									READ_SCRIPT_FIELD(UShort,  uint16_t );
-									READ_SCRIPT_FIELD(UInt,    uint32_t );
-									READ_SCRIPT_FIELD(ULong,   uint64_t );
-									READ_SCRIPT_FIELD(Vector2, glm::vec2);
-									READ_SCRIPT_FIELD(Vector3, glm::vec3);
-									READ_SCRIPT_FIELD(Vector4, glm::vec4);
-									READ_SCRIPT_FIELD(Entity,  UUID     );
+									READ_SCRIPT_FIELD(Float,      float    );
+									READ_SCRIPT_FIELD(Double,     double   );
+									READ_SCRIPT_FIELD(Bool,       bool     );
+									READ_SCRIPT_FIELD(Char,       char     );
+									READ_SCRIPT_FIELD(Byte,       int8_t   );
+									READ_SCRIPT_FIELD(Short,      int16_t  );
+									READ_SCRIPT_FIELD(Int,        int32_t  );
+									READ_SCRIPT_FIELD(Long,       int64_t  );
+									READ_SCRIPT_FIELD(UByte,      uint8_t  );
+									READ_SCRIPT_FIELD(UShort,     uint16_t );
+									READ_SCRIPT_FIELD(UInt,       uint32_t );
+									READ_SCRIPT_FIELD(ULong,      uint64_t );
+									READ_SCRIPT_FIELD(Vector2,    glm::vec2);
+									READ_SCRIPT_FIELD(Vector3,    glm::vec3);
+									READ_SCRIPT_FIELD(Vector4,    glm::vec4);
+									READ_SCRIPT_FIELD(Quaternion, glm::quat);
+									READ_SCRIPT_FIELD(Matrix4x4,  glm::mat4);
+									READ_SCRIPT_FIELD(Entity,     UUID     );
 								}
 							}
 						}
@@ -501,7 +583,11 @@ namespace Volcano {
 					auto& src = deserializedEntity.AddComponent<SpriteRendererComponent>();
 					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
 					if (spriteRendererComponent["TexturePath"])
-						src.Texture = Texture2D::Create(spriteRendererComponent["TexturePath"].as<std::string>());
+					{
+						std::string texturePath = spriteRendererComponent["TexturePath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(texturePath);
+						src.Texture = Texture2D::Create(path.string());
+					}
 
 					if (spriteRendererComponent["TilingFactor"])
 						src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
@@ -516,6 +602,25 @@ namespace Volcano {
 						crc.Texture = Texture2D::Create(circleRendererComponent["TexturePath"].as<std::string>());
 					crc.Thickness = circleRendererComponent["Thickness"].as<float>();
 					crc.Fade = circleRendererComponent["Fade"].as<float>();
+				}
+
+				auto cubeRendererComponent = entity["CubeRendererComponent"];
+				if (cubeRendererComponent)
+				{
+					auto& src = deserializedEntity.AddComponent<CubeRendererComponent>();
+					src.Color = cubeRendererComponent["Color"].as<glm::vec4>();
+					if (cubeRendererComponent["DiffusePath"])
+					{
+						std::string diffusePath = cubeRendererComponent["DiffusePath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(diffusePath);
+						src.Diffuse = Texture2D::Create(path.string());
+					}
+					if (cubeRendererComponent["SpecularPath"])
+					{
+						std::string specularPath = cubeRendererComponent["SpecularPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(specularPath);
+						src.Specular = Texture2D::Create(path.string());
+					}
 				}
 
 				auto rigidbody2DComponent = entity["Rigidbody2DComponent"];

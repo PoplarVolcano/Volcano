@@ -101,6 +101,8 @@ namespace Volcano {
 			CompileOrGetVulkanBinaries(shaderSources);
 			CompileOrGetOpenGLBinaries();
 			CreateProgram();
+			// 显示读取shader的时间
+			// 注：每次修改glsl需要删除二进制缓冲文件并重新编译二进制缓冲文件，编译后读取二进制缓冲文件速度特别快
 			VOL_CORE_WARN("Shader creation took {0} ms", timer.ElapsedMillis());
 		}
 		// Extract name from filepath
@@ -250,9 +252,9 @@ namespace Volcano {
 			}
 		}
 
-		// 调用反映函数
-		for (auto&& [stage, data] : shaderData)
-			Reflect(stage, data);
+		// 调用反映函数, 显示shader的uniform buffer
+		//for (auto&& [stage, data] : shaderData)
+		//	Reflect(stage, data);
 	}
 
 	// 将Vulkan的glsl的SPIR - V二进制文件转换为OpenGL的glsl源文件字符串
@@ -386,7 +388,7 @@ namespace Volcano {
 			uint32_t binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 			int memberCount = bufferType.member_types.size();
 
-			VOL_CORE_TRACE("    nage = {0}", resource.name);
+			VOL_CORE_TRACE("    name = {0}", resource.name);
 			VOL_CORE_TRACE("    Size = {0}", bufferSize);
 			VOL_CORE_TRACE("    Binding = {0}", binding);
 			VOL_CORE_TRACE("    Members = {0}", memberCount);

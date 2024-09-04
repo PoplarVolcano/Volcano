@@ -4,7 +4,6 @@
 namespace Volcano {
 
 	EditorLayer::EditorLayer()
-		: m_CameraController(1280.0f / 720.0f, true)
 	{
 	}
 

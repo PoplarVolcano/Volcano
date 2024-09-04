@@ -83,14 +83,6 @@ namespace Volcano {
 		glm::vec4 QuadVertexPosition[4];
 
 		Renderer2D::Statistics Stats;
-
-		struct CameraData
-		{
-			glm::mat4 ViewProjection;
-		};
-		CameraData CameraBuffer;
-		Ref<UniformBuffer> CameraUniformBuffer;
-
 	};
 	static Renderer2DData s_Renderer2DData;
 
@@ -176,7 +168,7 @@ namespace Volcano {
 		s_Renderer2DData.QuadVertexPosition[2] = { 0.5,  0.5, 0.0f, 1.0f };
 		s_Renderer2DData.QuadVertexPosition[3] = { -0.5,  0.5, 0.0f, 1.0f };
 
-		s_Renderer2DData.CameraUniformBuffer = UniformBuffer::Create(sizeof(Renderer2DData::CameraData), 0);
+		s_CameraUniformBuffer = UniformBuffer::Create(sizeof(CameraData), 0);
 
 	}
 
@@ -187,16 +179,16 @@ namespace Volcano {
 
 	void Renderer2D::BeginScene(const EditorCamera& camera)
 	{
-		s_Renderer2DData.CameraBuffer.ViewProjection = camera.GetViewProjection();
-		s_Renderer2DData.CameraUniformBuffer->SetData(&s_Renderer2DData.CameraBuffer, sizeof(Renderer2DData::CameraData));
+		s_CameraBuffer.viewProjection = camera.GetViewProjection();
+		s_CameraUniformBuffer->SetData(&s_CameraBuffer, sizeof(CameraData));
 
 		StartBatch();
 	}
 
 	void Renderer2D::BeginScene(const Camera& camera, const glm::mat4& transform)
 	{
-		s_Renderer2DData.CameraBuffer.ViewProjection = camera.GetProjection() * glm::inverse(transform);
-		s_Renderer2DData.CameraUniformBuffer->SetData(&s_Renderer2DData.CameraBuffer, sizeof(Renderer2DData::CameraData));
+		s_CameraBuffer.viewProjection = camera.GetProjection() * glm::inverse(transform);
+		s_CameraUniformBuffer->SetData(&s_CameraBuffer, sizeof(CameraData));
 
 		StartBatch();
 	}

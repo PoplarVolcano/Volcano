@@ -1,13 +1,9 @@
 #include "volpch.h"
 #include "ScriptGlue.h"
 
-#include "glm/glm.hpp"
-
 #include "ScriptEngine.h"
 
 #include "Volcano/Core/UUID.h"
-#include "Volcano/Core/KeyCodes.h"
-#include "Volcano/Core/Input.h"
 
 #include "Volcano/Scene/Scene.h"
 #include "Volcano/Scene/Entity.h"
@@ -15,7 +11,11 @@
 #include "mono/metadata/object.h"
 #include "mono/metadata/reflection.h"
 
-#include "box2d/b2_body.h"
+#include <Volcano/Core/MouseBuffer.h>
+
+#include "Volcano/Scripting/ComponentRegister.h"
+#include "Volcano/Scripting/MathFRegister.h"
+#include "Volcano/Scripting/InputRegister.h"
 
 namespace Volcano {
 
@@ -29,6 +29,8 @@ namespace Volcano {
 	{
 		return ScriptEngine::GetManagedInstance(entityID);
 	}
+
+	// ==========================================Entity=============================================================
 
 	static bool Entity_HasComponent(UUID entityID, MonoReflectionType* componentType)
 	{
@@ -57,55 +59,20 @@ namespace Volcano {
 		return entity.GetUUID();
 	}
 
-	static void TransformComponent_GetTranslation(UUID entityID, glm::vec3* outTranslation)
-	{
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
-		VOL_CORE_ASSERT(entity);
+	// =======================================MouseBuffer================================================
 
-		*outTranslation = entity.GetComponent<TransformComponent>().Translation;
+	static bool MouseBuffer_GetMouseOnActive()
+	{
+		return MouseBuffer::instance().GetOnActive();
 	}
 
-	static void TransformComponent_SetTranslation(UUID entityID, glm::vec3* translation)
+	static void MouseBuffer_SetMouseOnActive(float* onActive)
 	{
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
-		VOL_CORE_ASSERT(entity);
-
-		entity.GetComponent<TransformComponent>().Translation = *translation;
+		return MouseBuffer::instance().SetOnActive(*onActive);
 	}
 
-	static void Rigidbody2DComponent_ApplyLinearImpulse(UUID entityID, glm::vec2* impulse, glm::vec2* point, bool wake)
-	{
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
-		VOL_CORE_ASSERT(entity);
 
-		auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
-		b2Body* body = (b2Body*)rb2d.RuntimeBody;
-		body->ApplyLinearImpulse(b2Vec2(impulse->x, impulse->y), b2Vec2(point->x, point->y), wake);
-	}
-
-	static void Rigidbody2DComponent_ApplyLinearImpulseToCenter(UUID entityID, glm::vec2* impulse, bool wake)
-	{
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
-		VOL_CORE_ASSERT(entity);
-
-		auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
-		b2Body* body = (b2Body*)rb2d.RuntimeBody;
-		body->ApplyLinearImpulseToCenter(b2Vec2(impulse->x, impulse->y), wake);
-	}
-
-	static bool Input_IsKeyDown(KeyCode keycode)
-	{
-		return Input::IsKeyPressed(keycode);
-	}
-
+	// ================================================Register=========================================
 	template<typename... Component>
 	static void RegisterComponent()
 	{
@@ -143,13 +110,15 @@ namespace Volcano {
 		VOL_ADD_INTERNAL_CALL(GetScriptInstance);
 		VOL_ADD_INTERNAL_CALL(Entity_HasComponent);
 		VOL_ADD_INTERNAL_CALL(Entity_FindEntityByName);
-		VOL_ADD_INTERNAL_CALL(TransformComponent_GetTranslation);
-		VOL_ADD_INTERNAL_CALL(TransformComponent_SetTranslation);
 
-		VOL_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulse);
-		VOL_ADD_INTERNAL_CALL(Rigidbody2DComponent_ApplyLinearImpulseToCenter);
+		ComponentRegister::TransformComponent_RegisterFunctions();
+		ComponentRegister::CameraComponent_RegisterFunctions();
+		ComponentRegister::Rigidbody2DComponent_RegisterFunctions();
+		MathFRegister::MathF_RegisterFunctions();
+		InputRegister::Input_RegisterFunctions();
 
-		VOL_ADD_INTERNAL_CALL(Input_IsKeyDown);
+		VOL_ADD_INTERNAL_CALL(MouseBuffer_GetMouseOnActive);
+		VOL_ADD_INTERNAL_CALL(MouseBuffer_SetMouseOnActive);
 	}
 
 }

@@ -30,4 +30,7 @@
     <ClCompile Include="src\Random.cpp" />
     <ClCompile Include="src\VolcanoNut.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="assets\shaders\Renderer3D_Cube.glsl" />
+  </ItemGroup>
 </Project>

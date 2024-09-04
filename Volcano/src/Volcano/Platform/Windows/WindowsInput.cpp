@@ -15,10 +15,10 @@ namespace Volcano {
 		return state == GLFW_PRESS;
 	}
 
-	bool Input::IsMouseButtonPressed(int button) 
+	bool Input::IsMouseButtonPressed(int mouseButton) 
 	{
 		auto& window = static_cast<WindowsWindow&>(Application::Get().GetWindow());
-		auto state = glfwGetMouseButton(static_cast<GLFWwindow*>(window.GetNativeWindow()), button);
+		auto state = glfwGetMouseButton(static_cast<GLFWwindow*>(window.GetNativeWindow()), mouseButton);
 		return state == GLFW_PRESS;
 	}
 

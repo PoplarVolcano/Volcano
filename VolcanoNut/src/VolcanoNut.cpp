@@ -18,7 +18,7 @@ public:
 Volcano::Application* Volcano::CreateApplication(ApplicationCommandLineArgs args)
 {
 	ApplicationSpecification spec;
-	spec.Name = "Volcanonut";
+	spec.Name = "VolcanoNut";
 	spec.WorkingDirectory = "../VolcanoNut";
 	spec.CommandLineArgs = args;
 

@@ -3,7 +3,6 @@
 #include <glm/glm.hpp>
 
 #include "Volcano/Renderer/Texture.h"
-#include "Volcano/Renderer/OrthographicCamera.h"
 #include "Volcano/Renderer/Camera.h"
 #include "Volcano/Renderer/SubTexture2D.h"
 #include "EditorCamera.h"

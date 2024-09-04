@@ -2,7 +2,7 @@
 #include "Base.h"
 
 
-#define VOLCANO_BUILD_ID "v0.1a"
+#define VOLCANO_BUILD_ID "v1.0"
 
 namespace Volcano {
 
@@ -12,7 +12,7 @@ namespace Volcano {
 		Volcano::Log::Init();
 
 		VOL_CORE_TRACE("Volcano Engine {}", VOLCANO_BUILD_ID);
-		VOL_CORE_TRACE("Initializing...");
+		VOL_CORE_TRACE("Volcano Engine Initializing...");
 	}
 
 	void ShutdownCore()

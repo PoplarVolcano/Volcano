@@ -1,6 +1,7 @@
 #include "volpch.h"
 #include "Renderer.h"
 #include "Renderer2D.h"
+#include "Renderer3D.h"
 
 
 namespace Volcano {
@@ -12,9 +13,14 @@ namespace Volcano {
 	void Renderer::Init()
 	{
 		s_ShaderLibrary = std::make_unique<ShaderLibrary>();
+
+		// 初始化OpenGL配置
 		RendererAPI::Init(); 
 
+		// 初始化2D Shader
 		Renderer2D::Init();
+		// 初始化3D Shader
+		Renderer3D::Init();
 	}
 
 	void Renderer::Shutdown()

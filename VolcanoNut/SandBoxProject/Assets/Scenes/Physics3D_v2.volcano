@@ -1,0 +1,88 @@
+Scene: Untitled
+Entities:
+  - Entity: 6317775628176502329
+    TagComponent:
+      Tag: Box2
+    TransformComponent:
+      Translation: [-0.84585017, 1.91683137, 1.57916272]
+      Rotation: [-0.00859354623, -0.840649307, -0.137065083]
+      Scale: [0.999997497, 0.999999881, 0.99999845]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
+      SpecularPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box_specular.png
+  - Entity: 13347387996840674705
+    TagComponent:
+      Tag: Light
+    TransformComponent:
+      Translation: [1, 1, 1]
+      Rotation: [0, 0, 0]
+      Scale: [0.5, 0.5, 1]
+    CircleRendererComponent:
+      Color: [1, 1, 1, 1]
+      Thickness: 1
+      Fade: 0.00499999989
+  - Entity: 8491344671112352019
+    TagComponent:
+      Tag: Rhodes
+    TransformComponent:
+      Translation: [-0.845062375, 0.162780866, -0.193381757]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Triangle_old.png
+  - Entity: 15549057087361624967
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 0.5, 9]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 0.785398185
+        PerspectiveNear: 0.00100000005
+        PerspectiveFar: 1000
+        OrthographicSize: 10
+        OrthographicNear: -1
+        OrthographicFar: 1
+      Primary: true
+      FixedAspectRatio: true
+    ScriptComponent:
+      ClassName: SandBox.Camera3D
+      ScriptFields:
+        []
+  - Entity: 8785567973427643156
+    TagComponent:
+      Tag: Box
+    TransformComponent:
+      Translation: [0.286376953, 0.778625548, -0.115783721]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
+      SpecularPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box_specular.png
+  - Entity: 4708542106862092861
+    TagComponent:
+      Tag: Box1
+    TransformComponent:
+      Translation: [2.23709321, 1.53305054, -0.115844756]
+      Rotation: [0.833652735, 0.326534182, 0.699074745]
+      Scale: [0.999999881, 0.999999642, 0.999999881]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
+      SpecularPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box_specular.png
+  - Entity: 11390127837943345233
+    TagComponent:
+      Tag: Plane
+    TransformComponent:
+      Translation: [0, -1, 0]
+      Rotation: [0, 0, 0]
+      Scale: [10, 0.5, 10]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
