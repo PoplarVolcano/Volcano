@@ -19,6 +19,8 @@ namespace Volcano {
 
 		virtual const std::string& GetName()const = 0;
 
+		virtual uint32_t GetRendererID() = 0;
+
 		static Ref<Shader> Create(const std::string& filepath);
 		static Ref<Shader> Create(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc);
 	};

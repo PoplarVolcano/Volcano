@@ -1,10 +1,19 @@
 Scene: Untitled
 Entities:
+  - Entity: 497194233680724907
+    TagComponent:
+      Tag: Model
+    TransformComponent:
+      Translation: [0, -0.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [0.200000003, 0.200000003, 0.200000003]
+    ModelRendererComponent:
+      {}
   - Entity: 6317775628176502329
     TagComponent:
       Tag: Box2
     TransformComponent:
-      Translation: [-0.84585017, 1.91683137, 1.57916272]
+      Translation: [-1.54465556, 2.017555, 1.54010177]
       Rotation: [-0.00859354623, -0.840649307, -0.137065083]
       Scale: [0.999997497, 0.999999881, 0.99999845]
     CubeRendererComponent:
@@ -26,7 +35,7 @@ Entities:
     TagComponent:
       Tag: Rhodes
     TransformComponent:
-      Translation: [-0.845062375, 0.162780866, -0.193381757]
+      Translation: [-2, 0, -0.193381757]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     CubeRendererComponent:
@@ -36,7 +45,7 @@ Entities:
     TagComponent:
       Tag: Camera
     TransformComponent:
-      Translation: [0, 0.5, 9]
+      Translation: [0, 2, 4]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     CameraComponent:
@@ -58,7 +67,7 @@ Entities:
     TagComponent:
       Tag: Box
     TransformComponent:
-      Translation: [0.286376953, 0.778625548, -0.115783721]
+      Translation: [-3, 0, -4.5]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     CubeRendererComponent:
@@ -71,18 +80,36 @@ Entities:
     TransformComponent:
       Translation: [2.23709321, 1.53305054, -0.115844756]
       Rotation: [0.833652735, 0.326534182, 0.699074745]
-      Scale: [0.999999881, 0.999999642, 0.999999881]
+      Scale: [0.999999881, 0.999999642, 0.999999583]
     CubeRendererComponent:
       Color: [1, 1, 1, 1]
       DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
       SpecularPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box_specular.png
   - Entity: 11390127837943345233
     TagComponent:
-      Tag: Plane
+      Tag: Floor
     TransformComponent:
       Translation: [0, -1, 0]
       Rotation: [0, 0, 0]
-      Scale: [10, 0.5, 10]
+      Scale: [10, 1, 10]
     CubeRendererComponent:
       Color: [1, 1, 1, 1]
       DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
+  - Entity: 13137941688995177560
+    TagComponent:
+      Tag: Wall1
+    TransformComponent:
+      Translation: [-5.5, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 10, 10]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+  - Entity: 1370942717087224710
+    TagComponent:
+      Tag: Wall2
+    TransformComponent:
+      Translation: [-0.5, 0, -5.5]
+      Rotation: [0, 0, 0]
+      Scale: [10, 10, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]

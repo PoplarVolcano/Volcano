@@ -380,6 +380,14 @@ namespace Volcano {
 			out << YAML::EndMap;//CubeRendererComponent
 		}
 
+		if (entity.HasComponent<ModelRendererComponent>())
+		{
+			out << YAML::Key << "ModelRendererComponent";
+			out << YAML::BeginMap;//ModelRendererComponent
+			//auto& modelRendererComponent = entity.GetComponent<ModelRendererComponent>();
+			out << YAML::EndMap;//CubeRendererComponent
+		}
+
 		if (entity.HasComponent<Rigidbody2DComponent>())
 		{
 			out << YAML::Key << "Rigidbody2DComponent";
@@ -621,6 +629,12 @@ namespace Volcano {
 						auto path = Project::GetAssetFileSystemPath(specularPath);
 						src.Specular = Texture2D::Create(path.string());
 					}
+				}
+
+				auto modelRendererComponent = entity["ModelRendererComponent"];
+				if (modelRendererComponent)
+				{
+					auto& src = deserializedEntity.AddComponent<ModelRendererComponent>();
 				}
 
 				auto rigidbody2DComponent = entity["Rigidbody2DComponent"];

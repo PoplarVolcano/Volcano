@@ -15,7 +15,7 @@ namespace Volcano {
 	{
 		glm::vec3 Position;
 		glm::vec4 Color;
-		glm::vec2 TexCoord;
+		glm::vec2 TexCoords;
 		float TextureIndex;
 		float TilingFactor;
 
@@ -95,7 +95,7 @@ namespace Volcano {
 		s_Renderer2DData.QuadVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position"     },
 			{ ShaderDataType::Float4, "a_Color"        },
-			{ ShaderDataType::Float2, "a_TexCoord"     },
+			{ ShaderDataType::Float2, "a_TexCoords"     },
 			{ ShaderDataType::Float,  "a_TextureIndex" },
 			{ ShaderDataType::Float,  "a_TilingFactor" },
 			{ ShaderDataType::Int,    "a_EntityID"     }
@@ -323,7 +323,7 @@ namespace Volcano {
 		for (uint32_t i = 0; i < 4; i++) {
 			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
 			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
-			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
 			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
 			s_Renderer2DData.QuadVertexBufferPtr++;
@@ -348,7 +348,7 @@ namespace Volcano {
 		for (uint32_t i = 0; i < 4; i++) {
 			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
 			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
-			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
 			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
 			s_Renderer2DData.QuadVertexBufferPtr->EntityID = entityID;
@@ -391,7 +391,7 @@ namespace Volcano {
 		for (uint32_t i = 0; i < 4; i++) {
 			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
 			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
-			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
 			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
 			s_Renderer2DData.QuadVertexBufferPtr->EntityID = entityID;
@@ -533,7 +533,7 @@ namespace Volcano {
 		for (uint32_t i = 0; i < 4; i++) {
 			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
 			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
-			s_Renderer2DData.QuadVertexBufferPtr->TexCoord = textureCoords[i];
+			s_Renderer2DData.QuadVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
 			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
 			s_Renderer2DData.QuadVertexBufferPtr++;

@@ -51,6 +51,10 @@ namespace Volcano {
 				* rotation
 				* glm::scale(glm::mat4(1.0f), Scale);
 		}
+		glm::mat3 GetNormalTransform() const
+		{
+			return  glm::mat3(transpose(inverse(GetTransform())));
+		}
 	};
 
 	struct SpriteRendererComponent
@@ -87,6 +91,15 @@ namespace Volcano {
 		CubeRendererComponent(const glm::vec4 color)
 			: Color(color) {}
 	};
+
+	struct ModelRendererComponent
+	{
+		std::string path;
+
+		ModelRendererComponent() = default;
+		ModelRendererComponent(const ModelRendererComponent&) = default;
+	};
+
 
 	struct CameraComponent
 	{
@@ -193,6 +206,7 @@ namespace Volcano {
 								SpriteRendererComponent,
 								CircleRendererComponent,
 								CubeRendererComponent,
+								ModelRendererComponent,
 								CameraComponent, 
 								ScriptComponent,
 								ScriptComponent,

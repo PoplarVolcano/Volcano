@@ -5,7 +5,7 @@
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec3 a_Normal;
 layout(location = 2) in vec4 a_Color;
-layout(location = 3) in vec2 a_TexCoord;
+layout(location = 3) in vec2 a_TexCoords;
 layout(location = 4) in float a_DiffuseIndex;
 layout(location = 5) in float a_SpecularIndex;
 layout(location = 6) in int a_EntityID;
@@ -21,7 +21,7 @@ struct VertexOutput
 	vec3 Position;
 	vec3 Normal;
 	vec4 Color;
-	vec2 TexCoord;
+	vec2 TexCoords;
 };
 
 layout (location = 0) out flat float v_DiffuseIndex;
@@ -37,7 +37,7 @@ void main()
 	Output.Position = a_Position;
 	Output.Normal = a_Normal;
 	Output.Color = a_Color;
-	Output.TexCoord = a_TexCoord;
+	Output.TexCoords = a_TexCoords;
 
 	gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
 }
@@ -53,7 +53,7 @@ struct VertexOutput
 	vec3 Position;
 	vec3 Normal;
 	vec4 Color;
-	vec2 TexCoord;
+	vec2 TexCoords;
 };
 
 layout (location = 0) in flat float v_DiffuseIndex;
@@ -114,7 +114,7 @@ void main()
 	// Âþ·´ÉäÌùÍ¼
 	int diffuseIndex = int(v_DiffuseIndex);
 	vec4 materialDiffuse = Input.Color;
-	materialDiffuse *= texture(u_Textures[diffuseIndex], Input.TexCoord);
+	materialDiffuse *= texture(u_Textures[diffuseIndex], Input.TexCoords);
 
 	if (materialDiffuse.a == 0.0)
 		discard;
@@ -122,7 +122,7 @@ void main()
 	// ¾µÃæ¹âÌùÍ¼
 	int specularIndex = int(v_SpecularIndex);
 	vec4 materialSpecular = vec4(1.0, 1.0, 1.0, 1.0);
-	materialSpecular *= texture(u_Textures[specularIndex], Input.TexCoord);
+	materialSpecular *= texture(u_Textures[specularIndex], Input.TexCoords);
 	
 	vec3 normal = normalize(Input.Normal);
 	vec3 viewDirection = normalize(u_CameraPosition - Input.Position);

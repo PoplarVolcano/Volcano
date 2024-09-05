@@ -28,6 +28,7 @@ project "VolcanoNut"
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.filewatch}",
+		"%{IncludeDir.assimp}",
 		"%{IncludeDir.entt}"
 	}
 
@@ -46,6 +47,7 @@ project "VolcanoNut"
 		
 	filter "configurations:Debug"
 		defines "VOL_DEBUG"
+		runtime "Debug"
 		symbols "On"
 		
 		links
@@ -60,6 +62,7 @@ project "VolcanoNut"
 
 	filter "configurations:Release"
 		defines "VOL_RELEASE"
+		runtime "Release"
 		symbols "On"
 		
 		links
@@ -74,6 +77,7 @@ project "VolcanoNut"
 
 	filter "configurations:Dist"
 		defines "VOL_DIST"
+		runtime "Release"
 		symbols "On"
 		
 		links

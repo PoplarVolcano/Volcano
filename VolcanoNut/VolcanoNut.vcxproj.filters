@@ -31,6 +31,6 @@
     <ClCompile Include="src\VolcanoNut.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="assets\shaders\Renderer3D_Cube.glsl" />
+    <None Include="assets\shaders\ModelLoading_backup.glsl" />
   </ItemGroup>
 </Project>

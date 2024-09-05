@@ -4,82 +4,16 @@
 #include "VertexArray.h"
 #include "Shader.h"
 #include "UniformBuffer.h"
+#include "Light.h"
 
 namespace Volcano {
 	
-	// 定向光（平行光）
-	struct DirectionalLight
-	{
-		glm::vec3 direction;
-
-		glm::vec3 ambient;
-		glm::vec3 diffuse;
-		glm::vec3 specular;
-	};
-	static DirectionalLight s_DirectionalLightBuffer;
-	static Ref<UniformBuffer> s_DirectionalLightUniformBuffer;
-
-	// 点光源
-	struct PointLight
-	{
-		glm::vec3 position;
-
-		glm::vec3 ambient;
-		glm::vec3 diffuse;
-		glm::vec3 specular;
-
-		float constant;
-		float linear;
-		float quadratic;
-	};
-	static PointLight s_PointLightBuffer;
-	static Ref<UniformBuffer> s_PointLightUniformBuffer;
-
-	// 聚光(手电筒Flashlight)
-	struct SpotLight
-	{
-		glm::vec3 position;
-		glm::vec3 direction;
-		glm::vec3 ambient;
-		glm::vec3 diffuse;
-		glm::vec3 specular;
-
-		float constant;
-		float linear;
-		float quadratic;
-		float cutOff;
-		float outerCutOff;
-
-	};
-	static SpotLight s_SpotLightBuffer;
-	static Ref<UniformBuffer> s_SpotLightUniformBuffer;
-
-	struct Material
-	{
-		float shininess;
-	};
-	static Material s_MaterialBuffer;
-	static Ref<UniformBuffer> s_MaterialUniformBuffer;
-
-
-	struct Test
-	{
-		float f1;
-		glm::vec3 v1;
-		float f2;
-		float f3;
-		float f4;
-	};
-	static Test s_Test;
-	static Ref<UniformBuffer> s_TestUniformBuffer;
-
-
 	struct CubeVertex
 	{
 		glm::vec3 Position;
 		glm::vec3 Normal;
 		glm::vec4 Color;
-		glm::vec2 TexCoord;
+		glm::vec2 TexCoords;
 		float DiffuseIndex;
 		float SpecularIndex;
 
@@ -120,7 +54,7 @@ namespace Volcano {
 			{ ShaderDataType::Float3, "a_Position"     },
 			{ ShaderDataType::Float3, "a_Normal"       },
 			{ ShaderDataType::Float4, "a_Color"        },
-			{ ShaderDataType::Float2, "a_TexCoord"     },
+			{ ShaderDataType::Float2, "a_TexCoords"     },
 			{ ShaderDataType::Float,  "a_DiffuseIndex" },
 			{ ShaderDataType::Float,  "a_SpecularIndex"},
 			{ ShaderDataType::Int,    "a_EntityID"     }
@@ -212,12 +146,12 @@ namespace Volcano {
 			s_Renderer3DData.CubeVertexPosition[7] - s_Renderer3DData.CubeVertexPosition[3]);
 			*/
 
-		s_CameraUniformBuffer = UniformBuffer::Create(4 * 4 * sizeof(float), 0);
-		s_CameraPositionUniformBuffer = UniformBuffer::Create(4 * sizeof(float), 1);
+		s_CameraUniformBuffer           = UniformBuffer::Create(4 * 4 * sizeof(float), 0);
+		s_CameraPositionUniformBuffer   = UniformBuffer::Create(4 * sizeof(float), 1);
 		s_DirectionalLightUniformBuffer = UniformBuffer::Create((4 + 4 + 4 + 4) * sizeof(float), 2);
-		s_PointLightUniformBuffer = UniformBuffer::Create((4 + 4 + 4 + 4 + 1 + 1 + 1) * sizeof(float), 3);
-		s_SpotLightUniformBuffer = UniformBuffer::Create((4 * 5 + 4 * 5) * sizeof(float), 4);
-		s_MaterialUniformBuffer = UniformBuffer::Create(sizeof(float), 5);
+		s_PointLightUniformBuffer       = UniformBuffer::Create((4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float), 3);
+		s_SpotLightUniformBuffer        = UniformBuffer::Create((4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
+		s_MaterialUniformBuffer         = UniformBuffer::Create(sizeof(float), 5);
 	}
 
 	void Renderer3D::Shutdown()
@@ -331,10 +265,11 @@ namespace Volcano {
 	void Renderer3D::DrawCube(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color)
 	{
 		glm::mat4 transform = glm::translate(glm::mat4(1.0f), position) * glm::scale(glm::mat4(1.0f), { size.x, size.y, 1.0f });
-		DrawCube(transform, color);
+		glm::mat3 normalTransform = glm::mat3(transpose(inverse(transform)));
+		DrawCube(transform, normalTransform, color);
 	}
 
-	void Renderer3D::DrawCube(const glm::mat4& transform, const glm::vec4& color, int entityID)
+	void Renderer3D::DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const glm::vec4& color, int entityID)
 	{
 		if (s_Renderer3DData.CubeIndexCount >= Renderer3DData::MaxIndices)
 			NextBatch();
@@ -364,9 +299,9 @@ namespace Volcano {
 		for (uint32_t i = 0; i < vertexsSize; i++) {
 			s_Renderer3DData.CubeVertexBufferPtr->Position = transform * glm::vec4(s_Renderer3DData.CubeVertexPosition[cubeVertexs[i]], 1.0f);
 			// 模型矩阵左上角3x3部分的逆矩阵的转置矩阵，用于解决不等比缩放导致的法向量不垂直于平面
-			s_Renderer3DData.CubeVertexBufferPtr->Normal = glm::mat3(transpose(inverse(transform))) * s_Renderer3DData.CubeNormal[i / 4];
+			s_Renderer3DData.CubeVertexBufferPtr->Normal = normalTransform * s_Renderer3DData.CubeNormal[i / 4];
 			s_Renderer3DData.CubeVertexBufferPtr->Color = color;
-			s_Renderer3DData.CubeVertexBufferPtr->TexCoord = textureCoords[i % 4];
+			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i % 4];
 			s_Renderer3DData.CubeVertexBufferPtr->DiffuseIndex = diffuseIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->SpecularIndex = specularIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->EntityID = entityID;
@@ -376,7 +311,7 @@ namespace Volcano {
 		s_Renderer3DData.CubeIndexCount += 36;
 	}
 
-	void Renderer3D::DrawCube(const glm::mat4& transform, const Ref<Texture2D>& diffuse, const Ref<Texture2D>& specular, const glm::vec4& color, int entityID)
+	void Renderer3D::DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const Ref<Texture2D>& diffuse, const Ref<Texture2D>& specular, const glm::vec4& color, int entityID)
 	{
 		if (s_Renderer3DData.CubeIndexCount >= Renderer3DData::MaxIndices)
 			NextBatch();
@@ -448,9 +383,9 @@ namespace Volcano {
 		const uint32_t vertexsSize = sizeof(cubeVertexs) / sizeof(uint32_t);
 		for (uint32_t i = 0; i < 24; i++) {
 			s_Renderer3DData.CubeVertexBufferPtr->Position = transform * glm::vec4(s_Renderer3DData.CubeVertexPosition[cubeVertexs[i]], 1.0f);
-			s_Renderer3DData.CubeVertexBufferPtr->Normal = glm::mat3(transpose(inverse(transform))) * s_Renderer3DData.CubeNormal[i / 4];
+			s_Renderer3DData.CubeVertexBufferPtr->Normal = normalTransform * s_Renderer3DData.CubeNormal[i / 4];
 			s_Renderer3DData.CubeVertexBufferPtr->Color = color;
-			s_Renderer3DData.CubeVertexBufferPtr->TexCoord = textureCoords[i % 4];
+			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i % 4];
 			s_Renderer3DData.CubeVertexBufferPtr->DiffuseIndex = diffuseIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->SpecularIndex = specularIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->EntityID = entityID;
@@ -460,12 +395,12 @@ namespace Volcano {
 		s_Renderer3DData.CubeIndexCount += 36;
 	}
 
-	void Renderer3D::DrawCube(const glm::mat4& transform, CubeRendererComponent& crc, int entityID)
+	void Renderer3D::DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, CubeRendererComponent& crc, int entityID)
 	{
 		if (crc.Diffuse)
-			DrawCube(transform, crc.Diffuse, crc.Specular, crc.Color, entityID);
+			DrawCube(transform, normalTransform, crc.Diffuse, crc.Specular, crc.Color, entityID);
 		else
-			DrawCube(transform, crc.Color, entityID);
+			DrawCube(transform, normalTransform, crc.Color, entityID);
 	}
 
 }

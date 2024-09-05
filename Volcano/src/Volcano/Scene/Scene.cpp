@@ -6,6 +6,7 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Renderer/Renderer2D.h"
 #include "Volcano/Renderer/Renderer3D.h"
+#include "Volcano/Renderer/RendererModel.h"
 #include "Volcano/Physics/Physics2D.h"
 
 #include "glm/glm.hpp"
@@ -391,6 +392,7 @@ namespace Volcano {
 	{
 		Renderer2D::BeginScene(camera, transform);
 		Renderer3D::BeginScene(camera, transform, position, direction);
+		RendererModel::BeginScene(camera, transform, position, direction);
 
 		// Draw sprites
 		{
@@ -418,9 +420,21 @@ namespace Volcano {
 			for (auto entity : view)
 			{
 				auto [transform, cube] = view.get<TransformComponent, CubeRendererComponent>(entity);
-				Renderer3D::DrawCube(transform.GetTransform(), cube, (int)entity);
+				Renderer3D::DrawCube(transform.GetTransform(), transform.GetNormalTransform(), cube, (int)entity);
 			}
 		}
+
+		// Draw model
+		{
+			auto view = m_Registry.view<TransformComponent,ModelRendererComponent>();
+			for (auto entity : view)
+			{
+				auto [transform, model] = view.get<TransformComponent, ModelRendererComponent>(entity);
+				RendererModel::DrawModel(transform.GetTransform(), transform.GetNormalTransform(), (int)entity);
+			}
+		}
+
+		RendererModel::EndScene();
 
 		Renderer2D::EndScene();
 		Renderer3D::EndScene();
@@ -469,6 +483,11 @@ namespace Volcano {
 
 	template<>
 	void Scene::OnComponentAdded<CubeRendererComponent>(Entity entity, CubeRendererComponent& component)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<ModelRendererComponent>(Entity entity, ModelRendererComponent& component)
 	{
 	}
 

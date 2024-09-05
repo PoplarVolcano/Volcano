@@ -251,6 +251,7 @@ namespace Volcano {
 			DisplayAddComponentEntry<SpriteRendererComponent>("Sprite Renderer");
 			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
 			DisplayAddComponentEntry<CubeRendererComponent>("Cube Renderer");
+			DisplayAddComponentEntry<ModelRendererComponent>("Model Renderer");
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
 			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
 			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");
@@ -482,6 +483,11 @@ namespace Volcano {
 					}
 					ImGui::EndDragDropTarget();
 				}
+			});
+
+		DrawComponent<ModelRendererComponent>("Model Renderer", entity, [](auto& component)
+			{
+
 			});
 
 		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity, [](auto& component)

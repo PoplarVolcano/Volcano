@@ -2,6 +2,7 @@
 #include "Renderer.h"
 #include "Renderer2D.h"
 #include "Renderer3D.h"
+#include "RendererModel.h"
 
 
 namespace Volcano {
@@ -21,6 +22,8 @@ namespace Volcano {
 		Renderer2D::Init();
 		// ≥ı ºªØ3D Shader
 		Renderer3D::Init();
+		RendererModel::Init();
+
 	}
 
 	void Renderer::Shutdown()

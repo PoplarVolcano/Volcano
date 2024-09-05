@@ -16,12 +16,12 @@ namespace Volcano {
 		return nullptr;
 	}
 
-	Ref<Texture2D> Texture2D::Create(const std::string& path, bool srgb)
+	Ref<Texture2D> Texture2D::Create(const std::string& path, bool filp)
 	{
 		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::None:    VOL_CORE_ASSERT(false, "Texture2D：API为None不支持"); return nullptr;
-			case RendererAPIType::OpenGL:  return  std::make_shared<OpenGLTexture2D>(path, srgb);
+			case RendererAPIType::OpenGL:  return  std::make_shared<OpenGLTexture2D>(path, filp);
 		}
 		VOL_CORE_ASSERT(false, "Buffer：未知API");
 		return nullptr;

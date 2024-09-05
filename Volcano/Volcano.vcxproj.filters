@@ -204,6 +204,15 @@
     <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Light.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Mesh.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\Model.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Renderer.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
@@ -214,6 +223,9 @@
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererModel.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Shader.h">
@@ -250,6 +262,12 @@
       <Filter>src\Volcano\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Scripting\ComponentRegister.h">
+      <Filter>src\Volcano\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Scripting\InputRegister.h">
+      <Filter>src\Volcano\Scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Scripting\MathFRegister.h">
       <Filter>src\Volcano\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Scripting\ScriptEngine.h">
@@ -1515,8 +1533,6 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Scripting\MathFRegister.h" />
-    <ClInclude Include="src\Volcano\Scripting\InputRegister.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1609,6 +1625,12 @@
     <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Mesh.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Model.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
@@ -1616,6 +1638,9 @@
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Renderer3D.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererModel.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Shader.cpp">
@@ -1645,11 +1670,20 @@
     <ClCompile Include="src\Volcano\Scene\SceneSerializer.cpp">
       <Filter>src\Volcano\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Scripting\Component\CameraComponent.cpp">
+      <Filter>src\Volcano\Scripting\Component</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Scripting\Component\Rigidbody2DComponent.cpp">
       <Filter>src\Volcano\Scripting\Component</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Scripting\Component\TransformComponent.cpp">
       <Filter>src\Volcano\Scripting\Component</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Scripting\InputRegister.cpp">
+      <Filter>src\Volcano\Scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Scripting\MathFRegister.cpp">
+      <Filter>src\Volcano\Scripting</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Scripting\ScriptEngine.cpp">
       <Filter>src\Volcano\Scripting</Filter>
@@ -1660,8 +1694,5 @@
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Scripting\MathFRegister.cpp" />
-    <ClCompile Include="src\Volcano\Scripting\InputRegister.cpp" />
-    <ClCompile Include="src\Volcano\Scripting\Component\CameraComponent.cpp" />
   </ItemGroup>
 </Project>

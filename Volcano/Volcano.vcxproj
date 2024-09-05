@@ -177,10 +177,14 @@
     <ClInclude Include="src\Volcano\Renderer\EditorCamera.h" />
     <ClInclude Include="src\Volcano\Renderer\Framebuffer.h" />
     <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h" />
+    <ClInclude Include="src\Volcano\Renderer\Light.h" />
+    <ClInclude Include="src\Volcano\Renderer\Mesh.h" />
+    <ClInclude Include="src\Volcano\Renderer\Model.h" />
     <ClInclude Include="src\Volcano\Renderer\Renderer.h" />
     <ClInclude Include="src\Volcano\Renderer\Renderer2D.h" />
     <ClInclude Include="src\Volcano\Renderer\Renderer3D.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererModel.h" />
     <ClInclude Include="src\Volcano\Renderer\Shader.h" />
     <ClInclude Include="src\Volcano\Renderer\SubTexture2D.h" />
     <ClInclude Include="src\Volcano\Renderer\Texture.h" />
@@ -650,9 +654,12 @@
     <ClCompile Include="src\Volcano\Renderer\EditorCamera.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Mesh.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Model.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer3D.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererModel.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Shader.cpp" />
     <ClCompile Include="src\Volcano\Renderer\SubTexture2D.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Texture.cpp" />

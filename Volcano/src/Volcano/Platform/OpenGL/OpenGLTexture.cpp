@@ -23,7 +23,7 @@ namespace Volcano {
 		///告诉OpenGLm_RendererID的纹理存储的是rbg8位，宽高的缓冲区
 		glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
 		//配置参数:纹理放大时用周围颜色的平均值过滤
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -32,11 +32,13 @@ namespace Volcano {
 
 	}
 
-	OpenGLTexture2D::OpenGLTexture2D(const std::string& path, bool srgb)
+	// 图像文件相对路径
+	OpenGLTexture2D::OpenGLTexture2D(const std::string& path, bool filp)
 		: m_FilePath(path)
 	{
 		int width, height, channels;
-		stbi_set_flip_vertically_on_load(1);//翻转
+		if(filp)
+			stbi_set_flip_vertically_on_load(1);//翻转
 		// 输出参数:x,y图像的尺寸, channels_in_file文件中的通道数, desired_channels把图像转换为所需格式
 		stbi_uc* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
 		VOL_CORE_ASSERT(data, "图片加载错误");
@@ -66,7 +68,8 @@ namespace Volcano {
 		glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
 		// 设置纹理参数, GL_TEXTURE_MIN_FILTER用什么样的过滤来缩小, 
 		// GL_LINEAR linear filtering 线性滤波（用线性插值计算想要什么颜色）
-		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glGenerateMipmap(GL_TEXTURE_2D);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		// 释放data存储在CPU上的内存
 		stbi_image_free(data);
