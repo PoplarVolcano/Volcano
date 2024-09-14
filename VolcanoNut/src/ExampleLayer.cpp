@@ -13,6 +13,7 @@
 #include "Volcano/Math/Math.h"
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/MouseBuffer.h"
+#include "Volcano/Core/Window.h"
 
 namespace Volcano{
 
@@ -58,22 +59,30 @@ namespace Volcano{
 
     void ExampleLayer::OnAttach()
     {
-        m_IconPlay     = Texture2D::Create("Resources/Icons/PlayButton.png");
-        m_IconPause    = Texture2D::Create("Resources/Icons/PauseButton.png");
-        m_IconStop     = Texture2D::Create("Resources/Icons/StopButton.png");
+        m_IconPlay = Texture2D::Create("Resources/Icons/PlayButton.png");
+        m_IconPause = Texture2D::Create("Resources/Icons/PauseButton.png");
+        m_IconStop = Texture2D::Create("Resources/Icons/StopButton.png");
         m_IconSimulate = Texture2D::Create("Resources/Icons/SimulateButton.png");
-        m_IconStep     = Texture2D::Create("Resources/Icons/StepButton.png");
+        m_IconStep = Texture2D::Create("Resources/Icons/StepButton.png");
 
         FramebufferSpecification fbSpec;
-        fbSpec.Attachments = { 
+        fbSpec.Attachments = {
             FramebufferTextureFormat::RGBA8,
             FramebufferTextureFormat::RED_INTEGER,
-            FramebufferTextureFormat::Depth 
+            FramebufferTextureFormat::Depth     //添加一个深度附件，默认Depth = DEPTH24STENCIL8
         };
-        fbSpec.Width = 1280;
+        fbSpec.Width  = 1280;
         fbSpec.Height = 720;
         m_Framebuffer = Framebuffer::Create(fbSpec);
 
+        
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::DEPTH_COMPONENT
+        };
+        fbSpec.Width  = 1024;
+        fbSpec.Height = 1024;
+        m_DepthMapFramebuffer = Framebuffer::Create(fbSpec);
+        
         // 初始化场景
         m_EditorScene = CreateRef<Scene>();
         m_ActiveScene = m_EditorScene;
@@ -96,6 +105,31 @@ namespace Volcano{
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
 
         Renderer2D::SetLineWidth(4.0f);
+
+        // 将FrameBuffer的图像放到window上
+        
+        m_WindowVertex[0].Position = { -1.0, -1.0, 0.0f };
+        m_WindowVertex[1].Position = {  1.0, -1.0, 0.0f };
+        m_WindowVertex[2].Position = {  1.0,  1.0, 0.0f };
+        m_WindowVertex[3].Position = { -1.0,  1.0, 0.0f };
+        m_WindowVertex[0].TextureCoords = { 0.0f, 0.0f };
+        m_WindowVertex[1].TextureCoords = { 1.0f, 0.0f };
+        m_WindowVertex[2].TextureCoords = { 1.0f, 1.0f };
+        m_WindowVertex[3].TextureCoords = { 0.0f, 1.0f };
+
+        windowVa = VertexArray::Create();
+        Ref<VertexBuffer> windowVb = VertexBuffer::Create((void*)&m_WindowVertex[0], sizeof(m_WindowVertex));
+        windowVb->SetLayout({
+            { ShaderDataType::Float3, "a_Position"     },
+            { ShaderDataType::Float2, "a_TexCoords"    }
+            });
+        windowVa->AddVertexBuffer(windowVb);
+        uint32_t indices[] = {0, 1, 2, 2, 3 ,0};
+        Ref<IndexBuffer> windowIb = IndexBuffer::Create(indices, sizeof(indices) / sizeof(uint32_t));;
+        windowVa->SetIndexBuffer(windowIb);
+        m_WindowShader = Renderer::GetShaderLibrary()->Get("window");
+        
+        
     }
 
     void ExampleLayer::OnDetach()
@@ -123,13 +157,7 @@ namespace Volcano{
         // 重置渲染计数
         Renderer2D::ResetStats();
 
-        m_Framebuffer->Bind();
-        Renderer::SetClearColor(0.2f, 0.2f, 0.2f, 1);
-        Renderer::Clear();
-
-        // Clear entity ID atachement to -1
-        m_Framebuffer->ClearAttachment(1, -1);
-
+        // 场景更新
         switch (m_SceneState)
         {
             case SceneState::Edit:
@@ -151,23 +179,110 @@ namespace Volcano{
             }
         }
 
-        auto [mx, my] = ImGui::GetMousePos();
-        // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
-        mx -= m_ViewportBounds[0].x;
-        my -= m_ViewportBounds[0].y;
-        // viewport窗口的右下角绝对位置-左上角的绝对位置=viewport窗口的大小
-        glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
-        // 翻转y,使其左下角开始才是(0,0)
-        my = viewportSize.y - my;
-        int mouseX = (int)mx;
-        int mouseY = (int)my;
+        Renderer::SetClearColor(0.2f, 0.2f, 0.2f, 1);
 
-        if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
+        // 渲染阴影
+        m_DepthMapFramebuffer->Bind();
         {
-            // 读取帧缓冲第二个缓冲区的数据
-            int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
-            m_HoveredEntity = pixelData == -1 ? Entity() : Entity({ (entt::entity)pixelData, m_ActiveScene.get() });
+            Renderer::Clear();
+
+            //RendererAPI::SetCullFaceFunc(CullFaceFunc::FRONT);
+
+            m_ActiveScene->SetShadow(true);
+            switch (m_SceneState)
+            {
+                case SceneState::Edit:
+                {
+                    m_ActiveScene->OnRenderEditor(ts, m_EditorCamera);
+                    break;
+                }
+                case SceneState::Simulate:
+                {
+                    m_ActiveScene->OnRenderSimulation(ts, m_EditorCamera);
+                    break;
+                }
+                case SceneState::Play:
+                {
+                    m_ActiveScene->OnRenderRuntime(ts);
+                    break;
+                }
+            }
+            m_ActiveScene->SetShadow(false);
+            //RendererAPI::SetCullFaceFunc(CullFaceFunc::BACK);
+
+            m_DepthMapFramebuffer->Unbind();
         }
+
+        // 把深度贴图绑定到31号纹理槽，所有shader读取阴影都读取31号槽
+        Texture::Bind(m_DepthMapFramebuffer->GetDepthAttachmentRendererID(), 31);
+
+        
+        m_Framebuffer->Bind();
+        {
+            Renderer::Clear();
+
+            // Clear entity ID attachment to -1
+            m_Framebuffer->ClearAttachment(1, -1);
+
+            switch (m_SceneState)
+            {
+            case SceneState::Edit:
+            {
+                m_ActiveScene->OnRenderEditor(ts, m_EditorCamera);
+                break;
+            }
+            case SceneState::Simulate:
+            {
+                m_ActiveScene->OnRenderSimulation(ts, m_EditorCamera);
+                break;
+            }
+            case SceneState::Play:
+            {
+                m_ActiveScene->OnRenderRuntime(ts);
+                break;
+            }
+            }
+
+            auto [mx, my] = ImGui::GetMousePos();
+            // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
+            mx -= m_ViewportBounds[0].x;
+            my -= m_ViewportBounds[0].y;
+            // viewport窗口的右下角绝对位置-左上角的绝对位置=viewport窗口的大小
+            glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
+            // 翻转y,使其左下角开始才是(0,0)
+            my = viewportSize.y - my;
+            int mouseX = (int)mx;
+            int mouseY = (int)my;
+
+            if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
+            {
+                // 读取帧缓冲第二个缓冲区的数据
+                int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
+                m_HoveredEntity = pixelData == -1 ? Entity() : Entity({ (entt::entity)pixelData, m_ActiveScene.get() });
+            }
+
+
+            // 覆盖层
+            OnOverlayRender();
+
+            m_Framebuffer->Unbind();
+        }
+        
+
+        
+        // 将FrameBuffer的图像放到window上
+        // 还原视图尺寸
+        Application::Get().GetWindow().ResetViewport();
+        // TODO: 帧缓冲画面会被拉伸至视图尺寸，参考ShaderToy代码将画面保持正常尺寸
+        m_WindowShader->Bind();
+        //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
+        uint32_t windowTextureID = m_DepthMapFramebuffer->GetDepthAttachmentRendererID();
+        //uint32_t windowTextureID = m_Framebuffer->GetDepthAttachmentRendererID();
+        Texture::Bind(windowTextureID, 0);
+        Renderer::SetDepthTest(false);
+        Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+        Renderer::SetDepthTest(true);
+        
 
         // Particle Scene
         /*
@@ -193,11 +308,6 @@ namespace Volcano{
             Renderer2D::EndScene();
         }
         */
-
-        // 覆盖层
-        OnOverlayRender();
-
-        m_Framebuffer->Unbind();
     }
 
     void ExampleLayer::OnImGuiRender()

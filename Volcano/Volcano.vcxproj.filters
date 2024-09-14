@@ -207,10 +207,10 @@
     <ClInclude Include="src\Volcano\Renderer\Light.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\Mesh.h">
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Mesh.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\Model.h">
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Model.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Renderer.h">
@@ -1533,6 +1533,8 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Skybox.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Shadow.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1625,10 +1627,10 @@
     <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\Mesh.cpp">
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Mesh.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\Model.cpp">
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Model.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp">
@@ -1694,5 +1696,8 @@
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Skybox.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Shadow.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\Light.cpp" />
   </ItemGroup>
 </Project>

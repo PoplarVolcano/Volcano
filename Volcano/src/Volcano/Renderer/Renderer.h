@@ -25,6 +25,8 @@ namespace Volcano {
 		static void DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount);
 		static void SetLineWidth(float width);
 
+		static void SetDepthTest(bool depthTest);
+
 		static const Scope<ShaderLibrary>& GetShaderLibrary();
 	};
 }

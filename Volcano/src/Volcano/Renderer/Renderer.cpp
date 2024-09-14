@@ -3,6 +3,8 @@
 #include "Renderer2D.h"
 #include "Renderer3D.h"
 #include "RendererModel.h"
+#include "RendererItem/Skybox.h"
+#include "RendererItem/Shadow.h"
 
 
 namespace Volcano {
@@ -23,7 +25,8 @@ namespace Volcano {
 		// ≥ı ºªØ3D Shader
 		Renderer3D::Init();
 		RendererModel::Init();
-
+		Skybox::Init();
+		Shadow::Init();
 	}
 
 	void Renderer::Shutdown()
@@ -69,5 +72,9 @@ namespace Volcano {
 	void Renderer::SetClearColor(float r, float g, float b, float a)
 	{
 		RendererAPI::SetClearColor(r, g, b, a);
+	}
+	void Renderer::SetDepthTest(bool depthTest)
+	{
+		RendererAPI::SetDepthTest(depthTest);
 	}
 }

@@ -31,6 +31,9 @@
     <ClCompile Include="src\VolcanoNut.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="assets\shaders\ModelLoading_backup.glsl" />
+    <None Include="assets\shaders\model\Asteroids.glsl" />
+    <None Include="assets\shaders\model\Planet.glsl" />
+    <None Include="assets\shaders\shadow\ShadowMappingDepth.glsl" />
+    <None Include="assets\shaders\shadow\ShadowMapping.glsl" />
   </ItemGroup>
 </Project>

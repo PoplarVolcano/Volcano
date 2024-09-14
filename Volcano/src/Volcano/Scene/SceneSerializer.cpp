@@ -257,6 +257,26 @@ namespace Volcano {
 			out << YAML::EndMap;//TransformComponent
 		}
 
+		if (entity.HasComponent<LightComponent>())
+		{
+			out << YAML::Key << "LightComponent";
+			out << YAML::BeginMap;//LightComponent
+
+			auto& lightComponent = entity.GetComponent<LightComponent>();
+
+			out << YAML::Key << "Type"        << YAML::Value << (int)lightComponent.Type;
+			out << YAML::Key << "Ambient"     << YAML::Value << lightComponent.Ambient;
+			out << YAML::Key << "Diffuse"     << YAML::Value << lightComponent.Diffuse;
+			out << YAML::Key << "Specular"    << YAML::Value << lightComponent.Specular;
+			out << YAML::Key << "Constant"    << YAML::Value << lightComponent.Constant;
+			out << YAML::Key << "Linear"      << YAML::Value << lightComponent.Linear;
+			out << YAML::Key << "Quadratic"   << YAML::Value << lightComponent.Quadratic;
+			out << YAML::Key << "CutOff"      << YAML::Value << lightComponent.CutOff;
+			out << YAML::Key << "OuterCutOff" << YAML::Value << lightComponent.OuterCutOff;
+
+			out << YAML::EndMap;//LightComponent
+		}
+
 		if (entity.HasComponent<CameraComponent>())
 		{
 			out << YAML::Key << "CameraComponent";
@@ -384,8 +404,10 @@ namespace Volcano {
 		{
 			out << YAML::Key << "ModelRendererComponent";
 			out << YAML::BeginMap;//ModelRendererComponent
-			//auto& modelRendererComponent = entity.GetComponent<ModelRendererComponent>();
-			out << YAML::EndMap;//CubeRendererComponent
+			auto& modelRendererComponent = entity.GetComponent<ModelRendererComponent>();
+			if (!modelRendererComponent.ModelPath.empty())
+				out << YAML::Key << "ModelPath" << YAML::Value << modelRendererComponent.ModelPath;
+			out << YAML::EndMap;//ModelRendererComponent
 		}
 
 		if (entity.HasComponent<Rigidbody2DComponent>())
@@ -506,6 +528,21 @@ namespace Volcano {
 					tc.Translation = transformComponent["Translation"].as<glm::vec3>();
 					tc.Rotation = transformComponent["Rotation"].as<glm::vec3>();
 					tc.Scale = transformComponent["Scale"].as<glm::vec3>();
+				}
+
+				auto lightComponent = entity["LightComponent"];
+				if (lightComponent)
+				{
+					auto& lc = deserializedEntity.AddComponent<LightComponent>();
+					lc.Type = (LightComponent::LightType)lightComponent["Type"].as<int>();
+					lc.Ambient = lightComponent["Ambient"].as<glm::vec3>();
+					lc.Diffuse = lightComponent["Diffuse"].as<glm::vec3>();
+					lc.Specular = lightComponent["Specular"].as<glm::vec3>();
+					lc.Constant = lightComponent["Constant"].as<float>();
+					lc.Linear = lightComponent["Linear"].as<float>();
+					lc.Quadratic = lightComponent["Quadratic"].as<float>();
+					lc.CutOff = lightComponent["CutOff"].as<float>();
+					lc.OuterCutOff = lightComponent["OuterCutOff"].as<float>();
 				}
 
 				auto cameraComponent = entity["CameraComponent"];
@@ -634,7 +671,9 @@ namespace Volcano {
 				auto modelRendererComponent = entity["ModelRendererComponent"];
 				if (modelRendererComponent)
 				{
-					auto& src = deserializedEntity.AddComponent<ModelRendererComponent>();
+					auto& mrc = deserializedEntity.AddComponent<ModelRendererComponent>();
+					std::string specularPath = modelRendererComponent["ModelPath"].as<std::string>();
+					mrc.ModelPath = specularPath;
 				}
 
 				auto rigidbody2DComponent = entity["Rigidbody2DComponent"];

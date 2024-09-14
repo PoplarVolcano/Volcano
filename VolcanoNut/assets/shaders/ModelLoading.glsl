@@ -13,13 +13,23 @@ layout(std140, binding = 0) uniform Camera
 	mat4 u_ViewProjection;
 };
 
+layout(std140, binding = 6) uniform Transform
+{
+	mat4 u_Transform;
+	mat3 u_NormalTransform;
+};
+
+layout(std140, binding = 8) uniform LightSpaceMatrix
+{
+	mat4 u_LightSpaceMatrix;
+};
+
 struct VertexOutput
 {
 	vec3 Position;
-	vec3 Normal;
 	vec2 TexCoords;
-	vec3 Tangent;
-	vec3 Bitangent;
+    vec4 PositionLightSpace;
+	mat3 TBN;
 };
 
 layout (location = 0) out flat int v_EntityID;
@@ -27,14 +37,23 @@ layout (location = 1) out VertexOutput Output;
 
 void main()
 {
-	v_EntityID = a_EntityID;
-	Output.Position = a_Position;
-	Output.Normal = a_Normal;
-	Output.TexCoords = a_TexCoords;
-	Output.Tangent = a_Tangent;
-	Output.Bitangent = a_Bitangent;
+	//vec4 position = u_Transform * vec4(a_Position, 1.0);
+	vec4 position = vec4(a_Position, 1.0);
+    gl_Position = u_ViewProjection * position;
+	
+	//vec3 T = normalize(u_NormalTransform * a_Tangent);
+    //vec3 B = normalize(u_NormalTransform * a_Bitangent);
+    //vec3 N = normalize(u_NormalTransform * a_Normal);
+	vec3 T = normalize(a_Tangent);
+    vec3 B = normalize(a_Bitangent);
+    vec3 N = normalize(a_Normal);
+	mat3 TBN = mat3(T, B, N);
 
-    gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
+	v_EntityID = a_EntityID;
+	Output.Position = position.rgb;
+	Output.TexCoords = a_TexCoords;
+	Output.PositionLightSpace = u_LightSpaceMatrix * vec4(Output.Position, 1.0);
+	Output.TBN = TBN;
 }
 
 #type fragment
@@ -46,19 +65,15 @@ layout(location = 1) out int o_EntityID;
 struct VertexOutput
 {
 	vec3 Position;
-	vec3 Normal;
 	vec2 TexCoords;
-	vec3 Tangent;
-	vec3 Bitangent;
+    vec4 PositionLightSpace;
+	mat3 TBN;
 };
 
 layout (location = 0) in flat int v_EntityID;
 layout (location = 1) in VertexOutput Input;
 
-layout (binding = 0) uniform sampler2D texture_diffuse1;
-layout (binding = 1) uniform sampler2D texture_specular1;
-layout (binding = 2) uniform sampler2D texture_normal1;
-layout (binding = 3) uniform sampler2D texture_height1;
+layout (binding = 0) uniform sampler2D u_Textures[32];
 
 
 layout(std140, binding = 1) uniform CameraPosition
@@ -108,42 +123,36 @@ layout (std140, binding = 5) uniform Material
 
 void main()
 {
-	vec4 materialDiffuse = texture(texture_diffuse1, Input.TexCoords);
+	vec4 materialDiffuse = texture(u_Textures[0], Input.TexCoords);
+	vec4 materialSpecular = texture(u_Textures[1], Input.TexCoords);
+	vec4 materialNormal = texture(u_Textures[2], Input.TexCoords);
 
-	vec4 materialSpecular = texture(texture_specular1, Input.TexCoords);
-	
-	vec4 materialNormal = texture(texture_normal1, Input.TexCoords);
-
-	vec3 T = normalize(Input.Tangent);
-    //vec3 B = normalize(Input.Bitangent);
-
-    vec3 N = normalize(Input.Normal);
-	vec3 B = cross(N, T);
-	// 切线空间矩阵
-	mat3 TBN = mat3(T, B, N);
-	// 求逆，正交矩阵的逆就是转置
-	// TBN = transpose(TBN);
 	vec3 normal = normalize(materialNormal.rgb * 2.0 - 1.0);
-	// 将法线贴图从切线空间转换到世界空间
-	normal = normalize(TBN * normal);
+	normal = normalize(Input.TBN * normal);
 
 	vec3 viewDirection = normalize(u_CameraPosition - Input.Position);
-
-	vec3 result = vec3(0.0, 0.0, 0.0);
+	
+	vec3 Ambient  = vec3(0.0, 0.0, 0.0);
+	vec3 Diffuse  = vec3(0.0, 0.0, 0.0);
+	vec3 Specular = vec3(0.0, 0.0, 0.0);
 
 	// DirectionalLight
 	{
 		vec3 lightDirection = normalize(-u_DirectionalLightDirection);
 		float diff = max(dot(normal, lightDirection), 0.0);
 		
-		vec3 reflectDirection = reflect(-lightDirection, normal);
-		float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), u_MaterialShininess);
+		//vec3 reflectDirection = reflect(-lightDirection, normal);
+		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
+		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
 		
 		vec3 ambient  = u_DirectionalLightAmbient  * materialDiffuse.rgb;
 		vec3 diffuse  = u_DirectionalLightDiffuse  * diff * materialDiffuse.rgb;
 		vec3 specular = u_DirectionalLightSpecular * spec * materialSpecular.rgb;
-
-		result += (ambient + diffuse + specular);
+		
+		Ambient  += ambient;
+		Diffuse  += diffuse;
+		Specular += specular;
 	}
 	
 	// PointLight
@@ -151,8 +160,10 @@ void main()
 		vec3 lightDirection = normalize(u_PointLightPosition - Input.Position);
 		float diff = max(dot(normal, lightDirection), 0.0);
 		
-		vec3 reflectDirection = reflect(-lightDirection, normal);
-		float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), u_MaterialShininess);
+		//vec3 reflectDirection = reflect(-lightDirection, normal);
+		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
+		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
 		
 		float distance = length(u_PointLightPosition - Input.Position);
 		float attenuation = 1.0 / (u_PointLightConstant + u_PointLightLinear * distance +  u_PointLightQuadratic * (distance * distance));
@@ -165,7 +176,9 @@ void main()
 		diffuse  *= attenuation;
 		specular *= attenuation;
 	
-	    result += (ambient + diffuse + specular);
+		Ambient  += ambient;
+		Diffuse  += diffuse;
+		Specular += specular;
 	}
 
 	// SpotLight
@@ -173,8 +186,10 @@ void main()
 		vec3 lightDirection = normalize(u_SpotLightPosition - Input.Position);
 		float diff = max(dot(normal, lightDirection), 0.0);
 		
-		vec3 reflectDirection = reflect(-lightDirection, normal);  
-		float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), u_MaterialShininess);
+		//vec3 reflectDirection = reflect(-lightDirection, normal);
+		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
+		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
 		
 		float distance    = length(u_SpotLightPosition - Input.Position);
 		float attenuation = 1.0 / (u_SpotLightConstant + u_SpotLightLinear * distance + u_SpotLightQuadratic * (distance * distance));    
@@ -191,12 +206,22 @@ void main()
 		ambient  *= intensity * attenuation;
         diffuse  *= intensity * attenuation;
         specular *= intensity * attenuation;
-
-		result += (ambient + diffuse + specular);
+		
+		Ambient  += ambient;
+		Diffuse  += diffuse;
+		Specular += specular;
 	}
+	
+    // calculate shadow
+    vec3 projCoords = Input.PositionLightSpace.xyz / Input.PositionLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float closestDepth = texture(u_Textures[31], projCoords.xy).r; 
+    float currentDepth = projCoords.z;
+    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+    vec3 lighting = (Ambient + (1.0 - shadow) * (Diffuse + Specular));
+	
 
-
-    FragmentColor = vec4(result, 1.0);
+    FragmentColor = vec4(lighting, 1.0);
 
 	o_EntityID = v_EntityID;
 }

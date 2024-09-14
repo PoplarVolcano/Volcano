@@ -1,32 +1,49 @@
 #include "volpch.h"
 #include "RendererModel.h"
-#include "Model.h"
-#include "Renderer.h"
+#include "Volcano/Renderer/Renderer.h"
+#include "Volcano/Renderer/RendererItem/Model.h"
+#include "Volcano/Utils/PlatformUtils.h"
+
 #include "Light.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/transform.hpp>
+
+#include <glad/glad.h>
 
 namespace Volcano {
 
 	static Ref<UniformBuffer> s_LightUniformBuffer;
+	static std::unordered_map<std::string, Ref<Model>> s_Models;
+
+	struct RockData
+	{
+		glm::vec3 Position;
+		glm::vec2 TexCoords;
+		glm::mat4 ModelMatrice;
+	};
+
+
+	struct TransformBuffer
+	{
+		glm::mat4 Transform;
+		glm::mat3 NormalTransform;
+	};
+	static TransformBuffer s_TransformBuffer;
+	static Ref<UniformBuffer> s_TransformUniformBuffer;
 
 	static Ref<Model> s_Model;
 
 	void RendererModel::Init()
 	{
-		std::string path = "Resources/Objects/nanosuit/nanosuit.obj";
+		std::string path = "SandBoxProject/Assets/Objects/nanosuit/nanosuit.obj";
 		s_Model = Model::Create(path.c_str(), false);
 
 		Renderer::GetShaderLibrary()->Load("assets/shaders/ModelLoading.glsl");
 		
 		// 在Renderer3D中设置过的uniform全局通用，除非有变动，否则不需要重新设置
-		/*
-		s_CameraUniformBuffer           = UniformBuffer::Create(4 * 4 * sizeof(float), 0);
-		s_CameraPositionUniformBuffer   = UniformBuffer::Create(4 * sizeof(float), 1);
-		s_DirectionalLightUniformBuffer = UniformBuffer::Create((4 + 4 + 4 + 4) * sizeof(float), 2);
-		s_PointLightUniformBuffer       = UniformBuffer::Create((4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float), 3);
-		s_SpotLightUniformBuffer        = UniformBuffer::Create((4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
-		s_MaterialUniformBuffer         = UniformBuffer::Create(sizeof(float), 5);
-		s_LightUniformBuffer = UniformBuffer::Create((4 * 4) * sizeof(float), 6);
-		*/
+		s_TransformUniformBuffer = UniformBuffer::Create(4 * 4 * 2 * sizeof(float), 6);
+
+
 	}
 
 	void RendererModel::Shutdown()
@@ -35,84 +52,49 @@ namespace Volcano {
 
 	void RendererModel::BeginScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
 	{
+	}
+
+	void RendererModel::EndScene(bool shadow)
+	{
+		Flush(shadow);
+	}
+
+	void RendererModel::Flush(bool shadow)
+	{
+		if (shadow)
+			Renderer::GetShaderLibrary()->Get("ShadowMappingDepth")->Bind();
+		else
+			Renderer::GetShaderLibrary()->Get("ModelLoading")->Bind();
+		s_Model->DrawIndexed();
+
+	}
+
+	void RendererModel::DrawModel(const glm::mat4& transform, const glm::mat3& normalTransform, std::string& modelPath, int entityID)
+	{
+		// 路径为空，跳过
+		if (modelPath.empty())
+			return;
 		/*
-		s_CameraBuffer.viewProjection = camera.GetProjection() * glm::inverse(transform);
-		s_CameraUniformBuffer->SetData(&s_CameraBuffer.viewProjection, sizeof(glm::mat4));
-
-		// transform最后一列前三个位置为translate
-		s_CameraPositionBuffer.CameraPosition = position;
-		s_CameraPositionUniformBuffer->SetData(&s_CameraPositionBuffer.CameraPosition, sizeof(glm::vec3));
-
-		s_DirectionalLightBuffer.direction = glm::vec3(-1.0f, -1.0f, -1.0f);
-		s_DirectionalLightBuffer.ambient   = glm::vec3(0.05f, 0.05f, 0.05f);
-		s_DirectionalLightBuffer.diffuse   = glm::vec3( 0.5f,  0.5f,  0.5f);
-		s_DirectionalLightBuffer.specular  = glm::vec3( 0.5f,  0.5f,  0.5f);
-		s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
-		s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-		s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-
-
-		s_PointLightBuffer.position  = glm::vec3( 1.0f,  1.0f,  1.0f);
-		s_PointLightBuffer.ambient   = glm::vec3(0.05f, 0.05f, 0.05f);
-		s_PointLightBuffer.diffuse   = glm::vec3( 0.8f,  0.8f,  0.8f);
-		s_PointLightBuffer.specular  = glm::vec3( 1.0f,  1.0f,  1.0f);
-		s_PointLightBuffer.constant  = 1.0f;
-		s_PointLightBuffer.linear    = 0.09f;
-		s_PointLightBuffer.quadratic = 0.032f;
-		s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
-		s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-		s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
-		s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
-		s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
-
-
-		s_SpotLightBuffer.position    = position;
-		s_SpotLightBuffer.direction   = direction;
-		s_SpotLightBuffer.ambient     = glm::vec3(0.0f, 0.0f, 0.0f);
-		s_SpotLightBuffer.diffuse     = glm::vec3(1.0f, 1.0f, 1.0f);
-		s_SpotLightBuffer.specular    = glm::vec3(1.0f, 1.0f, 1.0f);
-		s_SpotLightBuffer.constant    = 1.0f;
-		s_SpotLightBuffer.linear      = 0.09f;
-		s_SpotLightBuffer.quadratic   = 0.032f;
-		s_SpotLightBuffer.cutOff      = glm::cos(glm::radians(12.5f));
-		s_SpotLightBuffer.outerCutOff = glm::cos(glm::radians(17.5f));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
-		s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
-
-		s_MaterialBuffer.shininess = 32.0f;
-		s_MaterialUniformBuffer->SetData(&s_MaterialBuffer.shininess, sizeof(float));
-		s_LightUniformBuffer->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
-		s_LightUniformBuffer->SetData(&s_PointLightBuffer.position,        sizeof(glm::vec3), 4 * sizeof(float));
-		s_LightUniformBuffer->SetData(&s_SpotLightBuffer.position,         sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		s_LightUniformBuffer->SetData(&s_SpotLightBuffer.direction,        sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-	
+		if (s_Models.find(modelPath) == s_Models.end())
+		{
+			Ref<Model> model = Model::Create(modelPath.c_str(), false);
+			// path成功读取到model，将model加入map
+			if (model)
+				s_Models.emplace(modelPath, model);
+		}
 		*/
-	}
+		//if (s_Models.find(modelPath) == s_Models.end())
+		//	return;
 
-	void RendererModel::EndScene()
-	{
-		Flush();
-	}
+		//Ref<Model> model = s_Models.at(modelPath);
 
-	void RendererModel::Flush()
-	{
-
-	}
-	void RendererModel::DrawModel(const glm::mat4& transform, const glm::mat3& normalTransform, int entityID)
-	{
+		s_TransformBuffer.Transform = transform;
+		s_TransformBuffer.NormalTransform = normalTransform;
+		s_TransformUniformBuffer->SetData(&s_TransformBuffer.Transform,       sizeof(glm::mat4));
+		s_TransformUniformBuffer->SetData(&s_TransformBuffer.NormalTransform, sizeof(glm::mat4), 4 * 4 * sizeof(float));
 		Ref<Shader> shader = Renderer::GetShaderLibrary()->Get("ModelLoading");
 		s_Model->Draw(*shader, transform, normalTransform, entityID);
+
 	}
 
 	void RendererModel::StartBatch()

@@ -4,10 +4,13 @@
 #include "Components.h"
 #include "ScriptableEntity.h"
 #include "Volcano/Scripting/ScriptEngine.h"
+#include "Volcano/Renderer/RendererAPI.h"
 #include "Volcano/Renderer/Renderer2D.h"
 #include "Volcano/Renderer/Renderer3D.h"
 #include "Volcano/Renderer/RendererModel.h"
+#include "Volcano/Renderer/RendererItem/Skybox.h"
 #include "Volcano/Physics/Physics2D.h"
+#include "Volcano/Renderer/Light.h"
 
 #include "glm/glm.hpp"
 #include "Entity.h"
@@ -18,16 +21,28 @@
 #include "box2d/b2_fixture.h"
 #include "box2d/b2_polygon_shape.h"
 #include "box2d/b2_circle_shape.h"
+#include <Volcano/Renderer/Light.h>
 
 namespace Volcano {
 
+	static Ref<UniformBuffer> s_LightSpaceMatrixUniformBuffer;
+
 	Scene::Scene()
 	{
-		delete m_PhysicsWorld;
+		InitializeUniform();
 	}
 
 	Scene::~Scene()
 	{
+		delete m_PhysicsWorld;
+	}
+
+	void Scene::InitializeUniform()
+	{
+		s_DirectionalLightUniformBuffer = UniformBuffer::Create((4 + 4 + 4 + 4) * sizeof(float), 2);
+		s_PointLightUniformBuffer       = UniformBuffer::Create((4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float), 3);
+		s_SpotLightUniformBuffer        = UniformBuffer::Create((4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
+		s_LightSpaceMatrixUniformBuffer = UniformBuffer::Create(4 * 4 * sizeof(float), 8);
 	}
 
 	// 将源注册表下实体复制到目标注册表，Map以UUID作为标记获取新实体
@@ -214,7 +229,10 @@ namespace Volcano {
 			// Script - Physic - Render顺序
 			Physics(ts);
 		}
+	}
 
+	void Scene::OnRenderRuntime(Timestep ts)
+	{
 		// 获取主摄像头
 		Camera* mainCamera = nullptr;
 		glm::mat4 cameraTransform;
@@ -242,11 +260,19 @@ namespace Volcano {
 	{
 		if (!m_IsPaused || m_StepFrames-- > 0)
 			Physics(ts);
+	}
+
+	void Scene::OnRenderSimulation(Timestep ts, EditorCamera& camera)
+	{
 		// Render
 		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetForwardDirection());
 	}
 
 	void Scene::OnUpdateEditor(Timestep ts, EditorCamera& camera)
+	{
+	}
+
+	void Scene::OnRenderEditor(Timestep ts, EditorCamera& camera)
 	{
 		// Render
 		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetForwardDirection());
@@ -292,6 +318,45 @@ namespace Volcano {
 		{
 			auto camera = view.get<CameraComponent>(entity);
 			if (camera.Primary)
+				return Entity{ entity, this };
+		}
+		return {};
+	}
+	
+	Entity Scene::GetDirectionalLightEntity()
+	{
+		// 获取光源
+		auto view = m_Registry.view<LightComponent>();
+		for (auto entity : view)
+		{
+			auto light = view.get<LightComponent>(entity);
+			if (light.Type == LightComponent::LightType::DirectionalLight)
+				return Entity{ entity, this };
+		}
+		return {};
+	}
+
+	Entity Scene::GetPointLightEntity()
+	{
+		// 获取光源
+		auto view = m_Registry.view<LightComponent>();
+		for (auto entity : view)
+		{
+			auto light = view.get<LightComponent>(entity);
+			if (light.Type == LightComponent::LightType::PointLight)
+				return Entity{ entity, this };
+		}
+		return {};
+	}
+
+	Entity Scene::GetSpotLightEntity()
+	{
+		// 获取光源
+		auto view = m_Registry.view<LightComponent>();
+		for (auto entity : view)
+		{
+			auto light = view.get<LightComponent>(entity);
+			if (light.Type == LightComponent::LightType::SpotLight)
 				return Entity{ entity, this };
 		}
 		return {};
@@ -391,8 +456,6 @@ namespace Volcano {
 	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
 	{
 		Renderer2D::BeginScene(camera, transform);
-		Renderer3D::BeginScene(camera, transform, position, direction);
-		RendererModel::BeginScene(camera, transform, position, direction);
 
 		// Draw sprites
 		{
@@ -413,7 +476,12 @@ namespace Volcano {
 				Renderer2D::DrawCircle(transform.GetTransform(), circle.Color, circle.Thickness, circle.Fade, (int)entity);
 			}
 		}
+		Renderer2D::EndScene();
 
+
+		UpdateLight();
+
+		Renderer3D::BeginScene(camera, transform, position, direction);
 		// Draw cube
 		{
 			auto view = m_Registry.view<TransformComponent, CubeRendererComponent>();
@@ -423,21 +491,161 @@ namespace Volcano {
 				Renderer3D::DrawCube(transform.GetTransform(), transform.GetNormalTransform(), cube, (int)entity);
 			}
 		}
+		Renderer3D::EndScene(m_Shadow);
+		
 
+		RendererModel::BeginScene(camera, transform, position, direction);
 		// Draw model
 		{
 			auto view = m_Registry.view<TransformComponent,ModelRendererComponent>();
 			for (auto entity : view)
 			{
 				auto [transform, model] = view.get<TransformComponent, ModelRendererComponent>(entity);
-				RendererModel::DrawModel(transform.GetTransform(), transform.GetNormalTransform(), (int)entity);
+				if(m_Shadow)
+					RendererModel::DrawModel(transform.GetTransform(), transform.GetNormalTransform(), model.ModelPath, (int)entity);
 			}
 		}
+		RendererModel::EndScene(m_Shadow);
 
-		RendererModel::EndScene();
+		// draw skybox as last
+		if (!m_Shadow)
+		{
+			RendererAPI::SetDepthFunc(DepthFunc::LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+			Skybox::BeginScene(camera, transform);
+			Skybox::DrawSkybox();
+			Skybox::EndScene();
+			RendererAPI::SetDepthFunc(DepthFunc::LESS); // set depth function back to default
+		}
 
-		Renderer2D::EndScene();
-		Renderer3D::EndScene();
+	}
+
+	void Scene::UpdateLight()
+	{
+			Entity directionalLightEntity = GetDirectionalLightEntity();
+			if (directionalLightEntity)
+			{
+				auto& transform = directionalLightEntity.GetComponent<TransformComponent>();
+				auto& light = directionalLightEntity.GetComponent<LightComponent>();
+				glm::vec3 direction = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
+				s_DirectionalLightBuffer.direction = direction;
+				s_DirectionalLightBuffer.ambient   = light.Ambient;
+				s_DirectionalLightBuffer.diffuse   = light.Diffuse;
+				s_DirectionalLightBuffer.specular  = light.Specular;
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.ambient, sizeof(glm::vec3), 4 * sizeof(float));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.diffuse, sizeof(glm::vec3), (4 + 4) * sizeof(float));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.specular, sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+
+				
+				glm::mat4 lightProjection, lightView;
+				glm::mat4 lightSpaceMatrix;
+				float near_plane = -1.0f, far_plane = 170.5f;
+				//lightProjection = glm::perspective(glm::radians(68.0f), 1.0f, 0.001f, 1000.0f);
+				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+				lightView = glm::inverse(transform.GetTransform());
+
+				lightSpaceMatrix = lightProjection * lightView;
+				s_LightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+			}
+			else
+			{
+				s_DirectionalLightBuffer.direction = { 0, 0, 0 };
+				s_DirectionalLightBuffer.ambient   = { 0, 0, 0 };
+				s_DirectionalLightBuffer.diffuse   = { 0, 0, 0 };
+				s_DirectionalLightBuffer.specular  = { 0, 0, 0 };
+
+				glm::mat4 lightSpaceMatrix = glm::mat4(0);
+				s_LightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				/*
+				glm::vec3 lightPos(-20.0f, 40.0f, -10.0f);
+				glm::mat4 lightProjection, lightView;
+				glm::mat4 lightSpaceMatrix;
+				float near_plane = -1.0f, far_plane = 70.5f;
+				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+				glm::mat4 rotation = glm::toMat4(glm::quat(glm::vec3(glm::radians(-60.0f), glm::radians(-120.0f), 0.0f)));
+				lightView = glm::inverse(glm::translate(glm::mat4(1.0f), lightPos) * rotation * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)));
+
+				lightSpaceMatrix = lightProjection * lightView;
+				s_LightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				*/
+			}
+
+
+			Entity pointLightEntity = GetPointLightEntity();
+			if (pointLightEntity)
+			{
+				auto& transform = pointLightEntity.GetComponent<TransformComponent>();
+				auto& light = pointLightEntity.GetComponent<LightComponent>();
+		        s_PointLightBuffer.position  = transform.Translation;
+		        s_PointLightBuffer.ambient   = light.Ambient;
+		        s_PointLightBuffer.diffuse   = light.Diffuse;
+		        s_PointLightBuffer.specular  = light.Specular;
+		        s_PointLightBuffer.constant  = light.Constant;
+		        s_PointLightBuffer.linear    = light.Linear;
+		        s_PointLightBuffer.quadratic = light.Quadratic;
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+			}
+			else
+			{
+		        s_PointLightBuffer.position  = { 0, 0, 0 };
+		        s_PointLightBuffer.ambient   = { 0, 0, 0 };
+		        s_PointLightBuffer.diffuse   = { 0, 0, 0 };
+		        s_PointLightBuffer.specular  = { 0, 0, 0 };
+		        s_PointLightBuffer.constant  = 0;
+		        s_PointLightBuffer.linear    = 0;
+		        s_PointLightBuffer.quadratic = 0;
+
+			}
+
+
+			Entity spotLightEntity = GetSpotLightEntity();
+			if (spotLightEntity)
+			{
+				auto& transform = spotLightEntity.GetComponent<TransformComponent>();
+				auto& light = spotLightEntity.GetComponent<LightComponent>();
+		        s_SpotLightBuffer.position    = transform.Translation;
+				glm::vec3 direction = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
+		        s_SpotLightBuffer.direction   = direction;
+		        s_SpotLightBuffer.ambient     = light.Ambient;
+		        s_SpotLightBuffer.diffuse     = light.Diffuse;
+		        s_SpotLightBuffer.specular    = light.Specular;
+		        s_SpotLightBuffer.constant    = light.Constant;
+		        s_SpotLightBuffer.linear      = light.Linear;
+		        s_SpotLightBuffer.quadratic   = light.Quadratic;
+		        s_SpotLightBuffer.cutOff      = light.CutOff;//glm::cos(glm::radians(12.5f));
+		        s_SpotLightBuffer.outerCutOff = light.OuterCutOff;//glm::cos(glm::radians(17.5f));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
+
+			}
+			else
+			{
+		        s_SpotLightBuffer.position    = { 0, 0, 0 };
+		        s_SpotLightBuffer.direction   = { 0, 0, 0 };
+		        s_SpotLightBuffer.ambient     = { 0, 0, 0 };
+		        s_SpotLightBuffer.diffuse     = { 0, 0, 0 };
+		        s_SpotLightBuffer.specular    = { 0, 0, 0 };
+		        s_SpotLightBuffer.constant    = 0;
+		        s_SpotLightBuffer.linear      = 0;
+		        s_SpotLightBuffer.quadratic   = 0;
+		        s_SpotLightBuffer.cutOff      = 0;
+		        s_SpotLightBuffer.outerCutOff = 0;
+
+			}
 	}
 
 	template<typename T>
@@ -462,6 +670,11 @@ namespace Volcano {
 	void Scene::OnComponentAdded<TransformComponent>(Entity entity, TransformComponent& component)
 	{
 
+	}
+
+	template<>
+	void Scene::OnComponentAdded<LightComponent>(Entity entity, LightComponent& component)
+	{
 	}
 
 	template<>

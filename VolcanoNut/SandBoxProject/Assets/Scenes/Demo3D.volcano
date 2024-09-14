@@ -1,0 +1,78 @@
+Scene: Untitled
+Entities:
+  - Entity: 17668613227626553580
+    TagComponent:
+      Tag: Cube3
+    TransformComponent:
+      Translation: [1.70000005, 1.29999995, -1.60000002]
+      Rotation: [0, -0.785398185, 0.785398185]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+  - Entity: 17816423835165621663
+    TagComponent:
+      Tag: Cube2
+    TransformComponent:
+      Translation: [-1.39999998, 0, 0]
+      Rotation: [0, 0.696386397, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+  - Entity: 31302258184950390
+    TagComponent:
+      Tag: Cube
+    TransformComponent:
+      Translation: [-4.5, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+  - Entity: 1202204119475165991
+    TagComponent:
+      Tag: Wall2
+    TransformComponent:
+      Translation: [0, 3.5, -5.5]
+      Rotation: [0, 0, 0]
+      Scale: [10, 10, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+  - Entity: 11272157481041930824
+    TagComponent:
+      Tag: Wall
+    TransformComponent:
+      Translation: [-5.5, 3.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 10, 10]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+  - Entity: 3688692502023175354
+    TagComponent:
+      Tag: Floor
+    TransformComponent:
+      Translation: [0, -1, 0]
+      Rotation: [0, 0, 0]
+      Scale: [10, 1, 10]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+  - Entity: 6445618557485359852
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 2, 4]
+      Rotation: [-0.610865235, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 0.785398185
+        PerspectiveNear: 0.00100000005
+        PerspectiveFar: 1000
+        OrthographicSize: 10
+        OrthographicNear: -1
+        OrthographicFar: 1
+      Primary: true
+      FixedAspectRatio: true
+    ScriptComponent:
+      ClassName: SandBox.Camera3D
+      ScriptFields:
+        []

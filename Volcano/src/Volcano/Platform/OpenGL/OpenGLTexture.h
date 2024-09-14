@@ -15,6 +15,7 @@ namespace Volcano {
 		virtual void SetData(void* data, uint32_t size) override;
 		virtual uint32_t GetWidth() const override { return m_Width; }
 		virtual uint32_t GetHeight() const override { return m_Height; }
+		virtual uint32_t GetMipLevelCount() const override;
 
 		virtual uint32_t GetRendererID() const override { return m_RendererID; }
 		virtual const std::string& GetPath() const override { return m_FilePath; }
@@ -31,4 +32,35 @@ namespace Volcano {
 		std::string m_FilePath;
 	};
 
+	class OpenGLTextureCube : public TextureCube
+	{
+	public:
+		OpenGLTextureCube(TextureFormat format, uint32_t width, uint32_t height);
+		OpenGLTextureCube(const std::string& path);
+		OpenGLTextureCube(std::vector<std::string> faces);
+		virtual ~OpenGLTextureCube();
+
+		virtual void Bind(uint32_t slot = 0) const;
+
+		virtual TextureFormat GetFormat() const { return m_Format; }
+		virtual uint32_t GetWidth() const { return m_Width; }
+		virtual uint32_t GetHeight() const { return m_Height; }
+		virtual uint32_t GetMipLevelCount() const override;
+
+		virtual uint32_t GetRendererID() const override { return m_RendererID; }
+		virtual const std::string& GetPath() const override { return m_FilePath; }
+
+		virtual bool operator==(const Texture& other) const override
+		{
+			return m_RendererID == other.GetRendererID();
+		}
+	private:
+		uint32_t m_RendererID;
+		TextureFormat m_Format;
+		uint32_t m_Width, m_Height;
+
+		unsigned char* m_ImageData;
+
+		std::string m_FilePath;
+	};
 }

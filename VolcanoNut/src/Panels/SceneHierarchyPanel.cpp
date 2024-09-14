@@ -246,6 +246,7 @@ namespace Volcano {
 
 		if (ImGui::BeginPopup("AddComponent"))
 		{
+			DisplayAddComponentEntry<LightComponent>("Light");
 			DisplayAddComponentEntry<CameraComponent>("Camera");
 			DisplayAddComponentEntry<ScriptComponent>("Script");
 			DisplayAddComponentEntry<SpriteRendererComponent>("Sprite Renderer");
@@ -270,6 +271,61 @@ namespace Volcano {
 				//ImGui::DragFloat3("Position", glm::value_ptr(tc.Translation), 0.1f);
 
 				DrawVec3Control("Scale", component.Scale, 1.0f);
+			});
+
+		DrawComponent<LightComponent>("Light", entity, [](auto& component)
+			{
+				const char* lightTypeStrings[] = { "DirectionalLight", "PointLight", "SpotLight"};
+				const char* currentLightTypeString = lightTypeStrings[(int)component.Type];
+				if (ImGui::BeginCombo("LightType", currentLightTypeString))
+				{
+					for (int i = 0; i < 3; i++)
+					{
+						bool isSelected = currentLightTypeString == lightTypeStrings[i];
+						if (ImGui::Selectable(lightTypeStrings[i], isSelected))
+						{
+							currentLightTypeString = lightTypeStrings[i];
+							component.Type = (LightComponent::LightType)i;
+						}
+						if (isSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+					ImGui::EndCombo();
+				}
+
+				if (component.Type == LightComponent::LightType::DirectionalLight)
+				{
+					DrawVec3Control("Ambient",  component.Ambient, 0.1f);
+					DrawVec3Control("Diffuse",  component.Diffuse, 1.0f);
+					DrawVec3Control("Specular", component.Specular, 1.0f);
+				}
+
+				if (component.Type == LightComponent::LightType::PointLight)
+				{
+					DrawVec3Control("Ambient",    component.Ambient,   0.1f);
+					DrawVec3Control("Diffuse",    component.Diffuse,   1.0f);
+					DrawVec3Control("Specular",   component.Specular,  1.0f);
+					ImGui::DragFloat("Constant",  &component.Constant,  0.1f, 0.0f, 0.0f, "%.3f");
+					ImGui::DragFloat("Linear",    &component.Linear,    0.1f, 0.0f, 0.0f, "%.3f");
+					ImGui::DragFloat("Quadratic", &component.Quadratic, 0.1f, 0.0f, 0.0f, "%.3f");
+				}
+
+				if (component.Type == LightComponent::LightType::SpotLight)
+				{
+					DrawVec3Control("Ambient",    component.Ambient, 0.1f);
+					DrawVec3Control("Diffuse",    component.Diffuse, 1.0f);
+					DrawVec3Control("Specular",   component.Specular, 1.0f);
+					ImGui::DragFloat("Constant",  &component.Constant, 0.1f, 0.0f, 0.0f, "%.3f");
+					ImGui::DragFloat("Linear",    &component.Linear, 0.1f, 0.0f, 0.0f, "%.3f");
+					ImGui::DragFloat("Quadratic", &component.Quadratic, 0.1f, 0.0f, 0.0f, "%.3f");
+					float cutOff = glm::degrees(glm::acos(component.CutOff));
+					float outerCutOff = glm::degrees(glm::acos(component.OuterCutOff));
+					ImGui::DragFloat("CutOff", &cutOff, 0.1f, 0.0f, 0.0f, "%.3f");
+					ImGui::DragFloat("OuterCutOff", &outerCutOff, 0.1f, 0.0f, 0.0f, "%.3f");
+					component.CutOff = glm::cos(glm::radians(cutOff));
+					component.OuterCutOff = glm::cos(glm::radians(outerCutOff));
+				}
+
 			});
 
 		DrawComponent<CameraComponent>("Camera", entity, [](auto& component)
@@ -487,7 +543,17 @@ namespace Volcano {
 
 		DrawComponent<ModelRendererComponent>("Model Renderer", entity, [](auto& component)
 			{
-
+				ImGui::Button("ModelPath", ImVec2(100.0f, 100.0f));
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path modelPath = path;
+						component.ModelPath = modelPath.string();
+					}
+					ImGui::EndDragDropTarget();
+				}
 			});
 
 		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity, [](auto& component)

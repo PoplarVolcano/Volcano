@@ -27,4 +27,55 @@ namespace Volcano {
 		return nullptr;
 	}
 
+	// ==================================TextureCube=================================================
+
+	Ref<TextureCube> TextureCube::Create(TextureFormat format, uint32_t width, uint32_t height)
+	{
+		switch (RendererAPI::Current())
+		{
+		case RendererAPIType::None: return nullptr;
+		case RendererAPIType::OpenGL: return CreateRef<OpenGLTextureCube>(format, width, height);
+		}
+		return nullptr;
+	}
+
+	Ref<TextureCube> TextureCube::Create(const std::string& path)
+	{
+		switch (RendererAPI::Current())
+		{
+		case RendererAPIType::None: return nullptr;
+		case RendererAPIType::OpenGL: return CreateRef<OpenGLTextureCube>(path);
+		}
+		return nullptr;
+	}
+
+	Ref<TextureCube> TextureCube::Create(std::vector<std::string> faces)
+	{
+		switch (RendererAPI::Current())
+		{
+		case RendererAPIType::None: return nullptr;
+		case RendererAPIType::OpenGL: return CreateRef<OpenGLTextureCube>(faces);
+		}
+		return nullptr;
+	}
+
+	uint32_t Texture::GetBPP(TextureFormat format)
+	{
+		switch (format)
+		{
+		case TextureFormat::RGB:    return 3;
+		case TextureFormat::RGBA:   return 4;
+		}
+		return 0;
+	}
+
+	uint32_t Texture::CalculateMipMapCount(uint32_t width, uint32_t height)
+	{
+		uint32_t levels = 1;
+		while ((width | height) >> levels)
+			levels++;
+
+		return levels;
+	}
+
 }

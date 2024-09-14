@@ -60,4 +60,48 @@ namespace Volcano {
 	static Material s_MaterialBuffer;
 	static Ref<UniformBuffer> s_MaterialUniformBuffer;
 
+	/*
+	class Light
+	{
+	public:
+		enum class LightType { DirectionalLight, PointLight, SpotLight };
+	public:
+		Light();
+		~Light() = default;
+
+		LightType GetLightType() const { return m_LightType; }
+		void SetLightType(LightType type) { m_LightType = type; }
+
+		glm::vec3 GetAmbient()   const { return m_Ambient;     }
+		glm::vec3 GetDiffuse()   const { return m_Diffuse;     }
+		glm::vec3 GetSpecular()  const { return m_Specular;    }
+		float GetConstant()      const { return m_Constant;    }
+		float GetLinear()        const { return m_Linear;      }
+		float GetQuadratic()     const { return m_Quadratic;   }
+		float GetCutOff()        const { return m_CutOff;      }
+		float GetOuterCutOff()   const { return m_OuterCutOff; }
+
+		
+		void SetAmbient(glm::vec3 ambient)     { m_Ambient     = ambient;     }
+		void SetDiffuse(glm::vec3 diffuse)     { m_Diffuse     = diffuse;     }
+		void SetSpecular(glm::vec3 specular)   { m_Specular    = specular;    }
+		void SetConstant(float constant)       { m_Constant    = constant;    }
+		void SetLinear(float linear)           { m_Linear      = linear;      }
+		void SetQuadratic(float quadratic)     { m_Quadratic   = quadratic;   }
+		void SetCutOff(float cutOff)           { m_CutOff      = cutOff;      }
+		void SetOuterCutOff(float outerCutOff) { m_OuterCutOff = outerCutOff; }
+
+	private:
+		LightType m_LightType = LightType::DirectionalLight;
+
+		glm::vec3 m_Ambient;
+		glm::vec3 m_Diffuse;
+		glm::vec3 m_Specular;
+		float     m_Constant;
+		float     m_Linear;
+		float     m_Quadratic;
+		float     m_CutOff;
+		float     m_OuterCutOff;
+	};
+	*/
 }

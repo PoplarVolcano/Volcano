@@ -16,12 +16,18 @@ layout(std140, binding = 0) uniform Camera
 	mat4 u_ViewProjection;
 };
 
+layout(std140, binding = 8) uniform LightSpaceMatrix
+{
+	mat4 u_LightSpaceMatrix;
+};
+
 struct VertexOutput
 {
 	vec3 Position;
 	vec3 Normal;
 	vec4 Color;
 	vec2 TexCoords;
+    vec4 PositionLightSpace;
 };
 
 layout (location = 0) out flat float v_DiffuseIndex;
@@ -38,6 +44,7 @@ void main()
 	Output.Normal = a_Normal;
 	Output.Color = a_Color;
 	Output.TexCoords = a_TexCoords;
+	Output.PositionLightSpace = u_LightSpaceMatrix * vec4(Output.Position, 1.0);
 
 	gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
 }
@@ -54,6 +61,7 @@ struct VertexOutput
 	vec3 Normal;
 	vec4 Color;
 	vec2 TexCoords;
+    vec4 PositionLightSpace;
 };
 
 layout (location = 0) in flat float v_DiffuseIndex;
@@ -126,22 +134,28 @@ void main()
 	
 	vec3 normal = normalize(Input.Normal);
 	vec3 viewDirection = normalize(u_CameraPosition - Input.Position);
-
-	vec3 result = vec3(0.0, 0.0, 0.0);
+	
+	vec3 Ambient  = vec3(0.0, 0.0, 0.0);
+	vec3 Diffuse  = vec3(0.0, 0.0, 0.0);
+	vec3 Specular = vec3(0.0, 0.0, 0.0);
 
 	// DirectionalLight
 	{
 		vec3 lightDirection = normalize(-u_DirectionalLightDirection);
 		float diff = max(dot(normal, lightDirection), 0.0);
 		
-		vec3 reflectDirection = reflect(-lightDirection, normal);
-		float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), u_MaterialShininess);
+		//vec3 reflectDirection = reflect(-lightDirection, normal);
+		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
+		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
 		
 		vec3 ambient  = u_DirectionalLightAmbient  * materialDiffuse.rgb;
 		vec3 diffuse  = u_DirectionalLightDiffuse  * diff * materialDiffuse.rgb;
 		vec3 specular = u_DirectionalLightSpecular * spec * materialSpecular.rgb;
 
-		result += (ambient + diffuse + specular);
+		Ambient  += ambient;
+		Diffuse  += diffuse;
+		Specular += specular;
 	}
 
 	// PointLight
@@ -149,8 +163,10 @@ void main()
 		vec3 lightDirection = normalize(u_PointLightPosition - Input.Position);
 		float diff = max(dot(normal, lightDirection), 0.0);
 		
-		vec3 reflectDirection = reflect(-lightDirection, normal);
-		float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), u_MaterialShininess);
+		//vec3 reflectDirection = reflect(-lightDirection, normal);
+		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
+		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
 		
 		float distance = length(u_PointLightPosition - Input.Position);
 		float attenuation = 1.0 / (u_PointLightConstant + u_PointLightLinear * distance +  u_PointLightQuadratic * (distance * distance));
@@ -163,7 +179,9 @@ void main()
 		diffuse  *= attenuation;
 		specular *= attenuation;
 	
-	    result += (ambient + diffuse + specular);
+		Ambient  += ambient;
+		Diffuse  += diffuse;
+		Specular += specular;
 	}
 
 	// SpotLight
@@ -171,8 +189,10 @@ void main()
 		vec3 lightDirection = normalize(u_SpotLightPosition - Input.Position);
 		float diff = max(dot(normal, lightDirection), 0.0);
 		
-		vec3 reflectDirection = reflect(-lightDirection, normal);  
-		float spec = pow(max(dot(viewDirection, reflectDirection), 0.0), u_MaterialShininess);
+		//vec3 reflectDirection = reflect(-lightDirection, normal);
+		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
+		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
+		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
 		
 		float distance    = length(u_SpotLightPosition - Input.Position);
 		float attenuation = 1.0 / (u_SpotLightConstant + u_SpotLightLinear * distance + u_SpotLightQuadratic * (distance * distance));    
@@ -189,11 +209,25 @@ void main()
 		ambient  *= intensity * attenuation;
         diffuse  *= intensity * attenuation;
         specular *= intensity * attenuation;
-
-		result += (ambient + diffuse + specular);
+		
+		Ambient  += ambient;
+		Diffuse  += diffuse;
+		Specular += specular;
 	}
-	
 
-    o_Color = vec4(result, materialDiffuse.a);
+    // calculate shadow
+    vec3 projCoords = Input.PositionLightSpace.xyz / Input.PositionLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5;
+    float closestDepth = texture(u_Textures[31], projCoords.xy).r; 
+    float currentDepth = projCoords.z;
+	float bias = max(0.05 * (1.0 - dot(normal, -u_DirectionalLightDirection)), 0.005);
+    float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+	if(projCoords.z > 1.0)
+        shadow = 0.0;
+    vec3 lighting = (Ambient + (1.0 - shadow) * (Diffuse + Specular));
+	
+	//vec3 result = Ambient + Diffuse + Specular;
+
+    o_Color = vec4(lighting, materialDiffuse.a);
 	o_EntityID = v_EntityID;
 }

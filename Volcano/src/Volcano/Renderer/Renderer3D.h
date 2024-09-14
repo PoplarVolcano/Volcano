@@ -14,9 +14,10 @@ namespace Volcano {
 		static void Init();
 		static void Shutdown();
 
+
 		static void BeginScene(const Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
-		static void EndScene();
-		static void Flush();
+		static void EndScene(bool shadow = false);
+		static void Flush(bool shadow = false);
 
 		static void DrawCube(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color);
 		static void DrawCube(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color);

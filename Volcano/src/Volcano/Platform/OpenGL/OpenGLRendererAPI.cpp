@@ -4,14 +4,56 @@
 #include <glad/glad.h>
 
 namespace Volcano {
+	
+	static GLenum VolcanoToOpenGLDepthFunc(DepthFunc func)
+	{
+		switch (func)
+		{
+		    case DepthFunc::NEVER:    return GL_NEVER;
+		    case DepthFunc::LESS:     return GL_LESS;
+		    case DepthFunc::EQUAL:    return GL_EQUAL;
+		    case DepthFunc::LEQUAL:   return GL_LEQUAL;
+		    case DepthFunc::GREATER:  return GL_GREATER;
+		    case DepthFunc::NOTEQUAL: return GL_NOTEQUAL;
+		    case DepthFunc::GEQUAL:   return GL_GEQUAL;
+		    case DepthFunc::ALWAYS:   return GL_ALWAYS;
+		}
+		VOL_CORE_ASSERT(false, "Unknown texture format!");
+		return 0;
+	}
 
+	static GLenum VolcanoToOpenGLCullFaceFunc(CullFaceFunc func)
+	{
+		switch (func)
+		{
+		    case CullFaceFunc::BACK:           return GL_BACK;
+		    case CullFaceFunc::FRONT:          return GL_FRONT;
+		    case CullFaceFunc::FRONT_AND_BACK: return GL_FRONT_AND_BACK;
+		}
+		VOL_CORE_ASSERT(false, "Unknown texture format!");
+		return 0;
+	}
 
 	void RendererAPI::Init()
 	{
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_LINE_SMOOTH);
+		glEnable(GL_STENCIL_TEST);
+		glEnable(GL_CULL_FACE);
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+		auto& caps = RendererAPI::GetCapabilities();
+
+		caps.Vendor = (const char*)glGetString(GL_VENDOR);
+		caps.Renderer = (const char*)glGetString(GL_RENDERER);
+		caps.Version = (const char*)glGetString(GL_VERSION);
+
+		glGetIntegerv(GL_MAX_SAMPLES, &caps.MaxSamples);
+		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &caps.MaxAnisotropy);
+		glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &caps.MaxTextureUnits);
+
 	}
 
 	void RendererAPI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
@@ -26,7 +68,7 @@ namespace Volcano {
 
 	void RendererAPI::Clear()
 	{
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 
 	void RendererAPI::SetClearColor(float r, float g, float b, float a)
@@ -37,7 +79,7 @@ namespace Volcano {
 	void RendererAPI::Clear(float r, float g, float b, float a)
 	{
 		glClearColor(r, g, b, a);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	}
 
 	void RendererAPI::DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount, bool depthTest)
@@ -54,6 +96,21 @@ namespace Volcano {
 			glEnable(GL_DEPTH_TEST);
 	}
 
+	void RendererAPI::DrawInstanced(const Ref<VertexArray>& vertexArray, uint32_t indexCount, uint32_t amount, bool depthTest)
+	{
+		if (!depthTest)
+			glDisable(GL_DEPTH_TEST);
+
+		vertexArray->Bind();
+		uint32_t count = indexCount ? indexCount : vertexArray->GetIndexBuffer()->GetCount();
+		//如何绘制索引， 多少个索引， 索引类型， 偏移量
+		glDrawElementsInstanced(GL_TRIANGLES, count, GL_UNSIGNED_INT, 0, amount);
+		vertexArray->UnBind();
+
+		if (!depthTest)
+			glEnable(GL_DEPTH_TEST);
+	}
+
 	void RendererAPI::DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
 	{
 		vertexArray->Bind();
@@ -65,5 +122,21 @@ namespace Volcano {
 		glLineWidth(width);
 	}
 
+	void RendererAPI::SetDepthTest(bool depthTest)
+	{
+		if(depthTest)
+			glEnable(GL_DEPTH_TEST);
+		else
+			glDisable(GL_DEPTH_TEST);
+	}
 
+	void RendererAPI::SetDepthFunc(DepthFunc func)
+	{
+		glDepthFunc(VolcanoToOpenGLDepthFunc(func));
+	}
+
+	void RendererAPI::SetCullFaceFunc(CullFaceFunc func)
+	{
+		glCullFace(VolcanoToOpenGLCullFaceFunc(func));
+	}
 }

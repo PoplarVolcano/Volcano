@@ -34,6 +34,16 @@ namespace Volcano {
             glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     }
 
+    void WindowsWindow::SetViewport(float width, float height)
+    {
+        glViewport(0, 0, width, height);
+    }
+
+    void WindowsWindow::ResetViewport()
+    {
+        glViewport(0, 0, m_Data.Width, m_Data.Height);
+    }
+
     void WindowsWindow::Init(const WindowProps& props)
     {
         m_Data.Title = props.Title;

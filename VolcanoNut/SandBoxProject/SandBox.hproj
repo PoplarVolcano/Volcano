@@ -1,5 +1,5 @@
 Project:
   Name: SandBox
-  StartScene: "Scenes/Physics3D_v2.volcano"
+  StartScene: "Scenes/Physics3D_v3.volcano"
   AssetDirectory: "Assets"
   ScriptModulePath: "Scripts/Binaries/SandBox.dll"

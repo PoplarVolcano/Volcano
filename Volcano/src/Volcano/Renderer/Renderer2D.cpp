@@ -157,6 +157,7 @@ namespace Volcano {
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Quad.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Circle.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Line.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/window.glsl");
 		s_Renderer2DData.QuadShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Quad");
 		s_Renderer2DData.CircleShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Circle");
 		s_Renderer2DData.LineShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Line");

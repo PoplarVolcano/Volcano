@@ -26,6 +26,8 @@ namespace Volcano {
         
         inline virtual void* GetNativeWindow() const { return m_Window; }
         virtual void SetMouseActive(bool mouseActive) override;
+        virtual void SetViewport(float width, float height) override;
+        virtual void ResetViewport() override;
     private:
         virtual void Init(const WindowProps& props);
         virtual void Shutdown();

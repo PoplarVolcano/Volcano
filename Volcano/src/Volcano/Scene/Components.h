@@ -94,12 +94,29 @@ namespace Volcano {
 
 	struct ModelRendererComponent
 	{
-		std::string path;
+		std::string ModelPath;
 
 		ModelRendererComponent() = default;
 		ModelRendererComponent(const ModelRendererComponent&) = default;
 	};
 
+	struct LightComponent
+	{
+		enum class LightType { DirectionalLight, PointLight, SpotLight };
+
+		LightType Type        = LightType::DirectionalLight;
+		glm::vec3 Ambient     = glm::vec3(0.1f);
+		glm::vec3 Diffuse 	  = glm::vec3(0.5f);
+		glm::vec3 Specular 	  = glm::vec3(0.5f);
+		float     Constant 	  = 1.0f;
+		float     Linear 	  = 0.09f;
+		float     Quadratic   = 0.032f;
+		float     CutOff 	  = glm::cos(glm::radians(12.5f));
+		float     OuterCutOff = glm::cos(glm::radians(17.5f));
+
+		LightComponent() = default;
+		LightComponent(const LightComponent&) = default;
+	};
 
 	struct CameraComponent
 	{
@@ -207,6 +224,7 @@ namespace Volcano {
 								CircleRendererComponent,
 								CubeRendererComponent,
 								ModelRendererComponent,
+								LightComponent,
 								CameraComponent, 
 								ScriptComponent,
 								ScriptComponent,

@@ -55,6 +55,7 @@ namespace Volcano {
 		Ref<Texture2D> m_SpriteSheet;
 		Ref<SubTexture2D> m_TextureStairs, m_TextureTree;
 		Ref<Framebuffer> m_Framebuffer;
+		Ref<Framebuffer> m_DepthMapFramebuffer;
 
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
 		glm::vec2 m_ViewportBounds[2];
@@ -105,5 +106,14 @@ namespace Volcano {
 		// Panels
 		SceneHierarchyPanel m_SceneHierarchyPanel;
 		Scope<ContentBrowserPanel> m_ContentBrowserPanel;
+
+		struct WindowVertex 
+		{
+			glm::vec3 Position;
+			glm::vec2 TextureCoords;
+		};
+		WindowVertex m_WindowVertex[4];
+		Ref<VertexArray> windowVa;
+		Ref<Shader> m_WindowShader;
 	};
 }

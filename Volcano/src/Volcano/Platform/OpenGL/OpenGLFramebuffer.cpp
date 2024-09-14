@@ -41,7 +41,7 @@ namespace Volcano {
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, TextureTarget(multisampled), id, 0);
 		}
 
-		static void AttachDepthTexture(uint32_t id, int samples, GLenum format, GLenum attachmentType, uint32_t width, uint32_t height)
+		static void AttachDepthTexture(uint32_t id, int samples, GLenum format, GLenum attachmentType, uint32_t width, uint32_t height, bool storage = true)
 		{
 			bool multisampled = samples > 1;
 			if (multisampled)
@@ -50,13 +50,27 @@ namespace Volcano {
 			}
 			else
 			{
-				glTexStorage2D(GL_TEXTURE_2D, 1, format, width, height);
+				if (storage)
+				{
+					glTexStorage2D(GL_TEXTURE_2D, 1, format, width, height);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				}
+				else
+				{
+					glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_FLOAT, NULL);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+					float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+					glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+				}
 
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 			}
 			// 附加到帧缓冲
 			glFramebufferTexture2D(GL_FRAMEBUFFER, attachmentType, TextureTarget(multisampled), id, 0);
@@ -71,6 +85,7 @@ namespace Volcano {
 			switch (format)
 			{
 			case FramebufferTextureFormat::DEPTH24STENCIL8: return true;
+			case FramebufferTextureFormat::DEPTH_COMPONENT: return true;
 			}
 			return false;
 		}
@@ -86,6 +101,24 @@ namespace Volcano {
 			return 0;
 		}
 
+		static GLenum VolcanoFBBufferFormatToGL(FramebufferBufferFormat format)
+		{
+			switch (format)
+			{
+			    case FramebufferBufferFormat::NONE:           return GL_NONE;
+			    case FramebufferBufferFormat::FRONT_LEFT:     return GL_FRONT_LEFT;
+			    case FramebufferBufferFormat::FRONT_RIGHT:    return GL_FRONT_RIGHT;
+			    case FramebufferBufferFormat::BACK_LEFT:      return GL_BACK_LEFT;
+			    case FramebufferBufferFormat::BACK_RIGHT:     return GL_BACK_RIGHT;
+			    case FramebufferBufferFormat::FRONT:          return GL_FRONT;
+			    case FramebufferBufferFormat::BACK:           return GL_BACK;
+			    case FramebufferBufferFormat::LEFT:           return GL_LEFT;
+			    case FramebufferBufferFormat::RIGHT:          return GL_RIGHT;
+			    case FramebufferBufferFormat::FRONT_AND_BACK: return GL_FRONT_AND_BACK;
+			}
+			VOL_CORE_ASSERT(false);
+			return 0;
+		}
 	}
 
 	OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& spec)
@@ -148,7 +181,7 @@ namespace Volcano {
 							m_Specification.Height, i);
 						break;
 
-						// 添加整形缓冲区附件
+						// 添加整形INTEGER缓冲区附件
 					case FramebufferTextureFormat::RED_INTEGER:
 						Utils::AttachColorTexture(
 							m_ColorAttachments[i],
@@ -179,6 +212,16 @@ namespace Volcano {
 						m_Specification.Width, 
 						m_Specification.Height);
 					break;
+				case FramebufferTextureFormat::DEPTH_COMPONENT:
+					Utils::AttachDepthTexture(
+						m_DepthAttachment,
+						m_Specification.Samples,
+						GL_DEPTH_COMPONENT,
+						GL_DEPTH_ATTACHMENT,
+						m_Specification.Width,
+						m_Specification.Height,
+						false);
+					break;
 			}
 		}
 
@@ -192,8 +235,8 @@ namespace Volcano {
 		{
 			// Only depth-pass
 			glDrawBuffer(GL_NONE);
+			glReadBuffer(GL_NONE);
 		}
-
 		VOL_CORE_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is incomplete!");
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -206,7 +249,7 @@ namespace Volcano {
 		glViewport(0, 0, m_Specification.Width, m_Specification.Height);
 
 		int value = -1;
-		glClearTexImage(m_ColorAttachments[1], 0, GL_RED_INTEGER, GL_INT, &value);
+		//glClearTexImage(m_ColorAttachments[1], 0, GL_RED_INTEGER, GL_INT, &value);
 	}
 
 	void OpenGLFramebuffer::Unbind()
@@ -247,5 +290,14 @@ namespace Volcano {
 		glClearTexImage(m_ColorAttachments[attachmentIndex], 0, Utils::VolcanoFBTextureFormatToGL(spec.TextureFormat), GL_INT, &value);
 	}
 
+	void OpenGLFramebuffer::SetDrawBuffer(FramebufferBufferFormat format)
+	{
+		glDrawBuffer(Utils::VolcanoFBBufferFormatToGL(format));
+	}
+
+	void OpenGLFramebuffer::SetReadBuffer(FramebufferBufferFormat format)
+	{
+		glReadBuffer(Utils::VolcanoFBBufferFormatToGL(format));
+	}
 
 }
