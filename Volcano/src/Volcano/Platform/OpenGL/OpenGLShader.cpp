@@ -23,8 +23,11 @@ namespace Volcano {
 		{
 			if (type == "vertex")
 				return GL_VERTEX_SHADER;
+			if (type == "geometry")
+				return GL_GEOMETRY_SHADER;
 			if (type == "fragment" || type == "pixel")
 				return GL_FRAGMENT_SHADER;
+
 
 			VOL_CORE_ASSERT(false, "Unknown shader type!");
 			return 0;
@@ -35,6 +38,7 @@ namespace Volcano {
 			switch (stage)
 			{
 				case GL_VERTEX_SHADER:   return shaderc_glsl_vertex_shader;
+				case GL_GEOMETRY_SHADER: return shaderc_glsl_geometry_shader;
 				case GL_FRAGMENT_SHADER: return shaderc_glsl_fragment_shader;
 			}
 			VOL_CORE_ASSERT(false);
@@ -46,6 +50,7 @@ namespace Volcano {
 			switch (stage)
 			{
 				case GL_VERTEX_SHADER:   return "GL_VERTEX_SHADER";
+				case GL_GEOMETRY_SHADER: return "GL_GEOMETRY_SHADER";
 				case GL_FRAGMENT_SHADER: return "GL_FRAGMENT_SHADER";
 			}
 			VOL_CORE_ASSERT(false);
@@ -70,6 +75,7 @@ namespace Volcano {
 			switch (stage)
 			{
 			case GL_VERTEX_SHADER:    return ".cached_opengl.vert";
+			case GL_GEOMETRY_SHADER:  return ".cached_opengl.geom";
 			case GL_FRAGMENT_SHADER:  return ".cached_opengl.frag";
 			}
 			VOL_CORE_ASSERT(false);
@@ -81,6 +87,7 @@ namespace Volcano {
 			switch (stage)
 			{
 			case GL_VERTEX_SHADER:    return ".cached_vulkan.vert";
+			case GL_GEOMETRY_SHADER:  return ".cached_vulkan.geom";
 			case GL_FRAGMENT_SHADER:  return ".cached_vulkan.frag";
 			}
 			VOL_CORE_ASSERT(false);

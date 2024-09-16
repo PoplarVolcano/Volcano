@@ -54,17 +54,30 @@ namespace Volcano {
 	{
 	}
 
-	void RendererModel::EndScene(bool shadow)
+	void RendererModel::EndScene(RenderType type)
 	{
-		Flush(shadow);
+		Flush(type);
 	}
 
-	void RendererModel::Flush(bool shadow)
+	void RendererModel::Flush(RenderType type)
 	{
-		if (shadow)
+		switch (type)
+		{
+		case RenderType::SHADOW_DIRECTIONALLIGHT:
 			Renderer::GetShaderLibrary()->Get("ShadowMappingDepth")->Bind();
-		else
+			break;
+		case RenderType::SHADOW_POINTLIGHT:
+			Renderer::GetShaderLibrary()->Get("PointShadowsDepth")->Bind();
+			break;
+		case RenderType::SHADOW_SPOTLIGHT:
+			Renderer::GetShaderLibrary()->Get("SpotShadowDepth")->Bind();
+			break;
+		case RenderType::NORMAL:
 			Renderer::GetShaderLibrary()->Get("ModelLoading")->Bind();
+			break;
+		default:
+			VOL_CORE_ASSERT(0);
+		}
 		s_Model->DrawIndexed();
 
 	}

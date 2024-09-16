@@ -9,7 +9,7 @@ layout(std140, binding = 0) uniform Camera
 
 layout(std140, binding = 7) uniform CameraData
 {
-	mat4 u_View;
+	mat4 u_View; // 传入的view矩阵经过mat4(mat3(view))，去除了移动
     mat4 u_Projection;
 };
 

@@ -34,6 +34,9 @@
     <None Include="assets\shaders\model\Asteroids.glsl" />
     <None Include="assets\shaders\model\Planet.glsl" />
     <None Include="assets\shaders\shadow\ShadowMappingDepth.glsl" />
-    <None Include="assets\shaders\shadow\ShadowMapping.glsl" />
+    <None Include="assets\shaders\shadow\PointShadowsDepth.glsl" />
+    <None Include="assets\shaders\3D\Cube.glsl" />
+    <None Include="assets\shaders\Renderer3D_Cube.glsl" />
+    <None Include="assets\shaders\shadow\SpotShadowDepth.glsl" />
   </ItemGroup>
 </Project>

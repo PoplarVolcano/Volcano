@@ -213,13 +213,15 @@ void main()
 	}
 	
     // calculate shadow
+	/*
     vec3 projCoords = Input.PositionLightSpace.xyz / Input.PositionLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
     float closestDepth = texture(u_Textures[31], projCoords.xy).r; 
     float currentDepth = projCoords.z;
     float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
     vec3 lighting = (Ambient + (1.0 - shadow) * (Diffuse + Specular));
-	
+	*/
+    vec3 lighting = (Ambient + Diffuse + Specular);
 
     FragmentColor = vec4(lighting, 1.0);
 

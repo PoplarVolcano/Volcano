@@ -15,6 +15,7 @@
 #include "Volcano/Core/MouseBuffer.h"
 #include "Volcano/Core/Window.h"
 
+
 namespace Volcano{
 
     template<typename Fn>
@@ -73,15 +74,41 @@ namespace Volcano{
         };
         fbSpec.Width  = 1280;
         fbSpec.Height = 720;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
         m_Framebuffer = Framebuffer::Create(fbSpec);
 
-        
         fbSpec.Attachments = {
             FramebufferTextureFormat::DEPTH_COMPONENT
         };
         fbSpec.Width  = 1024;
         fbSpec.Height = 1024;
-        m_DepthMapFramebuffer = Framebuffer::Create(fbSpec);
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
+        m_DirectionalDepthMapFramebuffer = Framebuffer::Create(fbSpec);
+
+        
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::DEPTH_COMPONENT
+        };
+        fbSpec.Width = 1024;
+        fbSpec.Height = 1024;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_CUBE_MAP;
+        m_PointDepthMapFramebuffer = Framebuffer::Create(fbSpec);
+
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::DEPTH_COMPONENT
+        };
+        fbSpec.Width = 1024;
+        fbSpec.Height = 1024;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
+        m_SpotDepthMapFramebuffer = Framebuffer::Create(fbSpec);
         
         // 初始化场景
         m_EditorScene = CreateRef<Scene>();
@@ -136,6 +163,28 @@ namespace Volcano{
     {
     }
 
+    void ExampleLayer::RenderScene(Timestep ts)
+    {
+        switch (m_SceneState)
+        {
+        case SceneState::Edit:
+        {
+            m_ActiveScene->OnRenderEditor(ts, m_EditorCamera);
+            break;
+        }
+        case SceneState::Simulate:
+        {
+            m_ActiveScene->OnRenderSimulation(ts, m_EditorCamera);
+            break;
+        }
+        case SceneState::Play:
+        {
+            m_ActiveScene->OnRenderRuntime(ts);
+            break;
+        }
+        }
+    }
+
     void ExampleLayer::OnUpdate(Timestep ts)
     {
         PROFILE_SCOPE("ExampleLayer::OnUpdate");
@@ -182,40 +231,49 @@ namespace Volcano{
         Renderer::SetClearColor(0.2f, 0.2f, 0.2f, 1);
 
         // 渲染阴影
-        m_DepthMapFramebuffer->Bind();
+        m_DirectionalDepthMapFramebuffer->Bind();
         {
             Renderer::Clear();
 
             //RendererAPI::SetCullFaceFunc(CullFaceFunc::FRONT);
 
-            m_ActiveScene->SetShadow(true);
-            switch (m_SceneState)
-            {
-                case SceneState::Edit:
-                {
-                    m_ActiveScene->OnRenderEditor(ts, m_EditorCamera);
-                    break;
-                }
-                case SceneState::Simulate:
-                {
-                    m_ActiveScene->OnRenderSimulation(ts, m_EditorCamera);
-                    break;
-                }
-                case SceneState::Play:
-                {
-                    m_ActiveScene->OnRenderRuntime(ts);
-                    break;
-                }
-            }
-            m_ActiveScene->SetShadow(false);
+            m_ActiveScene->SetRenderType(RenderType::SHADOW_DIRECTIONALLIGHT);
+            RenderScene(ts);
+            m_ActiveScene->SetRenderType(RenderType::NORMAL);
             //RendererAPI::SetCullFaceFunc(CullFaceFunc::BACK);
 
-            m_DepthMapFramebuffer->Unbind();
+            m_DirectionalDepthMapFramebuffer->Unbind();
+            // 把深度贴图绑定到31号纹理槽，所有shader读取阴影都读取31号槽
+            Texture::Bind(m_DirectionalDepthMapFramebuffer->GetDepthAttachmentRendererID(), 31);
         }
 
-        // 把深度贴图绑定到31号纹理槽，所有shader读取阴影都读取31号槽
-        Texture::Bind(m_DepthMapFramebuffer->GetDepthAttachmentRendererID(), 31);
 
+        m_PointDepthMapFramebuffer->Bind();
+        {
+            Renderer::Clear();
+            //RendererAPI::SetCullFaceFunc(CullFaceFunc::FRONT);
+            m_ActiveScene->SetRenderType(RenderType::SHADOW_POINTLIGHT);
+            RenderScene(ts);
+            m_ActiveScene->SetRenderType(RenderType::NORMAL);
+            //RendererAPI::SetCullFaceFunc(CullFaceFunc::BACK);
+            m_PointDepthMapFramebuffer->Unbind();
+            Texture::Bind(m_PointDepthMapFramebuffer->GetDepthAttachmentRendererID(), 0);
+        }
+
+        m_SpotDepthMapFramebuffer->Bind();
+        {
+            Renderer::Clear();
+
+            //RendererAPI::SetCullFaceFunc(CullFaceFunc::FRONT);
+
+            m_ActiveScene->SetRenderType(RenderType::SHADOW_SPOTLIGHT);
+            RenderScene(ts);
+            m_ActiveScene->SetRenderType(RenderType::NORMAL);
+            //RendererAPI::SetCullFaceFunc(CullFaceFunc::BACK);
+
+            m_SpotDepthMapFramebuffer->Unbind();
+            Texture::Bind(m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID(), 30);
+        }
         
         m_Framebuffer->Bind();
         {
@@ -224,24 +282,8 @@ namespace Volcano{
             // Clear entity ID attachment to -1
             m_Framebuffer->ClearAttachment(1, -1);
 
-            switch (m_SceneState)
-            {
-            case SceneState::Edit:
-            {
-                m_ActiveScene->OnRenderEditor(ts, m_EditorCamera);
-                break;
-            }
-            case SceneState::Simulate:
-            {
-                m_ActiveScene->OnRenderSimulation(ts, m_EditorCamera);
-                break;
-            }
-            case SceneState::Play:
-            {
-                m_ActiveScene->OnRenderRuntime(ts);
-                break;
-            }
-            }
+            m_ActiveScene->SetRenderType(RenderType::NORMAL);
+            RenderScene(ts);
 
             auto [mx, my] = ImGui::GetMousePos();
             // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
@@ -276,8 +318,10 @@ namespace Volcano{
         // TODO: 帧缓冲画面会被拉伸至视图尺寸，参考ShaderToy代码将画面保持正常尺寸
         m_WindowShader->Bind();
         //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
-        uint32_t windowTextureID = m_DepthMapFramebuffer->GetDepthAttachmentRendererID();
+        //uint32_t windowTextureID = m_DirectionalDepthMapFramebuffer->GetDepthAttachmentRendererID();
         //uint32_t windowTextureID = m_Framebuffer->GetDepthAttachmentRendererID();
+        //uint32_t windowTextureID = m_PointDepthMapFramebuffer->GetDepthAttachmentRendererID();
+        uint32_t windowTextureID = m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID();
         Texture::Bind(windowTextureID, 0);
         Renderer::SetDepthTest(false);
         Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());

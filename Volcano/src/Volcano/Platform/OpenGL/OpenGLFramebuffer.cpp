@@ -9,25 +9,31 @@ namespace Volcano {
 
 	namespace Utils {
 
-		static GLenum TextureTarget(bool multisampled)
+		static GLenum TextureTarget(TextureType type)
 		{
-			return multisampled ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+			switch (type)
+			{
+				case TextureType::TEXTURE_2D:             return GL_TEXTURE_2D;
+				case TextureType::TEXTURE_2D_MULTISAMPLE: return GL_TEXTURE_2D_MULTISAMPLE;
+				case TextureType::TEXTURE_CUBE_MAP:       return GL_TEXTURE_CUBE_MAP;
+				default:
+					return GL_TEXTURE_2D;
+			}
 		}
 
-		static void CreateTextures(bool multisampled, uint32_t* outID, uint32_t count)
+		static void CreateTextures(TextureType type, uint32_t* outID, uint32_t count)
 		{
 			// 纹理附件
-			glCreateTextures(TextureTarget(multisampled), count, outID);
+			glCreateTextures(TextureTarget(type), count, outID);
 		}
 
-		static void AttachColorTexture(uint32_t id, int samples, GLenum internalFormat, GLenum format, uint32_t width, uint32_t height, int index)
+		static void AttachColorTexture(uint32_t id, int samples, TextureType type, GLenum internalFormat, GLenum format, uint32_t width, uint32_t height, int index)
 		{
-			bool multisampled = samples > 1;
-			if (multisampled)
+			if (type == TextureType::TEXTURE_2D_MULTISAMPLE)
 			{
 				glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, internalFormat, width, height, GL_FALSE);
 			}
-			else
+			else if(type == TextureType::TEXTURE_2D)
 			{
 				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, NULL);
 
@@ -38,17 +44,17 @@ namespace Volcano {
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 			}
 			// 附加到帧缓冲
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, TextureTarget(multisampled), id, 0);
+			glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, id, 0);
+			//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, TextureTarget(type), id, 0);
 		}
 
-		static void AttachDepthTexture(uint32_t id, int samples, GLenum format, GLenum attachmentType, uint32_t width, uint32_t height, bool storage = true)
+		static void AttachDepthTexture(uint32_t id, int samples, TextureType type, GLenum format, GLenum attachmentType, uint32_t width, uint32_t height, bool storage = true)
 		{
-			bool multisampled = samples > 1;
-			if (multisampled)
+			if (type == TextureType::TEXTURE_2D_MULTISAMPLE)
 			{
 				glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, samples, format, width, height, GL_FALSE);
 			}
-			else
+			else if (type == TextureType::TEXTURE_2D)
 			{
 				if (storage)
 				{
@@ -72,12 +78,29 @@ namespace Volcano {
 				}
 
 			}
-			// 附加到帧缓冲
-			glFramebufferTexture2D(GL_FRAMEBUFFER, attachmentType, TextureTarget(multisampled), id, 0);
+			else if (type == TextureType::TEXTURE_CUBE_MAP)
+			{
+				if (storage)
+				{
+				}
+				else
+				{
+					for (uint32_t i = 0; i < 6; ++i)
+						glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, width, height, 0, format, GL_FLOAT, NULL);
+					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+				}
+			}
+			// 附加到帧缓冲,glFramebufferTexture2D是旧版本方法
+			// glFramebufferTexture2D(GL_FRAMEBUFFER, attachmentType, TextureTarget(type), id, 0);
+			glFramebufferTexture(GL_FRAMEBUFFER, attachmentType, id, 0);
 		}
-		static void BindTexture(bool multisampled, uint32_t id)
+		static void BindTexture(TextureType type, uint32_t id)
 		{
-			glBindTexture(TextureTarget(multisampled), id);
+			glBindTexture(TextureTarget(type), id);
 		}
 
 		static bool IsDepthFormat(FramebufferTextureFormat format)
@@ -159,22 +182,23 @@ namespace Volcano {
 		glCreateFramebuffers(1, &m_RendererID);
 		glBindFramebuffer(GL_FRAMEBUFFER, m_RendererID);
 
-		bool multisample = m_Specification.Samples > 1;
+		auto type = m_Specification.ColorType;
 
 		// 纹理缓冲附件
 		if (m_ColorAttachmentSpecifications.size())
 		{
 			m_ColorAttachments.resize(m_ColorAttachmentSpecifications.size());
-			Utils::CreateTextures(multisample, m_ColorAttachments.data(), m_ColorAttachments.size());
+			Utils::CreateTextures(type, m_ColorAttachments.data(), m_ColorAttachments.size());
 			for (size_t i = 0; i < m_ColorAttachmentSpecifications.size(); i++)
 			{
-				Utils::BindTexture(multisample, m_ColorAttachments[i]);
+				Utils::BindTexture(type, m_ColorAttachments[i]);
 				switch (m_ColorAttachmentSpecifications[i].TextureFormat)
 				{
 					case FramebufferTextureFormat::RGBA8:
 						Utils::AttachColorTexture(
 							m_ColorAttachments[i], 
 							m_Specification.Samples, 
+							type,
 							GL_RGBA8, 
 							GL_RGBA,
 							m_Specification.Width, 
@@ -186,6 +210,7 @@ namespace Volcano {
 						Utils::AttachColorTexture(
 							m_ColorAttachments[i],
 							m_Specification.Samples,
+							type,
 							GL_R32I,
 							GL_RED_INTEGER,
 							m_Specification.Width,
@@ -195,11 +220,12 @@ namespace Volcano {
 			}
 		}
 
+		type = m_Specification.DepthType;
 		// 深度缓冲附件
 		if (m_DepthAttachmentSpecification.TextureFormat != FramebufferTextureFormat::None)
 		{
-			Utils::CreateTextures(multisample, &m_DepthAttachment, 1);
-			Utils::BindTexture(multisample, m_DepthAttachment);
+			Utils::CreateTextures(type, &m_DepthAttachment, 1);
+			Utils::BindTexture(type, m_DepthAttachment);
 			switch (m_DepthAttachmentSpecification.TextureFormat)
 			{
 				case FramebufferTextureFormat::DEPTH24STENCIL8:
@@ -207,6 +233,7 @@ namespace Volcano {
 					Utils::AttachDepthTexture(
 						m_DepthAttachment, 
 						m_Specification.Samples, 
+						type,
 						GL_DEPTH24_STENCIL8, 
 						GL_DEPTH_STENCIL_ATTACHMENT, 
 						m_Specification.Width, 
@@ -216,6 +243,7 @@ namespace Volcano {
 					Utils::AttachDepthTexture(
 						m_DepthAttachment,
 						m_Specification.Samples,
+						type,
 						GL_DEPTH_COMPONENT,
 						GL_DEPTH_ATTACHMENT,
 						m_Specification.Width,

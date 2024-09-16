@@ -9,6 +9,14 @@ class b2World;
 
 namespace Volcano {
 
+	enum class RenderType
+	{
+		NORMAL,
+		SHADOW_DIRECTIONALLIGHT,
+		SHADOW_POINTLIGHT,
+		SHADOW_SPOTLIGHT
+	};
+
 	class Entity;
 
 	class Scene
@@ -56,7 +64,7 @@ namespace Volcano {
 		void SetRunning(bool running) { m_IsRunning = running; }
 		void SetPaused(bool paused) { m_IsPaused = paused; }
 
-		void SetShadow(bool shadow) { m_Shadow = shadow; }
+		void SetRenderType(RenderType type) { m_RenderType = type; }
 
 		void Step(int frames = 1);
 
@@ -86,7 +94,7 @@ namespace Volcano {
 
 		std::unordered_map<UUID, entt::entity> m_EntityMap;
 
-		bool m_Shadow = false;
+		RenderType m_RenderType = RenderType::NORMAL;
 
 		friend class Entity;
 		friend class SceneSerializer;

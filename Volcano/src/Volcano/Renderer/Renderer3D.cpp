@@ -166,12 +166,12 @@ namespace Volcano {
 		StartBatch();
 	}
 
-	void Renderer3D::EndScene(bool shadow)
+	void Renderer3D::EndScene(RenderType type)
 	{
-		Flush(shadow);
+		Flush(type);
 	}
 
-	void Renderer3D::Flush(bool shadow)
+	void Renderer3D::Flush(RenderType type)
 	{
 		if (s_Renderer3DData.CubeIndexCount)
 		{
@@ -183,10 +183,23 @@ namespace Volcano {
 			for (uint32_t i = 0; i < s_Renderer3DData.TextureSlotIndex; i++)
 				s_Renderer3DData.TextureSlots[i]->Bind(i);
 
-			if (shadow)
+			switch (type)
+			{
+			case RenderType::SHADOW_DIRECTIONALLIGHT:
 				Renderer::GetShaderLibrary()->Get("ShadowMappingDepth")->Bind();
-			else
+				break;
+			case RenderType::SHADOW_POINTLIGHT:
+				Renderer::GetShaderLibrary()->Get("PointShadowsDepth")->Bind();
+				break;
+			case RenderType::SHADOW_SPOTLIGHT:
+				Renderer::GetShaderLibrary()->Get("SpotShadowDepth")->Bind();
+				break;
+			case RenderType::NORMAL:
 				s_Renderer3DData.CubeShader->Bind();
+				break;
+			default:
+				VOL_CORE_ASSERT(0);
+			}
 			Renderer::DrawIndexed(s_Renderer3DData.CubeVertexArray, s_Renderer3DData.CubeIndexCount);
 		}
 	}

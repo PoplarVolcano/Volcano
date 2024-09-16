@@ -4,6 +4,7 @@
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/Renderer3D.h"
 #include <glm/gtc/matrix_transform.hpp>
+//#include <glad/glad.h>
 
 namespace Volcano {
     //LightSpaceMatrix
@@ -117,7 +118,8 @@ namespace Volcano {
         s_ShadowData.VertexArray->SetIndexBuffer(ib);
         */
         Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/ShadowMappingDepth.glsl");
-
+        Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/PointShadowsDepth.glsl");
+        Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/SpotShadowDepth.glsl");
 
     }
 
@@ -135,20 +137,11 @@ namespace Volcano {
 
     void Shadow::DrawShadow()
     {
-        // lighting info
-        // -------------
-
-        Renderer::GetShaderLibrary()->Get("ShadowMappingDepth")->Bind();
-        Renderer::DrawIndexed(s_ShadowData.VertexArray, s_ShadowData.VertexArray->GetIndexBuffer()->GetCount());
-        RenderCube();
+        
         /*
-        Renderer::SetClearColor(0.2f, 0.2f, 0.2f, 1);
-        Renderer::Clear();
-        s_ShadowData.Shader->Bind();
+        // 1. Render scene to depth cubemap
 
-        Texture2D::Create("SandBoxProject/Assets/Textures/Box.png")->Bind();
-        Texture::Bind(fb->GetDepthAttachmentRendererID(), 1);
-        RenderCube();
+        // 2. Render scene as normal 
         */
     }
 

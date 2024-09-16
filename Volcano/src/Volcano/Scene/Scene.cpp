@@ -22,10 +22,13 @@
 #include "box2d/b2_polygon_shape.h"
 #include "box2d/b2_circle_shape.h"
 #include <Volcano/Renderer/Light.h>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Volcano {
 
-	static Ref<UniformBuffer> s_LightSpaceMatrixUniformBuffer;
+	static Ref<UniformBuffer> s_DirectionalLightSpaceMatrixUniformBuffer;
+	static Ref<UniformBuffer> s_PointLightSpaceMatrixUniformBuffer;
+	static Ref<UniformBuffer> s_SpotLightSpaceMatrixUniformBuffer;
 
 	Scene::Scene()
 	{
@@ -39,10 +42,12 @@ namespace Volcano {
 
 	void Scene::InitializeUniform()
 	{
-		s_DirectionalLightUniformBuffer = UniformBuffer::Create((4 + 4 + 4 + 4) * sizeof(float), 2);
-		s_PointLightUniformBuffer       = UniformBuffer::Create((4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float), 3);
-		s_SpotLightUniformBuffer        = UniformBuffer::Create((4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
-		s_LightSpaceMatrixUniformBuffer = UniformBuffer::Create(4 * 4 * sizeof(float), 8);
+		s_DirectionalLightUniformBuffer            = UniformBuffer::Create((4 + 4 + 4 + 4) * sizeof(float), 2);
+		s_PointLightUniformBuffer                  = UniformBuffer::Create((4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float), 3);
+		s_SpotLightUniformBuffer                   = UniformBuffer::Create((4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
+		s_DirectionalLightSpaceMatrixUniformBuffer = UniformBuffer::Create(4 * 4 * sizeof(float), 8);
+		s_PointLightSpaceMatrixUniformBuffer       = UniformBuffer::Create((4 * 4 * 6 + 1) * sizeof(float), 9);
+		s_SpotLightSpaceMatrixUniformBuffer        = UniformBuffer::Create((4 * 4 + 1) * sizeof(float), 10);
 	}
 
 	// 将源注册表下实体复制到目标注册表，Map以UUID作为标记获取新实体
@@ -491,7 +496,7 @@ namespace Volcano {
 				Renderer3D::DrawCube(transform.GetTransform(), transform.GetNormalTransform(), cube, (int)entity);
 			}
 		}
-		Renderer3D::EndScene(m_Shadow);
+		Renderer3D::EndScene(m_RenderType);
 		
 
 		RendererModel::BeginScene(camera, transform, position, direction);
@@ -501,14 +506,15 @@ namespace Volcano {
 			for (auto entity : view)
 			{
 				auto [transform, model] = view.get<TransformComponent, ModelRendererComponent>(entity);
-				if(m_Shadow)
+				if(m_RenderType == RenderType::SHADOW_DIRECTIONALLIGHT)
 					RendererModel::DrawModel(transform.GetTransform(), transform.GetNormalTransform(), model.ModelPath, (int)entity);
 			}
 		}
-		RendererModel::EndScene(m_Shadow);
+		RendererModel::EndScene(m_RenderType);
 
 		// draw skybox as last
-		if (!m_Shadow)
+		
+		if (m_RenderType == RenderType::NORMAL)
 		{
 			RendererAPI::SetDepthFunc(DepthFunc::LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
 			Skybox::BeginScene(camera, transform);
@@ -532,9 +538,9 @@ namespace Volcano {
 				s_DirectionalLightBuffer.diffuse   = light.Diffuse;
 				s_DirectionalLightBuffer.specular  = light.Specular;
 				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.ambient, sizeof(glm::vec3), 4 * sizeof(float));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.diffuse, sizeof(glm::vec3), (4 + 4) * sizeof(float));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.specular, sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
 
 				
 				glm::mat4 lightProjection, lightView;
@@ -545,7 +551,7 @@ namespace Volcano {
 				lightView = glm::inverse(transform.GetTransform());
 
 				lightSpaceMatrix = lightProjection * lightView;
-				s_LightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				s_DirectionalLightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
 			}
 			else
 			{
@@ -553,9 +559,13 @@ namespace Volcano {
 				s_DirectionalLightBuffer.ambient   = { 0, 0, 0 };
 				s_DirectionalLightBuffer.diffuse   = { 0, 0, 0 };
 				s_DirectionalLightBuffer.specular  = { 0, 0, 0 };
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
 
 				glm::mat4 lightSpaceMatrix = glm::mat4(0);
-				s_LightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				s_DirectionalLightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
 				/*
 				glm::vec3 lightPos(-20.0f, 40.0f, -10.0f);
 				glm::mat4 lightProjection, lightView;
@@ -590,6 +600,24 @@ namespace Volcano {
 		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
 		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
 		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+
+
+				glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
+				const uint32_t SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
+				float aspect = (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT;
+				float m_Near = 1.0f;
+				float m_Far = 25.0f;
+				glm::mat4 shadowProj = glm::perspective(90.0f, aspect, m_Near, m_Far);
+				std::vector<glm::mat4> shadowTransforms;
+				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
+				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
+				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  1.0,  0.0), glm::vec3(0.0,  0.0,  1.0)));
+				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, -1.0,  0.0), glm::vec3(0.0,  0.0, -1.0)));
+				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0,  1.0), glm::vec3(0.0, -1.0,  0.0)));
+				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0, -1.0), glm::vec3(0.0, -1.0,  0.0)));
+				
+				s_PointLightSpaceMatrixUniformBuffer->SetData(&shadowTransforms[0], 6 * 4 * 4 * sizeof(float));
+				s_PointLightSpaceMatrixUniformBuffer->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
 			}
 			else
 			{
@@ -600,6 +628,19 @@ namespace Volcano {
 		        s_PointLightBuffer.constant  = 0;
 		        s_PointLightBuffer.linear    = 0;
 		        s_PointLightBuffer.quadratic = 0;
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+
+				glm::mat4 shadowTransform = glm::mat4(0);
+				float m_Far = 0;
+				for (uint32_t i = 0; i < 6; ++i)
+					s_PointLightSpaceMatrixUniformBuffer->SetData(&shadowTransform, 4 * 4 * sizeof(float), i * 4 * 4 * sizeof(float));
+				s_PointLightSpaceMatrixUniformBuffer->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
 
 			}
 
@@ -631,6 +672,15 @@ namespace Volcano {
 		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
 		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
 
+				glm::mat4 lightProjection, lightView;
+				glm::mat4 lightSpaceMatrix;
+				float m_Near = 1.0f, m_Far = 25.0f;
+				lightProjection = glm::perspective(glm::radians(90.0f), 1.0f, m_Near, m_Far);
+				lightView = glm::inverse(transform.GetTransform());
+
+				lightSpaceMatrix = lightProjection * lightView;
+				s_SpotLightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				s_SpotLightSpaceMatrixUniformBuffer->SetData(&m_Far, sizeof(float), 4 * 4 * sizeof(float));
 			}
 			else
 			{
@@ -644,6 +694,16 @@ namespace Volcano {
 		        s_SpotLightBuffer.quadratic   = 0;
 		        s_SpotLightBuffer.cutOff      = 0;
 		        s_SpotLightBuffer.outerCutOff = 0;
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
+		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
 
 			}
 	}

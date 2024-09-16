@@ -15,5 +15,8 @@ namespace Volcano {
 		static void EndScene();
 
 		static void DrawShadow();
+	private:
+		static uint32_t m_DepthMapFBO;
+		static uint32_t m_DepthCubemap;
 	};
 }

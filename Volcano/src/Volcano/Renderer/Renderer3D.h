@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "Volcano/Renderer/Camera.h"
+#include <Volcano/Scene/Scene.h>
 
 #include "Volcano/Scene/Components.h"
 
@@ -16,8 +17,8 @@ namespace Volcano {
 
 
 		static void BeginScene(const Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
-		static void EndScene(bool shadow = false);
-		static void Flush(bool shadow = false);
+		static void EndScene(RenderType type = RenderType::NORMAL);
+		static void Flush(RenderType type = RenderType::NORMAL);
 
 		static void DrawCube(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color);
 		static void DrawCube(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color);

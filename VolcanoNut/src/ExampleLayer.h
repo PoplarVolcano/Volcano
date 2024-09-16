@@ -37,6 +37,7 @@ namespace Volcano {
 		void OpenScene(const std::filesystem::path& path);
 		void SaveScene();
 		void SaveSceneAs();
+		void RenderScene(Timestep ts);
 
 		void SerializeScene(Ref<Scene> scene, const std::filesystem::path& path);
 
@@ -55,7 +56,9 @@ namespace Volcano {
 		Ref<Texture2D> m_SpriteSheet;
 		Ref<SubTexture2D> m_TextureStairs, m_TextureTree;
 		Ref<Framebuffer> m_Framebuffer;
-		Ref<Framebuffer> m_DepthMapFramebuffer;
+		Ref<Framebuffer> m_DirectionalDepthMapFramebuffer;
+		Ref<Framebuffer> m_PointDepthMapFramebuffer;
+		Ref<Framebuffer> m_SpotDepthMapFramebuffer;
 
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
 		glm::vec2 m_ViewportBounds[2];

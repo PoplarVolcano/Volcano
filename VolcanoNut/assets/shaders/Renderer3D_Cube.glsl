@@ -69,7 +69,10 @@ layout (location = 1) in flat float v_SpecularIndex;
 layout (location = 2) in flat int v_EntityID;
 layout (location = 3) in VertexOutput Input;
 
-layout (binding = 0) uniform sampler2D u_Textures[32];
+layout (binding = 0)  uniform sampler2D u_Textures[30];
+layout (binding = 30) uniform sampler2D u_SpotDepthMap;
+layout (binding = 31) uniform sampler2D u_DepthMap;
+layout (binding = 0)  uniform samplerCube u_DepthCubeMap;
 
 layout(std140, binding = 1) uniform CameraPosition
 {
@@ -116,9 +119,24 @@ layout (std140, binding = 5) uniform Material
 	float u_MaterialShininess;
 };
 
+layout(std140, binding = 9) uniform PointLightShadow
+{
+    mat4 u_ShadowMatrices[6];
+    float u_PointFarPlane;
+};
+
+layout(std140, binding = 10) uniform SpotLightShadow
+{
+    mat4 u_SpotLightSpace;
+    float u_SpotFarPlane;
+};
 
 void main()
 {
+	vec3 Ambient  = vec3(0.0, 0.0, 0.0);
+	vec3 Diffuse  = vec3(0.0, 0.0, 0.0);
+	vec3 Specular = vec3(0.0, 0.0, 0.0);
+
 	// 漫反射贴图
 	int diffuseIndex = int(v_DiffuseIndex);
 	vec4 materialDiffuse = Input.Color;
@@ -135,9 +153,6 @@ void main()
 	vec3 normal = normalize(Input.Normal);
 	vec3 viewDirection = normalize(u_CameraPosition - Input.Position);
 	
-	vec3 Ambient  = vec3(0.0, 0.0, 0.0);
-	vec3 Diffuse  = vec3(0.0, 0.0, 0.0);
-	vec3 Specular = vec3(0.0, 0.0, 0.0);
 
 	// DirectionalLight
 	{
@@ -152,10 +167,19 @@ void main()
 		vec3 ambient  = u_DirectionalLightAmbient  * materialDiffuse.rgb;
 		vec3 diffuse  = u_DirectionalLightDiffuse  * diff * materialDiffuse.rgb;
 		vec3 specular = u_DirectionalLightSpecular * spec * materialSpecular.rgb;
-
+		
+        vec3 projCoords = Input.PositionLightSpace.xyz / Input.PositionLightSpace.w;
+        projCoords = projCoords * 0.5 + 0.5;
+        float closestDepth = texture(u_DepthMap, projCoords.xy).r; 
+        float currentDepth = projCoords.z;
+	    float bias = max(0.005 * (1.0 - dot(normal, -u_DirectionalLightDirection)), 0.0005);
+        float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+	    if(projCoords.z > 1.0)
+            shadow = 0.0;
+		
 		Ambient  += ambient;
-		Diffuse  += diffuse;
-		Specular += specular;
+		Diffuse  += (1.0 - shadow) * diffuse;
+		Specular += (1.0 - shadow) * specular;
 	}
 
 	// PointLight
@@ -179,9 +203,20 @@ void main()
 		diffuse  *= attenuation;
 		specular *= attenuation;
 	
+	    /*
+	    // TODO：点光源的立方体贴图读取无法顺利进行，还需要优化
+	    vec3 fragToLight = Input.Position - u_PointLightPosition;
+        float currentDepth = length(fragToLight);
+        float closestDepth = texture(u_DepthCubeMap, fragToLight).r;
+        closestDepth *= u_PointFarPlane;
+        float bias = 0.05;
+        float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+		*/
+		float shadow = 0;
+
 		Ambient  += ambient;
-		Diffuse  += diffuse;
-		Specular += specular;
+		Diffuse  += (1.0 - shadow) * diffuse;
+		Specular += (1.0 - shadow) * specular;
 	}
 
 	// SpotLight
@@ -210,24 +245,48 @@ void main()
         diffuse  *= intensity * attenuation;
         specular *= intensity * attenuation;
 		
+	    vec4 positionLightSpace = u_SpotLightSpace * vec4(Input.Position, 1.0);
+        vec3 projCoords = positionLightSpace.xyz / positionLightSpace.w;
+        projCoords = projCoords * 0.5 + 0.5;
+        float closestDepth = texture(u_SpotDepthMap, projCoords.xy).r; 
+        float currentDepth = projCoords.z;
+	    float bias = max(0.005 * (1.0 - dot(normal, -u_SpotLightDirection)), 0.0005);
+        float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
+
 		Ambient  += ambient;
-		Diffuse  += diffuse;
-		Specular += specular;
+		Diffuse  += (1.0 - shadow) * diffuse;
+		Specular += (1.0 - shadow) * specular;
+
 	}
 
-    // calculate shadow
-    vec3 projCoords = Input.PositionLightSpace.xyz / Input.PositionLightSpace.w;
-    projCoords = projCoords * 0.5 + 0.5;
-    float closestDepth = texture(u_Textures[31], projCoords.xy).r; 
-    float currentDepth = projCoords.z;
-	float bias = max(0.05 * (1.0 - dot(normal, -u_DirectionalLightDirection)), 0.005);
-    float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
-	if(projCoords.z > 1.0)
-        shadow = 0.0;
+	/*
+	// 柔化点光源阴影
+	vec3 fragToLight = Input.Position - u_PointLightPosition;
+    float currentDepth = length(fragToLight);
+	float shadow = 0.0;
+    float bias = 0.05; 
+    float samples = 4.0;
+    float offset = 0.1;
+    for(float x = -offset; x < offset; x += offset / (samples * 0.5))
+    {
+        for(float y = -offset; y < offset; y += offset / (samples * 0.5))
+        {
+            for(float z = -offset; z < offset; z += offset / (samples * 0.5))
+            {
+                float closestDepth = texture(u_DepthCubeMap, fragToLight + vec3(x, y, z)).r; 
+                closestDepth *= u_PointFarPlane;
+                if(currentDepth - bias > closestDepth)
+                    shadow += 1.0;
+            }
+        }
+    }
+    shadow /= (samples * samples * samples);
     vec3 lighting = (Ambient + (1.0 - shadow) * (Diffuse + Specular));
-	
-	//vec3 result = Ambient + Diffuse + Specular;
+	*/
+
+	vec3 lighting = Ambient + Diffuse + Specular;
 
     o_Color = vec4(lighting, materialDiffuse.a);
+
 	o_EntityID = v_EntityID;
 }

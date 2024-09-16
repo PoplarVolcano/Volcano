@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Texture.h"
 #include "glm/glm.hpp"
 
 namespace Volcano {
@@ -61,6 +62,8 @@ namespace Volcano {
 		uint32_t Width, Height;
 		FramebufferAttachmentSpecification Attachments;
 		uint32_t Samples = 1;
+		TextureType ColorType = TextureType::TEXTURE_2D;
+		TextureType DepthType = TextureType::TEXTURE_2D;
 
 		bool SwapChainTarget = true;
 	};

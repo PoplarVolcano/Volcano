@@ -15,6 +15,13 @@ namespace Volcano {
 		Float16 = 3
 	};
 
+	enum class TextureType
+	{
+		TEXTURE_2D,
+		TEXTURE_2D_MULTISAMPLE,
+		TEXTURE_CUBE_MAP
+	};
+
 	class Texture
 	{
 	public:
