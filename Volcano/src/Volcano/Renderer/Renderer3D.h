@@ -25,7 +25,7 @@ namespace Volcano {
 
 
 		static void DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const glm::vec4& color, int entityID = -1);
-		static void DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const Ref<Texture2D>& diffuse, const Ref<Texture2D>& specular, const glm::vec4& color = glm::vec4(1.0f), int entityID = -1);
+		static void DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const Ref<Texture2D>& diffuse, const Ref<Texture2D>& specular, const Ref<Texture2D>& normal, const Ref<Texture2D>& parallax, const glm::vec4& color = glm::vec4(1.0f), int entityID = -1);
 
 		static void DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, CubeRendererComponent& crc, int entityID);
 

@@ -69,9 +69,8 @@ void main()
 #type fragment
 #version 450 core
 
-layout (location = 0) out vec4 o_Color;
-layout (location = 1) out int o_EntityID;
-layout (location = 2) out vec4 BrightColor;
+layout(location = 0) out vec4 o_Color;
+layout(location = 1) out int o_EntityID;
 
 struct VertexOutput
 {
@@ -221,7 +220,6 @@ void main()
 	
 
 	// DirectionalLight
-	if (u_DirectionalLightDirection != vec3(0.0))
 	{
 		vec3 lightDirection = normalize(-u_DirectionalLightDirection);
 		float diff = max(dot(normal, lightDirection), 0.0);
@@ -231,9 +229,9 @@ void main()
 		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
 		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
 		
-		vec3 ambient  = u_DirectionalLightAmbient;
-		vec3 diffuse  = u_DirectionalLightDiffuse  * diff;
-		vec3 specular = u_DirectionalLightSpecular * spec;
+		vec3 ambient  = u_DirectionalLightAmbient  * materialDiffuse.rgb;
+		vec3 diffuse  = u_DirectionalLightDiffuse  * diff * materialDiffuse.rgb;
+		vec3 specular = u_DirectionalLightSpecular * spec * materialSpecular.rgb;
 		
         vec3 projCoords = Input.PositionLightSpace.xyz / Input.PositionLightSpace.w;
         projCoords = projCoords * 0.5 + 0.5;
@@ -250,7 +248,6 @@ void main()
 	}
 
 	// PointLight
-	if (u_PointLightPosition != vec3(0.0))
 	{
 		vec3 lightDirection = normalize(u_PointLightPosition - Input.Position);
 		float diff = max(dot(normal, lightDirection), 0.0);
@@ -263,9 +260,9 @@ void main()
 		float distance = length(u_PointLightPosition - Input.Position);
 		float attenuation = 1.0 / (u_PointLightConstant + u_PointLightLinear * distance +  u_PointLightQuadratic * (distance * distance));
 		
-	    vec3 ambient  = u_PointLightAmbient;
-		vec3 diffuse  = u_PointLightDiffuse  * diff;
-		vec3 specular = u_PointLightSpecular * spec;
+	    vec3 ambient  = u_PointLightAmbient  * materialDiffuse.rgb;
+		vec3 diffuse  = u_PointLightDiffuse  * diff * materialDiffuse.rgb;
+		vec3 specular = u_PointLightSpecular * spec * materialSpecular.rgb;
 	
 	    ambient  *= attenuation;
 		diffuse  *= attenuation;
@@ -289,7 +286,6 @@ void main()
 	}
 
 	// SpotLight
-	if (u_SpotLightDirection != vec3(0.0))
 	{
 		vec3 lightDirection = normalize(u_SpotLightPosition - Input.Position);
 		float diff = max(dot(normal, lightDirection), 0.0);
@@ -307,9 +303,9 @@ void main()
         float epsilon = (u_SpotLightCutOff - u_SpotLightOuterCutOff);
         float intensity = clamp((theta - u_SpotLightOuterCutOff) / epsilon, 0.0, 1.0);
 		
-		vec3 ambient  = u_SpotLightAmbient;
-		vec3 diffuse  = u_SpotLightDiffuse  * diff;  
-		vec3 specular = u_SpotLightSpecular * spec;
+		vec3 ambient  = u_SpotLightAmbient  * materialDiffuse.rgb;
+		vec3 diffuse  = u_SpotLightDiffuse  * diff * materialDiffuse.rgb;  
+		vec3 specular = u_SpotLightSpecular * spec * materialSpecular.rgb;
 
 		ambient  *= intensity * attenuation;
         diffuse  *= intensity * attenuation;
@@ -328,7 +324,6 @@ void main()
 		Specular += (1.0 - shadow) * specular;
 
 	}
-	
 
 	/*
 	// 柔化点光源阴影
@@ -355,26 +350,11 @@ void main()
     vec3 lighting = (Ambient + (1.0 - shadow) * (Diffuse + Specular));
 	*/
 
-	if(materialDiffuse.a != 0.0)
-	{
-	    Ambient  *= materialDiffuse.rgb;
-	    Diffuse  *= materialDiffuse.rgb;  
-	}
-	if(materialSpecular.a != 0.0)
-	{
-	    Specular *= materialSpecular.rgb;
-	}
+
 
 	vec3 lighting = Ambient + Diffuse + Specular;
 
-    o_Color = vec4(lighting, 1.0);
+    o_Color = vec4(lighting, materialDiffuse.a);
 
 	o_EntityID = v_EntityID;
-
-	 // Check whether fragment output is higher than threshold, if so output as brightness color
-    float brightness = dot(o_Color.rgb, vec3(0.2126, 0.7152, 0.0722));//转换为灰度来计算片段的亮度
-	if(brightness > 1.0)
-        BrightColor = o_Color;
-    else
-        BrightColor = vec4(0.0, 0.0, 0.0, 1.0);
 }

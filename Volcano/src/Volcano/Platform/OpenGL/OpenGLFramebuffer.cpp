@@ -205,6 +205,17 @@ namespace Volcano {
 							m_Specification.Height, i);
 						break;
 
+					case FramebufferTextureFormat::RGBA16F:
+						Utils::AttachColorTexture(
+							m_ColorAttachments[i],
+							m_Specification.Samples,
+							type,
+							GL_RGBA16F, // 应用HDR渲染，16位每颜色分量的浮点帧缓冲
+							GL_RGBA,
+							m_Specification.Width,
+							m_Specification.Height, i);
+						break;
+
 						// 添加整形INTEGER缓冲区附件
 					case FramebufferTextureFormat::RED_INTEGER:
 						Utils::AttachColorTexture(

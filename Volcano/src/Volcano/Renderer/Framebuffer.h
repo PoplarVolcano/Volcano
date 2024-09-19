@@ -26,6 +26,7 @@ namespace Volcano {
 
 		//Color
 		RGBA8,
+		RGBA16F,
 		RED_INTEGER,
 
 		// Depth/stencil

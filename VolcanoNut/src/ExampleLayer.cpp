@@ -18,6 +18,12 @@
 
 namespace Volcano{
 
+    static Ref<UniformBuffer> s_BlurUniformBuffer;
+    static Ref<UniformBuffer> s_ExposureUniformBuffer;
+    static float s_Exposure = 1.0f;
+    static bool s_Bloom = true;
+
+
     template<typename Fn>
     class Timer {
     public:
@@ -68,8 +74,9 @@ namespace Volcano{
 
         FramebufferSpecification fbSpec;
         fbSpec.Attachments = {
-            FramebufferTextureFormat::RGBA8,
+            FramebufferTextureFormat::RGBA16F,
             FramebufferTextureFormat::RED_INTEGER,
+            FramebufferTextureFormat::RGBA16F,
             FramebufferTextureFormat::Depth     //添加一个深度附件，默认Depth = DEPTH24STENCIL8
         };
         fbSpec.Width  = 1280;
@@ -110,6 +117,26 @@ namespace Volcano{
         fbSpec.DepthType = TextureType::TEXTURE_2D;
         m_SpotDepthMapFramebuffer = Framebuffer::Create(fbSpec);
         
+
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::RGBA16F
+        };
+        fbSpec.Width = 1280;
+        fbSpec.Height = 720;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
+        m_BlurFramebuffer[0] = Framebuffer::Create(fbSpec);
+        m_BlurFramebuffer[1] = Framebuffer::Create(fbSpec);
+        m_HDRFramebuffer     = Framebuffer::Create(fbSpec);
+
+        s_ExposureUniformBuffer = UniformBuffer::Create(2 * sizeof(float), 11);
+        s_BlurUniformBuffer = UniformBuffer::Create(sizeof(float), 12);
+
+        s_ExposureUniformBuffer->SetData(&s_Exposure, sizeof(float));
+        s_ExposureUniformBuffer->SetData(&s_Bloom, sizeof(bool), sizeof(float));
+
+
         // 初始化场景
         m_EditorScene = CreateRef<Scene>();
         m_ActiveScene = m_EditorScene;
@@ -155,6 +182,7 @@ namespace Volcano{
         Ref<IndexBuffer> windowIb = IndexBuffer::Create(indices, sizeof(indices) / sizeof(uint32_t));;
         windowVa->SetIndexBuffer(windowIb);
         m_WindowShader = Renderer::GetShaderLibrary()->Get("window");
+        m_HDRShader = Renderer::GetShaderLibrary()->Get("HDR");
         
         
     }
@@ -296,11 +324,14 @@ namespace Volcano{
             int mouseX = (int)mx;
             int mouseY = (int)my;
 
+            // 设置点击鼠标时选中实体
             if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
             {
                 // 读取帧缓冲第二个缓冲区的数据
                 int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
+                // TODO：若shader中没有输出EntityID，则这里会设置一个有错误ID的Entity并且无法读取会报错
                 m_HoveredEntity = pixelData == -1 ? Entity() : Entity({ (entt::entity)pixelData, m_ActiveScene.get() });
+            
             }
 
 
@@ -309,19 +340,55 @@ namespace Volcano{
 
             m_Framebuffer->Unbind();
         }
-        
 
-        
+        Renderer::SetDepthTest(false);
+        bool horizontal = true, first_iteration = true;
+        uint32_t amount = 10;
+        Renderer::GetShaderLibrary()->Get("Blur")->Bind();
+        m_BlurFramebuffer[horizontal]->Bind();
+        Renderer::Clear();
+        m_BlurFramebuffer[!horizontal]->Bind();
+        Renderer::Clear();
+        for (uint32_t i = 0; i < amount; i++)
+        {
+            m_BlurFramebuffer[horizontal]->Bind();
+            s_BlurUniformBuffer->SetData(&horizontal, sizeof(float));
+            uint32_t bloomTextureID = m_Framebuffer->GetColorAttachmentRendererID(2);
+            Texture::Bind(first_iteration ? bloomTextureID : m_BlurFramebuffer[!horizontal]->GetColorAttachmentRendererID(0), 0);
+            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+            horizontal = !horizontal;
+            if (first_iteration)
+                first_iteration = false;
+        }
+        m_BlurFramebuffer[0]->Unbind();
+        Renderer::SetDepthTest(true);
+
+
+
+        s_ExposureUniformBuffer->SetData(&s_Exposure, sizeof(float));
+        s_ExposureUniformBuffer->SetData(&s_Bloom, sizeof(bool), sizeof(float));
+        m_Framebuffer->Bind();
+        {
+            m_HDRShader->Bind();
+            uint32_t hdrTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
+            Texture::Bind(hdrTextureID, 0);
+            uint32_t blurTextureID = m_BlurFramebuffer[!horizontal]->GetColorAttachmentRendererID(0);
+            Texture::Bind(blurTextureID, 1);
+            Renderer::SetDepthTest(false);
+            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+            Renderer::SetDepthTest(true);
+            m_Framebuffer->Unbind();
+
+        }
+
         // 将FrameBuffer的图像放到window上
         // 还原视图尺寸
         Application::Get().GetWindow().ResetViewport();
         // TODO: 帧缓冲画面会被拉伸至视图尺寸，参考ShaderToy代码将画面保持正常尺寸
         m_WindowShader->Bind();
-        //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
-        //uint32_t windowTextureID = m_DirectionalDepthMapFramebuffer->GetDepthAttachmentRendererID();
-        //uint32_t windowTextureID = m_Framebuffer->GetDepthAttachmentRendererID();
-        //uint32_t windowTextureID = m_PointDepthMapFramebuffer->GetDepthAttachmentRendererID();
-        uint32_t windowTextureID = m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID();
+        //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(2);
+        //uint32_t windowTextureID = m_BlurFramebuffer[!horizontal]->GetColorAttachmentRendererID(0);
+        uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
         Texture::Bind(windowTextureID, 0);
         Renderer::SetDepthTest(false);
         Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
@@ -483,6 +550,7 @@ namespace Volcano{
         m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
 
         // 在视图显示帧缓冲画面
+        //uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
         uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
         ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{0, 1}, ImVec2{1, 0});
         
@@ -598,6 +666,10 @@ namespace Volcano{
         m_ProfileResults.clear();
 
         // Stats
+        ImGui::DragFloat("Exposure", &s_Exposure, 0.01f);
+        ImGui::Checkbox("Bloom", &s_Bloom);
+        VOL_TRACE(s_Bloom);
+
         ImGui::End();
 
         ImGui::Begin("Settings");
@@ -702,6 +774,9 @@ namespace Volcano{
         }
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(3);
+
+
+
         ImGui::End();
     }
 

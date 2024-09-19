@@ -1,0 +1,118 @@
+Scene: Untitled
+Entities:
+  - Entity: 9658921252364362293
+    TagComponent:
+      Tag: Wall3
+    TransformComponent:
+      Translation: [0, 5.5, -50]
+      Rotation: [0, 0, 0]
+      Scale: [10, 10, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
+      SpecularPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box_specular.png
+  - Entity: 11184201101018971663
+    TagComponent:
+      Tag: Wall1
+    TransformComponent:
+      Translation: [-5.5, 5.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 10, 100]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\wood.png
+  - Entity: 15047937694946581197
+    TagComponent:
+      Tag: Wall2
+    TransformComponent:
+      Translation: [5.5, 5.5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 10, 100]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall.jpg
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall_normal.jpg
+  - Entity: 6744816125868222082
+    TagComponent:
+      Tag: Top
+    TransformComponent:
+      Translation: [0, 11, 0]
+      Rotation: [0, 0, 0]
+      Scale: [10, 1, 100]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall.jpg
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall_normal.jpg
+  - Entity: 15500941532620548499
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 4, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 0.785398185
+        PerspectiveNear: 0.00100000005
+        PerspectiveFar: 1000
+        OrthographicSize: 10
+        OrthographicNear: -1
+        OrthographicFar: 1
+      Primary: true
+      FixedAspectRatio: true
+    ScriptComponent:
+      ClassName: SandBox.Camera3D
+      ScriptFields:
+        - Name: m_MouseSentity
+          Type: Float
+          Data: 0.200000003
+        - Name: m_MoveSpeed
+          Type: Float
+          Data: 8
+  - Entity: 1896352702203501218
+    TagComponent:
+      Tag: SpotLight
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 2
+      Ambient: [0.100000001, 0.100000001, 0.100000001]
+      Diffuse: [0.5, 0.5, 0.5]
+      Specular: [0.5, 0.5, 0.5]
+      Constant: 1
+      Linear: 0.0900000036
+      Quadratic: 0.0320000015
+      CutOff: 0.976296008
+      OuterCutOff: 0.953716934
+    ScriptComponent:
+      ClassName: Sandbox.FlashLight
+  - Entity: 11076193620486771691
+    TagComponent:
+      Tag: Floor
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [10, 1, 100]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\wood.png
+  - Entity: 1396798553271105122
+    TagComponent:
+      Tag: PointLight
+    TransformComponent:
+      Translation: [0, 5.5, -49]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 1
+      Ambient: [0.100000001, 0.100000001, 0.100000001]
+      Diffuse: [0.5, 0.5, 0.5]
+      Specular: [0.5, 0.5, 0.5]
+      Constant: 1
+      Linear: 0.0900000036
+      Quadratic: 0.0320000015
+      CutOff: 0.976296008
+      OuterCutOff: 0.953716934

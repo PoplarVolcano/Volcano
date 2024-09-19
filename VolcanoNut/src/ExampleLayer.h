@@ -59,6 +59,8 @@ namespace Volcano {
 		Ref<Framebuffer> m_DirectionalDepthMapFramebuffer;
 		Ref<Framebuffer> m_PointDepthMapFramebuffer;
 		Ref<Framebuffer> m_SpotDepthMapFramebuffer;
+		Ref<Framebuffer> m_BlurFramebuffer[2];
+		Ref<Framebuffer> m_HDRFramebuffer;
 
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
 		glm::vec2 m_ViewportBounds[2];
@@ -117,6 +119,7 @@ namespace Volcano {
 		};
 		WindowVertex m_WindowVertex[4];
 		Ref<VertexArray> windowVa;
+		Ref<Shader> m_HDRShader;
 		Ref<Shader> m_WindowShader;
 	};
 }

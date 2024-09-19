@@ -1,5 +1,17 @@
 Scene: Untitled
 Entities:
+  - Entity: 1674134598351960522
+    TagComponent:
+      Tag: ToyBox
+    TransformComponent:
+      Translation: [2, 0.5, 2]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_diffuse.png
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_normal.png
+      ParallaxPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_disp.png
   - Entity: 14743498511035837202
     TagComponent:
       Tag: Wall3
@@ -55,6 +67,9 @@ Entities:
       Scale: [10, 10, 1]
     CubeRendererComponent:
       Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2.jpg
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_normal.jpg
+      ParallaxPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_disp.jpg
   - Entity: 6317775628176502329
     TagComponent:
       Tag: Box2
@@ -150,7 +165,7 @@ Entities:
     TagComponent:
       Tag: Floor
     TransformComponent:
-      Translation: [0, -0.5, 0]
+      Translation: [0, -0.500000119, 0]
       Rotation: [0, 0, 0]
       Scale: [100, 1, 100]
     CubeRendererComponent:
@@ -165,3 +180,5 @@ Entities:
       Scale: [1, 10, 10]
     CubeRendererComponent:
       Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall.jpg
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall_normal.jpg

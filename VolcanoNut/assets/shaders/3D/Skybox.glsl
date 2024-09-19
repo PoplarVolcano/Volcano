@@ -25,6 +25,7 @@ void main()
 #type fragment
 #version 450 core
 layout(location = 0) out vec4 FragColor;
+layout(location = 1) out int o_EntityID;
 
 layout (location = 0) in vec3 TexCoords;
 
@@ -33,4 +34,5 @@ layout (binding = 0) uniform samplerCube skybox;
 void main()
 {    
     FragColor = texture(skybox, TexCoords);
+    o_EntityID = -1;
 }

@@ -38,5 +38,8 @@
     <None Include="assets\shaders\3D\Cube.glsl" />
     <None Include="assets\shaders\Renderer3D_Cube.glsl" />
     <None Include="assets\shaders\shadow\SpotShadowDepth.glsl" />
+    <None Include="assets\shaders\HDR.glsl" />
+    <None Include="assets\shaders\Blur.glsl" />
+    <None Include="assets\shaders\LightCube.glsl" />
   </ItemGroup>
 </Project>

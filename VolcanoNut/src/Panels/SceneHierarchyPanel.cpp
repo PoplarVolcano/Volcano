@@ -36,6 +36,15 @@ namespace Volcano {
 
 		if (m_Context)
 		{
+			// BUG记录：窗口菜单放在节点菜单后面会覆盖判定，右键只会出现窗口菜单
+			// Right-click on blank space
+			if (ImGui::BeginPopupContextWindow(0, 1))
+			{
+				if (ImGui::MenuItem("Create Empty Entity"))
+					m_Context->CreateEntity("Empty Entity");
+				ImGui::EndPopup();
+			}
+
 			for (auto entityID : m_Context->m_Registry.view<entt::entity>())
 			{
 				Entity entity{ entityID, m_Context.get() };
@@ -44,14 +53,6 @@ namespace Volcano {
 
 			if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
 				m_SelectionContext = {};
-
-			// Right-click on blank space
-			if (ImGui::BeginPopupContextWindow(0, 1))
-			{
-				if (ImGui::MenuItem("Create Empty Entity"))
-					m_Context->CreateEntity("Empty Entity");
-				ImGui::EndPopup();
-			}
 		}
 
 		ImGui::End();
@@ -84,8 +85,8 @@ namespace Volcano {
 		}
 
 		bool entityDeleted = false;
-		if (ImGui::BeginPopupContextWindow(0, 1))
-		//if (ImGui::BeginPopupContextItem())
+		//if (ImGui::BeginPopupContextWindow(0, 1))
+		if (ImGui::BeginPopupContextItem())
 		{
 			if (ImGui::MenuItem("Delete Entity"))
 				entityDeleted = true;
@@ -536,6 +537,30 @@ namespace Volcano {
 						const wchar_t* path = (const wchar_t*)payload->Data;
 						std::filesystem::path specularPath = path;
 						component.Specular = Texture2D::Create(specularPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				ImGui::Button("Normal", ImVec2(100.0f, 100.0f));
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path normalPath = path;
+						component.Normal = Texture2D::Create(normalPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				ImGui::Button("Parallax", ImVec2(100.0f, 100.0f));
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path parallaxPath = path;
+						component.Parallax = Texture2D::Create(parallaxPath.string());
 					}
 					ImGui::EndDragDropTarget();
 				}

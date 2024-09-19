@@ -22,7 +22,7 @@ namespace Sandbox
             if (m_Camera != null)
             {
                 Vector3 translation = m_Camera.transform.translation;
-                translation.y -= 1;
+                //translation.y -= 1;
                 transform.translation = translation;
                 transform.rotation = m_Camera.transform.rotation;
             }

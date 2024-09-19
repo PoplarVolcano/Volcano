@@ -397,6 +397,10 @@ namespace Volcano {
 				out << YAML::Key << "DiffusePath" << YAML::Value << cubeRendererComponent.Diffuse->GetPath();
 			if (cubeRendererComponent.Specular)
 				out << YAML::Key << "SpecularPath" << YAML::Value << cubeRendererComponent.Specular->GetPath();
+			if (cubeRendererComponent.Normal)
+				out << YAML::Key << "NormalPath" << YAML::Value << cubeRendererComponent.Normal->GetPath();
+			if (cubeRendererComponent.Parallax)
+				out << YAML::Key << "ParallaxPath" << YAML::Value << cubeRendererComponent.Parallax->GetPath();
 			out << YAML::EndMap;//CubeRendererComponent
 		}
 
@@ -665,6 +669,18 @@ namespace Volcano {
 						std::string specularPath = cubeRendererComponent["SpecularPath"].as<std::string>();
 						auto path = Project::GetAssetFileSystemPath(specularPath);
 						src.Specular = Texture2D::Create(path.string());
+					}
+					if (cubeRendererComponent["NormalPath"])
+					{
+						std::string normalPath = cubeRendererComponent["NormalPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(normalPath);
+						src.Normal = Texture2D::Create(path.string());
+					}
+					if (cubeRendererComponent["ParallaxPath"])
+					{
+						std::string parallaxPath = cubeRendererComponent["ParallaxPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(parallaxPath);
+						src.Parallax = Texture2D::Create(path.string());
 					}
 				}
 

@@ -85,6 +85,8 @@ namespace Volcano {
 		glm::vec4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
 		Ref<Texture2D> Diffuse;
 		Ref<Texture2D> Specular;
+		Ref<Texture2D> Normal;
+		Ref<Texture2D> Parallax;
 
 		CubeRendererComponent() = default;
 		CubeRendererComponent(const CubeRendererComponent&) = default;

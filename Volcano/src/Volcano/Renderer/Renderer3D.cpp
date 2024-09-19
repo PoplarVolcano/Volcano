@@ -13,10 +13,14 @@ namespace Volcano {
 	{
 		glm::vec3 Position;
 		glm::vec3 Normal;
+		glm::vec3 Tangent;
+		glm::vec3 Bitangent;
 		glm::vec4 Color;
 		glm::vec2 TexCoords;
 		float DiffuseIndex;
 		float SpecularIndex;
+		float NormalIndex;
+		float ParallaxIndex;
 
 		// Editor-only
 		int EntityID;
@@ -44,6 +48,8 @@ namespace Volcano {
 
 		glm::vec3 CubeVertexPosition[36];
 		glm::vec3 CubeNormal[6];
+		glm::vec3 CubeTangent[6];
+		glm::vec3 CubeBitangent[6];
 	};
 	static Renderer3DData s_Renderer3DData;
 
@@ -55,10 +61,14 @@ namespace Volcano {
 		s_Renderer3DData.CubeVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position"     },
 			{ ShaderDataType::Float3, "a_Normal"       },
+			{ ShaderDataType::Float3, "a_Tangent"      },
+			{ ShaderDataType::Float3, "a_Bitangent"    },
 			{ ShaderDataType::Float4, "a_Color"        },
-			{ ShaderDataType::Float2, "a_TexCoords"     },
+			{ ShaderDataType::Float2, "a_TexCoords"    },
 			{ ShaderDataType::Float,  "a_DiffuseIndex" },
 			{ ShaderDataType::Float,  "a_SpecularIndex"},
+			{ ShaderDataType::Float,  "a_NormalIndex"  },
+			{ ShaderDataType::Float,  "a_ParallaxIndex"},
 			{ ShaderDataType::Int,    "a_EntityID"     }
 			});
 		s_Renderer3DData.CubeVertexArray->AddVertexBuffer(s_Renderer3DData.CubeVertexBuffer);
@@ -139,6 +149,21 @@ namespace Volcano {
 		s_Renderer3DData.CubeNormal[3] = glm::vec3( 1.0f,  0.0f,  0.0f);//右
 		s_Renderer3DData.CubeNormal[4] = glm::vec3( 0.0f, -1.0f,  0.0f);//下
 		s_Renderer3DData.CubeNormal[5] = glm::vec3( 0.0f,  1.0f,  0.0f);//上
+		
+		s_Renderer3DData.CubeTangent[0] = glm::vec3(-1.0f,  0.0f,  0.0f);//背
+		s_Renderer3DData.CubeTangent[1] = glm::vec3( 1.0f,  0.0f,  0.0f);//正
+		s_Renderer3DData.CubeTangent[2] = glm::vec3( 0.0f,  0.0f,  1.0f);//左
+		s_Renderer3DData.CubeTangent[3] = glm::vec3( 0.0f,  0.0f, -1.0f);//右
+		s_Renderer3DData.CubeTangent[4] = glm::vec3( 0.0f,  1.0f,  0.0f);//下
+		s_Renderer3DData.CubeTangent[5] = glm::vec3( 1.0f,  0.0f,  0.0f);//上
+
+		
+		s_Renderer3DData.CubeBitangent[0] = glm::vec3( 0.0f,  1.0f,  0.0f);//背
+		s_Renderer3DData.CubeBitangent[1] = glm::vec3( 0.0f,  1.0f,  0.0f);//正
+		s_Renderer3DData.CubeBitangent[2] = glm::vec3( 0.0f,  1.0f,  0.0f);//左
+		s_Renderer3DData.CubeBitangent[3] = glm::vec3( 0.0f,  1.0f,  0.0f);//右
+		s_Renderer3DData.CubeBitangent[4] = glm::vec3( 0.0f,  0.0f,  1.0f);//下
+		s_Renderer3DData.CubeBitangent[5] = glm::vec3( 0.0f,  0.0f, -1.0f);//上
 
 		s_CameraUniformBuffer           = UniformBuffer::Create(4 * 4 * sizeof(float), 0);
 		s_CameraPositionUniformBuffer   = UniformBuffer::Create(4 * sizeof(float), 1);
@@ -236,7 +261,9 @@ namespace Volcano {
 			NextBatch();
 
 		float diffuseIndex = 0.0f;
-		float specularIndex = 0.0f; // White Texture
+		float specularIndex = 0.0f;
+		float normalIndex = 0.0f;
+		float parallaxIndex = 0.0f;
 
 		constexpr glm::vec2 textureCoords[] = {
 			{0.0f, 0.0f},
@@ -284,10 +311,14 @@ namespace Volcano {
 			s_Renderer3DData.CubeVertexBufferPtr->Position = transform * glm::vec4(s_Renderer3DData.CubeVertexPosition[i], 1.0f);
 			// 模型矩阵左上角3x3部分的逆矩阵的转置矩阵，用于解决不等比缩放导致的法向量不垂直于平面
 			s_Renderer3DData.CubeVertexBufferPtr->Normal = normalTransform * s_Renderer3DData.CubeNormal[i / 6];
+			s_Renderer3DData.CubeVertexBufferPtr->Tangent = normalTransform * s_Renderer3DData.CubeTangent[i / 6];
+			s_Renderer3DData.CubeVertexBufferPtr->Bitangent = normalTransform * s_Renderer3DData.CubeBitangent[i / 6];
 			s_Renderer3DData.CubeVertexBufferPtr->Color = color;
 			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer3DData.CubeVertexBufferPtr->DiffuseIndex = diffuseIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->SpecularIndex = specularIndex;
+			s_Renderer3DData.CubeVertexBufferPtr->NormalIndex = normalIndex;
+			s_Renderer3DData.CubeVertexBufferPtr->ParallaxIndex = parallaxIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->EntityID = entityID;
 			s_Renderer3DData.CubeVertexBufferPtr++;
 		}
@@ -295,13 +326,15 @@ namespace Volcano {
 		s_Renderer3DData.CubeIndexCount += 36;
 	}
 
-	void Renderer3D::DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const Ref<Texture2D>& diffuse, const Ref<Texture2D>& specular, const glm::vec4& color, int entityID)
+	void Renderer3D::DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const Ref<Texture2D>& diffuse, const Ref<Texture2D>& specular, const Ref<Texture2D>& normal, const Ref<Texture2D>& parallax, const glm::vec4& color, int entityID)
 	{
 		if (s_Renderer3DData.CubeIndexCount >= Renderer3DData::MaxIndices)
 			NextBatch();
 
 		float diffuseIndex = 0.0f;
 		float specularIndex = 0.0f;
+		float normalIndex = 0.0f;
+		float parallaxIndex = 0.0f;
 		constexpr glm::vec2 textureCoords[] = {
 			{0.0f, 0.0f},
 			{1.0f, 1.0f},
@@ -387,13 +420,60 @@ namespace Volcano {
 			}
 		}
 
+		if (normal)
+		{
+			// 遍历纹理，normal是否已注入纹理通道TextureSlot
+			for (uint32_t i = 1; i < s_Renderer3DData.TextureSlotIndex; i++)
+			{
+				// 已注入，将normalIndex设为该纹理
+				if (*s_Renderer3DData.TextureSlots[i].get() == *normal.get())
+				{
+					normalIndex = (float)i;
+					break;
+				}
+			}
+			// normal未注入，将normal注入纹理通道TextureSlot，索引为TextureSlotIndex（从1开始计数）
+			if (normalIndex == 0.0f)
+			{
+				if (s_Renderer3DData.TextureSlotIndex >= Renderer3DData::MaxTextureSlots)
+					NextBatch();
+				normalIndex = (float)s_Renderer3DData.TextureSlotIndex;
+				s_Renderer3DData.TextureSlots[s_Renderer3DData.TextureSlotIndex] = normal;
+				s_Renderer3DData.TextureSlotIndex++;
+			}
+		}
+
+		if (parallax)
+		{
+			for (uint32_t i = 1; i < s_Renderer3DData.TextureSlotIndex; i++)
+			{
+				if (*s_Renderer3DData.TextureSlots[i].get() == *parallax.get())
+				{
+					parallaxIndex = (float)i;
+					break;
+				}
+			}
+			if (parallaxIndex == 0.0f)
+			{
+				if (s_Renderer3DData.TextureSlotIndex >= Renderer3DData::MaxTextureSlots)
+					NextBatch();
+				parallaxIndex = (float)s_Renderer3DData.TextureSlotIndex;
+				s_Renderer3DData.TextureSlots[s_Renderer3DData.TextureSlotIndex] = parallax;
+				s_Renderer3DData.TextureSlotIndex++;
+			}
+		}
+
 		for (uint32_t i = 0; i < 36; i++) {
 			s_Renderer3DData.CubeVertexBufferPtr->Position = transform * glm::vec4(s_Renderer3DData.CubeVertexPosition[i], 1.0f);
 			s_Renderer3DData.CubeVertexBufferPtr->Normal = normalTransform * s_Renderer3DData.CubeNormal[i / 6];
+			s_Renderer3DData.CubeVertexBufferPtr->Tangent = normalTransform * s_Renderer3DData.CubeTangent[i / 6];
+			s_Renderer3DData.CubeVertexBufferPtr->Bitangent = normalTransform * s_Renderer3DData.CubeBitangent[i / 6];
 			s_Renderer3DData.CubeVertexBufferPtr->Color = color;
 			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer3DData.CubeVertexBufferPtr->DiffuseIndex = diffuseIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->SpecularIndex = specularIndex;
+			s_Renderer3DData.CubeVertexBufferPtr->NormalIndex = normalIndex;
+			s_Renderer3DData.CubeVertexBufferPtr->ParallaxIndex = parallaxIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->EntityID = entityID;
 			s_Renderer3DData.CubeVertexBufferPtr++;
 		}
@@ -404,7 +484,7 @@ namespace Volcano {
 	void Renderer3D::DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, CubeRendererComponent& crc, int entityID)
 	{
 		if (crc.Diffuse)
-			DrawCube(transform, normalTransform, crc.Diffuse, crc.Specular, crc.Color, entityID);
+			DrawCube(transform, normalTransform, crc.Diffuse, crc.Specular, crc.Normal, crc.Parallax, crc.Color, entityID);
 		else
 			DrawCube(transform, normalTransform, crc.Color, entityID);
 	}

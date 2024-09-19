@@ -73,6 +73,7 @@ namespace Volcano {
 		{
 			return m_Registry.view<Components...>();
 		}
+
 	private:
 		template<typename T>
 		void OnComponentAdded(Entity entity, T& component);
