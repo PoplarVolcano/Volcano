@@ -14,6 +14,10 @@ namespace Volcano {
 		glm::vec2 TexCoords;
 		glm::vec3 Tangent;	// 切线
 		glm::vec3 Bitangent;// 双切线
+		float DiffuseIndex;
+		float SpecularIndex;
+		float NormalIndex;
+		float ParallaxIndex;
 
 		int EntityID;
 	};
@@ -23,6 +27,7 @@ namespace Volcano {
 		Ref<Texture2D> texture;
 		std::string type;
 		std::string path;
+		float textureIndex;
 	};
 
 	class Mesh
@@ -40,8 +45,6 @@ namespace Volcano {
 		// 索引数据
 		std::vector<uint32_t> indices;
 		std::vector<MeshTexture> textures;
-
-		Ref<Texture2D> m_BlackTexture;
 
 		MeshVertex* vertexBufferBase = nullptr;
 		MeshVertex* vertexBufferPtr  = nullptr;

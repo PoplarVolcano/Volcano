@@ -4,15 +4,14 @@
 // 传入的position和normal已经在C++中完成了model变换
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec3 a_Normal;
-layout(location = 2) in vec3 a_Tangent;
-layout(location = 3) in vec3 a_Bitangent;
-layout(location = 4) in vec4 a_Color;
-layout(location = 5) in vec2 a_TexCoords;
-layout(location = 6) in float a_DiffuseIndex;
-layout(location = 7) in float a_SpecularIndex;
-layout(location = 8) in float a_NormalIndex;
-layout(location = 9) in float a_ParallaxIndex;
-layout(location = 10) in int a_EntityID;
+layout(location = 2) in vec2 a_TexCoords;
+layout(location = 3) in vec3 a_Tangent;
+layout(location = 4) in vec3 a_Bitangent;
+layout(location = 5) in float a_DiffuseIndex;
+layout(location = 6) in float a_SpecularIndex;
+layout(location = 7) in float a_NormalIndex;
+layout(location = 8) in float a_ParallaxIndex;
+layout(location = 9) in int a_EntityID;
 
 layout(std140, binding = 0) uniform Camera
 {
@@ -29,7 +28,6 @@ struct VertexOutput
 {
 	vec3 Position;
 	vec3 Normal;
-	vec4 Color;
 	vec2 TexCoords;
 	mat3 TBN;
     vec4 PositionLightSpace;
@@ -39,7 +37,7 @@ layout (location = 0) out flat float v_DiffuseIndex;
 layout (location = 1) out flat float v_SpecularIndex;
 layout (location = 2) out flat float v_NormalIndex;
 layout (location = 3) out flat float v_ParallaxIndex;
-layout (location = 4) out flat int v_EntityID;
+layout (location = 4) out flat int   v_EntityID;
 layout (location = 5) out VertexOutput Output;
 
 void main()
@@ -57,7 +55,6 @@ void main()
 
 	Output.Position = a_Position;
 	Output.Normal = a_Normal;
-	Output.Color = a_Color;
 	Output.TexCoords = a_TexCoords;
 	Output.TBN = TBN;
 	Output.PositionLightSpace = u_LightSpaceMatrix * vec4(Output.Position, 1.0);
@@ -70,14 +67,13 @@ void main()
 #version 450 core
 
 layout (location = 0) out vec4 o_Color;
-layout (location = 1) out int o_EntityID;
+layout (location = 1) out int  o_EntityID;
 layout (location = 2) out vec4 BrightColor;
 
 struct VertexOutput
 {
 	vec3 Position;
 	vec3 Normal;
-	vec4 Color;
 	vec2 TexCoords;
 	mat3 TBN;
     vec4 PositionLightSpace;
@@ -205,7 +201,7 @@ void main()
             discard;
 	}
 
-	vec4 materialDiffuse  = texture(u_Textures[int(v_DiffuseIndex)],  texCoords) * Input.Color;
+	vec4 materialDiffuse  = texture(u_Textures[int(v_DiffuseIndex)],  texCoords);
 	vec4 materialSpecular = texture(u_Textures[int(v_SpecularIndex)], texCoords);
 	vec4 materialNormal   = texture(u_Textures[int(v_NormalIndex)],   texCoords);
 	

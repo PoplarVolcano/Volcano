@@ -13,10 +13,9 @@ namespace Volcano {
 	{
 		glm::vec3 Position;
 		glm::vec3 Normal;
+		glm::vec2 TexCoords;
 		glm::vec3 Tangent;
 		glm::vec3 Bitangent;
-		glm::vec4 Color;
-		glm::vec2 TexCoords;
 		float DiffuseIndex;
 		float SpecularIndex;
 		float NormalIndex;
@@ -61,10 +60,9 @@ namespace Volcano {
 		s_Renderer3DData.CubeVertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "a_Position"     },
 			{ ShaderDataType::Float3, "a_Normal"       },
+			{ ShaderDataType::Float2, "a_TexCoords"    },
 			{ ShaderDataType::Float3, "a_Tangent"      },
 			{ ShaderDataType::Float3, "a_Bitangent"    },
-			{ ShaderDataType::Float4, "a_Color"        },
-			{ ShaderDataType::Float2, "a_TexCoords"    },
 			{ ShaderDataType::Float,  "a_DiffuseIndex" },
 			{ ShaderDataType::Float,  "a_SpecularIndex"},
 			{ ShaderDataType::Float,  "a_NormalIndex"  },
@@ -101,12 +99,12 @@ namespace Volcano {
 
 		s_Renderer3DData.TextureSlots[0] = s_Renderer3DData.WhiteTexture;
 		//背
-		s_Renderer3DData.CubeVertexPosition[0]   = { -0.5f, -0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[1]   = {  0.5f,  0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[2]   = {  0.5f, -0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[3]   = {  0.5f,  0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[4]   = { -0.5f, -0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[5]   = { -0.5f,  0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[0]   = {  0.5f, -0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[1]   = { -0.5f, -0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[2]   = { -0.5f,  0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[3]   = { -0.5f,  0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[4]   = {  0.5f,  0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[5]   = {  0.5f, -0.5f, -0.5f };
 		//正
 		s_Renderer3DData.CubeVertexPosition[6]   = { -0.5f, -0.5f,  0.5f };
 		s_Renderer3DData.CubeVertexPosition[7]   = {  0.5f, -0.5f,  0.5f };
@@ -115,17 +113,17 @@ namespace Volcano {
 		s_Renderer3DData.CubeVertexPosition[10]  = { -0.5f,  0.5f,  0.5f };
 		s_Renderer3DData.CubeVertexPosition[11]  = { -0.5f, -0.5f,  0.5f };
 		//左
-		s_Renderer3DData.CubeVertexPosition[12]  = { -0.5f,  0.5f,  0.5f };
-		s_Renderer3DData.CubeVertexPosition[13]  = { -0.5f,  0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[14]  = { -0.5f, -0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[15]  = { -0.5f, -0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[16]  = { -0.5f, -0.5f,  0.5f };
-		s_Renderer3DData.CubeVertexPosition[17]  = { -0.5f,  0.5f,  0.5f };
+		s_Renderer3DData.CubeVertexPosition[12]  = { -0.5f, -0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[13]  = { -0.5f, -0.5f,  0.5f };
+		s_Renderer3DData.CubeVertexPosition[14]  = { -0.5f,  0.5f,  0.5f };
+		s_Renderer3DData.CubeVertexPosition[15]  = { -0.5f,  0.5f,  0.5f };
+		s_Renderer3DData.CubeVertexPosition[16]  = { -0.5f,  0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[17]  = { -0.5f, -0.5f, -0.5f };
 		//右
-		s_Renderer3DData.CubeVertexPosition[18]  = {  0.5f,  0.5f,  0.5f };
+		s_Renderer3DData.CubeVertexPosition[18]  = {  0.5f, -0.5f,  0.5f };
 		s_Renderer3DData.CubeVertexPosition[19]  = {  0.5f, -0.5f, -0.5f };
 		s_Renderer3DData.CubeVertexPosition[20]  = {  0.5f,  0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[21]  = {  0.5f, -0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[21]  = {  0.5f,  0.5f, -0.5f };
 		s_Renderer3DData.CubeVertexPosition[22]  = {  0.5f,  0.5f,  0.5f };
 		s_Renderer3DData.CubeVertexPosition[23]  = {  0.5f, -0.5f,  0.5f };
 		//下
@@ -136,10 +134,10 @@ namespace Volcano {
 		s_Renderer3DData.CubeVertexPosition[28]  = { -0.5f, -0.5f,  0.5f };
 		s_Renderer3DData.CubeVertexPosition[29]  = { -0.5f, -0.5f, -0.5f };
 		//上
-		s_Renderer3DData.CubeVertexPosition[30]  = { -0.5f,  0.5f, -0.5f };
+		s_Renderer3DData.CubeVertexPosition[30]  = { -0.5f,  0.5f,  0.5f };
 		s_Renderer3DData.CubeVertexPosition[31]  = {  0.5f,  0.5f,  0.5f };
 		s_Renderer3DData.CubeVertexPosition[32]  = {  0.5f,  0.5f, -0.5f };
-		s_Renderer3DData.CubeVertexPosition[33]  = {  0.5f,  0.5f,  0.5f };
+		s_Renderer3DData.CubeVertexPosition[33]  = {  0.5f,  0.5f, -0.5f };
 		s_Renderer3DData.CubeVertexPosition[34]  = { -0.5f,  0.5f, -0.5f };
 		s_Renderer3DData.CubeVertexPosition[35]  = { -0.5f,  0.5f,  0.5f };
 
@@ -154,7 +152,7 @@ namespace Volcano {
 		s_Renderer3DData.CubeTangent[1] = glm::vec3( 1.0f,  0.0f,  0.0f);//正
 		s_Renderer3DData.CubeTangent[2] = glm::vec3( 0.0f,  0.0f,  1.0f);//左
 		s_Renderer3DData.CubeTangent[3] = glm::vec3( 0.0f,  0.0f, -1.0f);//右
-		s_Renderer3DData.CubeTangent[4] = glm::vec3( 0.0f,  1.0f,  0.0f);//下
+		s_Renderer3DData.CubeTangent[4] = glm::vec3( 1.0f,  0.0f,  0.0f);//下
 		s_Renderer3DData.CubeTangent[5] = glm::vec3( 1.0f,  0.0f,  0.0f);//上
 
 		
@@ -219,6 +217,12 @@ namespace Volcano {
 			case RenderType::SHADOW_SPOTLIGHT:
 				Renderer::GetShaderLibrary()->Get("SpotShadowDepth")->Bind();
 				break;
+			case RenderType::G_BUFFER:
+				Renderer::GetShaderLibrary()->Get("GBuffer")->Bind();
+				break;
+			case RenderType::DEFERRED_SHADING:
+				Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
+				break;
 			case RenderType::NORMAL:
 				s_Renderer3DData.CubeShader->Bind();
 				break;
@@ -267,41 +271,11 @@ namespace Volcano {
 
 		constexpr glm::vec2 textureCoords[] = {
 			{0.0f, 0.0f},
-			{1.0f, 1.0f},
-			{1.0f, 0.0f},
-			{1.0f, 1.0f},
-			{0.0f, 0.0f},
-			{0.0f, 1.0f},
-			{0.0f, 0.0f},
 			{1.0f, 0.0f},
 			{1.0f, 1.0f},
 			{1.0f, 1.0f},
 			{0.0f, 1.0f},
-			{0.0f, 0.0f},
-			{1.0f, 0.0f},
-			{1.0f, 1.0f},
-			{0.0f, 1.0f},
-			{0.0f, 1.0f},
-			{0.0f, 0.0f},
-			{1.0f, 0.0f},
-			{1.0f, 0.0f},
-			{0.0f, 1.0f},
-			{1.0f, 1.0f},
-			{0.0f, 1.0f},
-			{1.0f, 0.0f},
-			{0.0f, 0.0f},
-			{0.0f, 1.0f},
-			{1.0f, 1.0f},
-			{1.0f, 0.0f},
-			{1.0f, 0.0f},
-			{0.0f, 0.0f},
-			{0.0f, 1.0f},
-			{0.0f, 1.0f},
-			{1.0f, 0.0f},
-			{1.0f, 1.0f},
-			{1.0f, 0.0f},
-			{0.0f, 1.0f},
-			{0.0f, 0.0f} };
+			{0.0f, 0.0f}};
 
 		const float tilingFactor = 1.0f;
 
@@ -311,10 +285,9 @@ namespace Volcano {
 			s_Renderer3DData.CubeVertexBufferPtr->Position = transform * glm::vec4(s_Renderer3DData.CubeVertexPosition[i], 1.0f);
 			// 模型矩阵左上角3x3部分的逆矩阵的转置矩阵，用于解决不等比缩放导致的法向量不垂直于平面
 			s_Renderer3DData.CubeVertexBufferPtr->Normal = normalTransform * s_Renderer3DData.CubeNormal[i / 6];
+			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i % 6];
 			s_Renderer3DData.CubeVertexBufferPtr->Tangent = normalTransform * s_Renderer3DData.CubeTangent[i / 6];
 			s_Renderer3DData.CubeVertexBufferPtr->Bitangent = normalTransform * s_Renderer3DData.CubeBitangent[i / 6];
-			s_Renderer3DData.CubeVertexBufferPtr->Color = color;
-			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer3DData.CubeVertexBufferPtr->DiffuseIndex = diffuseIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->SpecularIndex = specularIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->NormalIndex = normalIndex;
@@ -337,41 +310,12 @@ namespace Volcano {
 		float parallaxIndex = 0.0f;
 		constexpr glm::vec2 textureCoords[] = {
 			{0.0f, 0.0f},
-			{1.0f, 1.0f},
-			{1.0f, 0.0f},
-			{1.0f, 1.0f},
-			{0.0f, 0.0f},
-			{0.0f, 1.0f},
-			{0.0f, 0.0f},
 			{1.0f, 0.0f},
 			{1.0f, 1.0f},
 			{1.0f, 1.0f},
-			{0.0f, 1.0f},
-			{0.0f, 0.0f},
-			{1.0f, 0.0f},
-			{1.0f, 1.0f},
-			{0.0f, 1.0f},
-			{0.0f, 1.0f},
-			{0.0f, 0.0f},
-			{1.0f, 0.0f},
-			{1.0f, 0.0f},
-			{0.0f, 1.0f},
-			{1.0f, 1.0f},
-			{0.0f, 1.0f},
-			{1.0f, 0.0f},
-			{0.0f, 0.0f},
-			{0.0f, 1.0f},
-			{1.0f, 1.0f},
-			{1.0f, 0.0f},
-			{1.0f, 0.0f},
-			{0.0f, 0.0f},
-			{0.0f, 1.0f},
-			{0.0f, 1.0f},
-			{1.0f, 0.0f},
-			{1.0f, 1.0f},
-			{1.0f, 0.0f},
 			{0.0f, 1.0f},
 			{0.0f, 0.0f} };
+
 
 		if (diffuse)
 		{
@@ -466,10 +410,9 @@ namespace Volcano {
 		for (uint32_t i = 0; i < 36; i++) {
 			s_Renderer3DData.CubeVertexBufferPtr->Position = transform * glm::vec4(s_Renderer3DData.CubeVertexPosition[i], 1.0f);
 			s_Renderer3DData.CubeVertexBufferPtr->Normal = normalTransform * s_Renderer3DData.CubeNormal[i / 6];
+			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i % 6];
 			s_Renderer3DData.CubeVertexBufferPtr->Tangent = normalTransform * s_Renderer3DData.CubeTangent[i / 6];
 			s_Renderer3DData.CubeVertexBufferPtr->Bitangent = normalTransform * s_Renderer3DData.CubeBitangent[i / 6];
-			s_Renderer3DData.CubeVertexBufferPtr->Color = color;
-			s_Renderer3DData.CubeVertexBufferPtr->TexCoords = textureCoords[i];
 			s_Renderer3DData.CubeVertexBufferPtr->DiffuseIndex = diffuseIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->SpecularIndex = specularIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->NormalIndex = normalIndex;

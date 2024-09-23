@@ -24,6 +24,10 @@ namespace Volcano {
             { ShaderDataType::Float2, "a_TexCoords"       },
             { ShaderDataType::Float3, "a_Tangent"         },
             { ShaderDataType::Float3, "a_Bitangent"       },
+			{ ShaderDataType::Float,  "a_DiffuseIndex"    },
+			{ ShaderDataType::Float,  "a_SpecularIndex"   },
+			{ ShaderDataType::Float,  "a_NormalIndex"     },
+			{ ShaderDataType::Float,  "a_ParallaxIndex"   },
             { ShaderDataType::Int,    "a_EntityID"        }
             });
         va->AddVertexBuffer(vb);
@@ -32,13 +36,27 @@ namespace Volcano {
         va->UnBind();
         vertexBufferBase = new MeshVertex[vertices.size()];
 
-        m_BlackTexture = Texture2D::Create(1, 1);
-        uint32_t blackTextureData = 0x00000000;
-        m_BlackTexture->SetData(&blackTextureData, sizeof(uint32_t));
     }
 
     void Mesh::Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID)
     {
+        float diffuseIndex  = 0.0f;
+        float specularIndex = 0.0f;
+        float normalIndex   = 0.0f;
+        float parallaxIndex = 0.0f;
+        for (uint32_t i = 0; i < textures.size(); i++)
+        {
+            std::string name = textures[i].type;
+            if (name == "texture_diffuse")
+                diffuseIndex  = textures[i].textureIndex;
+            else if (name == "texture_specular")
+                specularIndex = textures[i].textureIndex;
+            else if (name == "texture_normal")
+                normalIndex   = textures[i].textureIndex;
+            else if (name == "texture_height")
+                parallaxIndex = textures[i].textureIndex;
+        }
+
         /*
         uint32_t diffuseIndex = 1;
         uint32_t specularIndex = 1;
@@ -71,14 +89,20 @@ namespace Volcano {
         vertexBufferPtr = vertexBufferBase;
         for (uint32_t i = 0; i < vertices.size(); i++)
         {
-            vertexBufferPtr->Position  = transform * glm::vec4(vertices[i].Position, 1.0f);
-            //vertexBufferPtr->Position  = vertices[i].Position;
-            vertexBufferPtr->Normal    = normalTransform * vertices[i].Normal;
-            //vertexBufferPtr->Normal    = vertices[i].Normal;
-            vertexBufferPtr->TexCoords = vertices[i].TexCoords;
-            vertexBufferPtr->Tangent   = normalTransform * vertices[i].Tangent;
-            vertexBufferPtr->Bitangent = glm::cross(vertexBufferPtr->Normal, vertexBufferPtr->Tangent);//normalTransform * vertices[i].Bitangent;
-            vertexBufferPtr->EntityID  = entityID;
+            //vertexBufferPtr->Position      = vertices[i].Position;
+            //vertexBufferPtr->Normal        = vertices[i].Normal;
+            //vertexBufferPtr->Tangent       = vertices[i].Tangent;
+            //vertexBufferPtr->Bitangent     = vertices[i].Bitangent;
+            vertexBufferPtr->Position      = transform * glm::vec4(vertices[i].Position, 1.0f);
+            vertexBufferPtr->Normal        = normalTransform * vertices[i].Normal;
+            vertexBufferPtr->TexCoords     = vertices[i].TexCoords;
+            vertexBufferPtr->Tangent       = normalTransform * vertices[i].Tangent;
+            vertexBufferPtr->Bitangent     = glm::cross(vertexBufferPtr->Normal, vertexBufferPtr->Tangent);
+            vertexBufferPtr->DiffuseIndex  = diffuseIndex;
+            vertexBufferPtr->SpecularIndex = specularIndex;
+            vertexBufferPtr->NormalIndex   = normalIndex;
+            vertexBufferPtr->ParallaxIndex = parallaxIndex;
+            vertexBufferPtr->EntityID      = entityID;
             vertexBufferPtr++;
         }
         vb->SetData(vertexBufferBase, vertices.size() * sizeof(MeshVertex));
@@ -87,10 +111,7 @@ namespace Volcano {
 
     void Mesh::DrawIndexed()
     {
-        // TODO：Vulkan不能自动自由注入uniform，这里手动按顺序绑定纹理单元
-        m_BlackTexture->Bind(0);
-        m_BlackTexture->Bind(1);
-        m_BlackTexture->Bind(2);
+        /*
         for (uint32_t i = 0; i < textures.size(); i++)
         {
             std::string name = textures[i].type;
@@ -102,6 +123,7 @@ namespace Volcano {
                 textures[i].texture->Bind(2);
         }
 
+        */
         Renderer::DrawIndexed(va, va->GetIndexBuffer()->GetCount());
     }
 

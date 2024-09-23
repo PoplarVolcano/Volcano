@@ -14,15 +14,21 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/MouseBuffer.h"
 #include "Volcano/Core/Window.h"
+#include <random>
 
 
 namespace Volcano{
 
     static Ref<UniformBuffer> s_BlurUniformBuffer;
     static Ref<UniformBuffer> s_ExposureUniformBuffer;
-    static float s_Exposure = 1.0f;
+    static float s_Exposure = 1.5f;
     static bool s_Bloom = true;
-
+    static Ref<UniformBuffer> s_SamplesUniformBuffer;
+    static Ref<UniformBuffer> s_SSAOUniformBuffer;
+    static int s_KernelSize = 64;
+    static float s_Radius = 0.5;
+    static float s_Bias = 0.035;
+    static float s_Power = 1.0;
 
     template<typename Fn>
     class Timer {
@@ -135,6 +141,94 @@ namespace Volcano{
 
         s_ExposureUniformBuffer->SetData(&s_Exposure, sizeof(float));
         s_ExposureUniformBuffer->SetData(&s_Bloom, sizeof(bool), sizeof(float));
+
+
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::RGBA16F,  // 位置+深度缓冲
+            FramebufferTextureFormat::RGBA16F,  // 法线+EntityID缓冲
+            FramebufferTextureFormat::RGBA8,    // 颜色缓冲
+            FramebufferTextureFormat::RGBA8,    // 镜面缓冲
+            FramebufferTextureFormat::Depth
+        };
+        fbSpec.Width = 1280;
+        fbSpec.Height = 720;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
+        m_GBufferFramebuffer = Framebuffer::Create(fbSpec);
+
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::RGBA16F,
+            FramebufferTextureFormat::RED_INTEGER,
+            FramebufferTextureFormat::RGBA16F,
+            FramebufferTextureFormat::Depth     //添加一个深度附件，默认Depth = DEPTH24STENCIL8
+        };
+        fbSpec.Width = 1280;
+        fbSpec.Height = 720;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
+        m_DeferredShadingFramebuffer = Framebuffer::Create(fbSpec);
+
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::RED
+        };
+        fbSpec.Width = 1280;
+        fbSpec.Height = 720;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
+        m_SSAOFramebuffer = Framebuffer::Create(fbSpec);
+
+        fbSpec.Attachments = {
+            FramebufferTextureFormat::RED
+        };
+        fbSpec.Width = 1280;
+        fbSpec.Height = 720;
+        fbSpec.Samples = 1;
+        fbSpec.ColorType = TextureType::TEXTURE_2D;
+        fbSpec.DepthType = TextureType::TEXTURE_2D;
+        m_SSAOBlurFramebuffer = Framebuffer::Create(fbSpec);
+
+        // Sample kernel
+        // 采样核心
+        std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // 随机浮点数，[0.0, 1.0]
+        std::default_random_engine generator;
+        std::vector<glm::vec3> ssaoKernel;
+        for (uint32_t i = 0; i < 64; ++i)
+        {
+            glm::vec3 sample(
+                randomFloats(generator) * 2.0 - 1.0, 
+                randomFloats(generator) * 2.0 - 1.0, 
+                randomFloats(generator));
+            sample = glm::normalize(sample);
+            sample *= randomFloats(generator);
+            float scale = float(i) / 64.0;
+
+            // 将核心样本靠近原点分布Scale samples s.t. they're more aligned to center of kernel
+            scale = 0.1f + scale * scale * (1.0f - 0.1f);//lerp(0.1f, 1.0f, scale * scale);  //return a + f * (b - a);
+            sample *= scale;
+            ssaoKernel.push_back(sample);
+        }
+        s_SamplesUniformBuffer = UniformBuffer::Create(ssaoKernel.size() * 4 * sizeof(float), 13);
+        for (uint32_t i = 0; i < ssaoKernel.size(); i++)
+            s_SamplesUniformBuffer->SetData(&ssaoKernel[i], sizeof(glm::vec3), i * 4 * sizeof(float));
+
+
+        // Noise texture
+        // 4x4朝向切线空间平面法线的随机旋转向量数组
+        std::vector<glm::vec3> ssaoNoise;
+        for (uint32_t i = 0; i < 16; i++)
+        {
+            glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f); // rotate around z-axis (in tangent space)
+            ssaoNoise.push_back(noise);
+        }
+
+        m_NoiseTexture = Texture2D::Create(4, 4, TextureFormat::Float16, TextureFormat::RGB);
+        m_NoiseTexture->SetData(&ssaoNoise[0], ssaoNoise.size() * 3);
+
+        s_SSAOUniformBuffer = UniformBuffer::Create(4 * sizeof(float), 14);
+
 
 
         // 初始化场景
@@ -256,7 +350,8 @@ namespace Volcano{
             }
         }
 
-        Renderer::SetClearColor(0.2f, 0.2f, 0.2f, 1);
+        Renderer::SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
 
         // 渲染阴影
         m_DirectionalDepthMapFramebuffer->Bind();
@@ -302,16 +397,117 @@ namespace Volcano{
             m_SpotDepthMapFramebuffer->Unbind();
             Texture::Bind(m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID(), 30);
         }
+
+        m_GBufferFramebuffer->Bind();
+        {
+            Renderer::Clear();
+            m_GBufferFramebuffer->ClearAttachment(1, -1);
+
+            m_ActiveScene->SetRenderType(RenderType::G_BUFFER);
+            RenderScene(ts);
+            m_ActiveScene->SetRenderType(RenderType::NORMAL);
+
+            m_GBufferFramebuffer->Unbind();
+
+        }
+        /*
+        m_DeferredShadingFramebuffer->Bind();
+        {
+            Renderer::Clear();
+
+            // Clear entity ID attachment to -1
+            m_DeferredShadingFramebuffer->ClearAttachment(1, -1);
+
+            m_ActiveScene->SetRenderType(RenderType::DEFERRED_SHADING);
+
+            Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
+            uint32_t positionTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
+            uint32_t normalTextureID     = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
+            uint32_t albedoSpecTextureID = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
+            uint32_t entityIDTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
+            Texture::Bind(positionTextureID,   0);
+            Texture::Bind(normalTextureID,     1);
+            Texture::Bind(albedoSpecTextureID, 2);
+            Texture::Bind(entityIDTextureID,   3);
+            Renderer::SetDepthTest(false);
+            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+            Renderer::SetDepthTest(true);
+
+
+            m_ActiveScene->SetRenderType(RenderType::NORMAL);
+
+            m_DeferredShadingFramebuffer->Unbind();
+
+        }
+        */
+
         
+        s_SSAOUniformBuffer->SetData(&s_KernelSize, sizeof(float));
+        s_SSAOUniformBuffer->SetData(&s_Radius,     sizeof(float), sizeof(float));
+        s_SSAOUniformBuffer->SetData(&s_Bias,       sizeof(float), 2 * sizeof(float));
+        s_SSAOUniformBuffer->SetData(&s_Power,      sizeof(float), 3 * sizeof(float));
+
+        m_SSAOFramebuffer->Bind();
+        {
+            Renderer::Clear();
+            Renderer::GetShaderLibrary()->Get("SSAO")->Bind();
+            uint32_t positionTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
+            uint32_t normalTextureID     = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
+            Texture::Bind(positionTextureID,   0);
+            Texture::Bind(normalTextureID,     1);
+            m_NoiseTexture->Bind(2);
+            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+
+            m_SSAOFramebuffer->Unbind();
+        }
+        
+        m_SSAOBlurFramebuffer->Bind();
+        {
+            Renderer::Clear();
+            Renderer::GetShaderLibrary()->Get("SSAOBlur")->Bind();
+            uint32_t ssaoColorBuffer = m_SSAOFramebuffer->GetColorAttachmentRendererID(0);
+            Texture::Bind(ssaoColorBuffer, 0);
+            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+            m_SSAOFramebuffer->Unbind();
+        }
+        
+        m_Framebuffer->BlitDepthFramebuffer(
+            m_GBufferFramebuffer->GetRendererID(), m_Framebuffer->GetRendererID(),
+            0, 0, m_Framebuffer->GetSpecification().Width, m_Framebuffer->GetSpecification().Height,
+            0, 0, m_Framebuffer->GetSpecification().Width, m_Framebuffer->GetSpecification().Height);
+
         m_Framebuffer->Bind();
         {
             Renderer::Clear();
 
             // Clear entity ID attachment to -1
             m_Framebuffer->ClearAttachment(1, -1);
+            
+            m_ActiveScene->SetRenderType(RenderType::DEFERRED_SHADING);
+
+            Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
+            uint32_t positionTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
+            uint32_t normalTextureID     = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
+            uint32_t diffuseTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
+            uint32_t specularTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
+            uint32_t ssaoColorBufferBlur = m_SSAOBlurFramebuffer->GetColorAttachmentRendererID(0);
+            Texture::Bind(positionTextureID,   0);
+            Texture::Bind(normalTextureID,     1);
+            Texture::Bind(diffuseTextureID,    2);
+            Texture::Bind(specularTextureID,   3);
+            Texture::Bind(ssaoColorBufferBlur, 4);
+            //Renderer::SetDepthTest(false);
+            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+            //Renderer::SetDepthTest(true);
+
 
             m_ActiveScene->SetRenderType(RenderType::NORMAL);
+
+
+            m_ActiveScene->SetRenderType(RenderType::SKYBOX);
             RenderScene(ts);
+            m_ActiveScene->SetRenderType(RenderType::NORMAL);
+
 
             auto [mx, my] = ImGui::GetMousePos();
             // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
@@ -377,9 +573,15 @@ namespace Volcano{
             Renderer::SetDepthTest(false);
             Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
             Renderer::SetDepthTest(true);
+
+
             m_Framebuffer->Unbind();
 
         }
+
+
+
+
 
         // 将FrameBuffer的图像放到window上
         // 还原视图尺寸
@@ -387,8 +589,9 @@ namespace Volcano{
         // TODO: 帧缓冲画面会被拉伸至视图尺寸，参考ShaderToy代码将画面保持正常尺寸
         m_WindowShader->Bind();
         //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(2);
-        //uint32_t windowTextureID = m_BlurFramebuffer[!horizontal]->GetColorAttachmentRendererID(0);
-        uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
+        //uint32_t windowTextureID = m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID();
+        //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
+        uint32_t windowTextureID = m_SSAOFramebuffer->GetColorAttachmentRendererID(0);
         Texture::Bind(windowTextureID, 0);
         Renderer::SetDepthTest(false);
         Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
@@ -668,7 +871,18 @@ namespace Volcano{
         // Stats
         ImGui::DragFloat("Exposure", &s_Exposure, 0.01f);
         ImGui::Checkbox("Bloom", &s_Bloom);
-        VOL_TRACE(s_Bloom);
+
+        ImGui::DragInt("KernelSize,",   &s_KernelSize);
+        ImGui::DragFloat("Radius,",     &s_Radius,     0.01f);
+        ImGui::DragFloat("Bias,",       &s_Bias,       0.01f);
+        ImGui::DragFloat("Power,",      &s_Power,      0.01f);
+
+
+            
+            
+            
+            
+
 
         ImGui::End();
 

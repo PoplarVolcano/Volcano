@@ -16,6 +16,17 @@ namespace Volcano {
 
     Model::Model(const char* path, bool gamma) : gammaCorrection(gamma)
     {
+        m_BlackTexture = Texture2D::Create(1, 1);
+        uint32_t blackTextureData = 0x00000000;
+        m_BlackTexture->SetData(&blackTextureData, sizeof(uint32_t));
+
+        MeshTexture texture;
+        texture.texture = m_BlackTexture;
+        texture.type = "BlackTexture";
+        texture.path = "";
+        texture.textureIndex = 0.0f;
+        textures_loaded.push_back(texture);
+
         loadModel(path);
         m_Path = path;
     }
@@ -28,6 +39,10 @@ namespace Volcano {
 
     void Model::DrawIndexed()
     {
+        // Bind textures
+        for (uint32_t i = 0; i < textures_loaded.size(); i++)
+            textures_loaded[i].texture->Bind(i);
+
         for (uint32_t i = 0; i < meshes.size(); i++)
             meshes[i].DrawIndexed();
     }
@@ -177,6 +192,7 @@ namespace Volcano {
                 texture.texture = Texture2D::Create(path, false);
                 texture.type = typeName;
                 texture.path = str.C_Str();
+                texture.textureIndex = textures_loaded.size();
                 textures.push_back(texture);
                 textures_loaded.push_back(texture);
             }

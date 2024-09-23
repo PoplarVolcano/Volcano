@@ -61,6 +61,11 @@ namespace Volcano {
 		Ref<Framebuffer> m_SpotDepthMapFramebuffer;
 		Ref<Framebuffer> m_BlurFramebuffer[2];
 		Ref<Framebuffer> m_HDRFramebuffer;
+		Ref<Framebuffer> m_GBufferFramebuffer;
+		Ref<Framebuffer> m_DeferredShadingFramebuffer;
+		Ref<Framebuffer> m_SSAOFramebuffer;
+		Ref<Framebuffer> m_SSAOBlurFramebuffer;
+		Ref<Texture2D>   m_NoiseTexture;
 
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
 		glm::vec2 m_ViewportBounds[2];

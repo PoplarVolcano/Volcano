@@ -162,6 +162,8 @@
   <ItemGroup>
     <None Include="assets\shaders\3D\Cube.glsl" />
     <None Include="assets\shaders\Blur.glsl" />
+    <None Include="assets\shaders\DeferredShading.glsl" />
+    <None Include="assets\shaders\GBufferCube.glsl" />
     <None Include="assets\shaders\HDR.glsl" />
     <None Include="assets\shaders\LightCube.glsl" />
     <None Include="assets\shaders\model\Asteroids.glsl" />
@@ -170,6 +172,8 @@
     <None Include="assets\shaders\shadow\PointShadowsDepth.glsl" />
     <None Include="assets\shaders\shadow\ShadowMappingDepth.glsl" />
     <None Include="assets\shaders\shadow\SpotShadowDepth.glsl" />
+    <None Include="assets\shaders\SSAO.glsl" />
+    <None Include="assets\shaders\SSAOBlur.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

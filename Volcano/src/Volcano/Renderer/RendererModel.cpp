@@ -72,6 +72,12 @@ namespace Volcano {
 		case RenderType::SHADOW_SPOTLIGHT:
 			Renderer::GetShaderLibrary()->Get("SpotShadowDepth")->Bind();
 			break;
+		case RenderType::G_BUFFER:
+			Renderer::GetShaderLibrary()->Get("GBuffer")->Bind();
+			break;
+		case RenderType::DEFERRED_SHADING:
+			Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
+			break;
 		case RenderType::NORMAL:
 			Renderer::GetShaderLibrary()->Get("ModelLoading")->Bind();
 			break;

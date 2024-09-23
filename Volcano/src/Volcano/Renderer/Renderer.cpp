@@ -27,6 +27,12 @@ namespace Volcano {
 		RendererModel::Init();
 		Skybox::Init();
 		Shadow::Init();
+
+
+		Renderer::GetShaderLibrary()->Load("assets/shaders/GBuffer.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/DeferredShading.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/SSAO.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/SSAOBlur.glsl");
 	}
 
 	void Renderer::Shutdown()

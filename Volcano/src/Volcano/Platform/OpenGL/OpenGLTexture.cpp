@@ -15,6 +15,7 @@ namespace Volcano {
 		{
 		case TextureFormat::RGB:     return GL_RGB;
 		case TextureFormat::RGBA:    return GL_RGBA;
+		case TextureFormat::RGBA8:   return GL_RGBA8;
 		case TextureFormat::Float16: return GL_RGBA16F;
 		}
 		VOL_CORE_ASSERT(false, "Unknown texture format!");
@@ -25,14 +26,13 @@ namespace Volcano {
 	// Texture2D
 	//////////////////////////////////////////////////////////////////////////////////
 
-	OpenGLTexture2D::OpenGLTexture2D(uint32_t width, uint32_t height)
+	OpenGLTexture2D::OpenGLTexture2D(uint32_t width, uint32_t height, TextureFormat internalFormat, TextureFormat dataFormat)
 		:m_Width(width), m_Height(height)
 	{
-		m_InternalFormat = GL_RGBA8;
-		m_DataFormat = GL_RGBA;
+		m_InternalFormat = VolcanoToOpenGLTextureFormat(internalFormat);
+		m_DataFormat = VolcanoToOpenGLTextureFormat(dataFormat);
 
 		glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
-		///告诉OpenGLm_RendererID的纹理存储的是rbg8位，宽高的缓冲区
 		glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
 		//配置参数:纹理放大时用周围颜色的平均值过滤
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
@@ -105,6 +105,16 @@ namespace Volcano {
 		uint32_t bpc = m_DataFormat == GL_RGBA ? 4 : 3;
 		VOL_CORE_ASSERT(size == m_Width * m_Height * bpc, "OpenGLTexture2D：数据必须是完整的！");
 		glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
+	}
+
+	void OpenGLTexture2D::SetDataFormat(TextureFormat format)
+	{
+		m_DataFormat = VolcanoToOpenGLTextureFormat(format);
+	}
+
+	void OpenGLTexture2D::SetInternalFormat(TextureFormat format)
+	{
+		m_InternalFormat = VolcanoToOpenGLTextureFormat(format);
 	}
 
 	uint32_t OpenGLTexture2D::GetMipLevelCount() const

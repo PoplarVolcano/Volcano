@@ -460,6 +460,16 @@ namespace Volcano {
 	// 摄像头渲染场景，摄像头，摄像头TRS，摄像头位置（translation），摄像头方向
 	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
 	{
+		if (m_RenderType == RenderType::SKYBOX)
+		{
+			RendererAPI::SetDepthFunc(DepthFunc::LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+			Skybox::BeginScene(camera, transform);
+			Skybox::DrawSkybox();
+			Skybox::EndScene();
+			RendererAPI::SetDepthFunc(DepthFunc::LESS); // set depth function back to default
+			return;
+		}
+
 		Renderer2D::BeginScene(camera, transform);
 
 		// Draw sprites
@@ -514,14 +524,6 @@ namespace Volcano {
 
 		// draw skybox as last
 		
-		if (m_RenderType == RenderType::NORMAL)
-		{
-			RendererAPI::SetDepthFunc(DepthFunc::LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-			Skybox::BeginScene(camera, transform);
-			Skybox::DrawSkybox();
-			Skybox::EndScene();
-			RendererAPI::SetDepthFunc(DepthFunc::LESS); // set depth function back to default
-		}
 
 	}
 
@@ -674,7 +676,7 @@ namespace Volcano {
 
 				glm::mat4 lightProjection, lightView;
 				glm::mat4 lightSpaceMatrix;
-				float m_Near = 1.0f, m_Far = 25.0f;
+				float m_Near = 0.1f, m_Far = 100.0f;
 				lightProjection = glm::perspective(glm::radians(90.0f), 1.0f, m_Near, m_Far);
 				lightView = glm::inverse(transform.GetTransform());
 

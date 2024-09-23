@@ -24,5 +24,9 @@ layout(std140, binding = 10) uniform LightSpaceMatrix
 
 void main()
 {             
+    // back to NDC(标准化设备坐标)[-1,1]
+	//float z = gl_FragCoord.z * 2.0 - 1.0;
+	//z = (2.0 * 0.1 * 1000) / (1000 + 0.1 - z * (1000 - 0.1));
+    //float z = gl_FragCoord.z / gl_FragCoord.w;
     gl_FragDepth = gl_FragCoord.z;
 }

@@ -35,6 +35,8 @@ namespace Volcano {
 			}
 			else if(type == TextureType::TEXTURE_2D)
 			{
+				// internalFormat：指定OpenGL是如何管理纹理单元中数据格式的,告诉驱动它里面的数据是怎么组织的
+				// format：指定data所指向的数据的格式
 				glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, NULL);
 
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -67,7 +69,7 @@ namespace Volcano {
 				}
 				else
 				{
-					glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_FLOAT, NULL);
+					glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, NULL);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 					glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
@@ -86,7 +88,7 @@ namespace Volcano {
 				else
 				{
 					for (uint32_t i = 0; i < 6; ++i)
-						glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, width, height, 0, format, GL_FLOAT, NULL);
+						glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, NULL);
 					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 					glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -118,7 +120,9 @@ namespace Volcano {
 			switch (format)
 			{
 				case FramebufferTextureFormat::RGBA8:       return GL_RGBA8;
+				case FramebufferTextureFormat::RGBA16F:     return GL_RGBA16F;
 				case FramebufferTextureFormat::RED_INTEGER: return GL_RED_INTEGER;
+				case FramebufferTextureFormat::RED:         return GL_RED;
 			}
 			VOL_CORE_ASSERT(false);
 			return 0;
@@ -227,6 +231,16 @@ namespace Volcano {
 							m_Specification.Width,
 							m_Specification.Height, i);
 						break;
+					case FramebufferTextureFormat::RED:
+						Utils::AttachColorTexture(
+							m_ColorAttachments[i],
+							m_Specification.Samples,
+							type,
+							GL_RED,
+							GL_RGB,
+							m_Specification.Width,
+							m_Specification.Height, i);
+						break;
 				}
 			}
 		}
@@ -266,8 +280,8 @@ namespace Volcano {
 
 		if (m_ColorAttachments.size() > 1)
 		{
-			VOL_CORE_ASSERT(m_ColorAttachments.size() <= 4);
-			GLenum buffers[4] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3 };
+			VOL_CORE_ASSERT(m_ColorAttachments.size() <= 5);
+			GLenum buffers[5] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4 };
 			glDrawBuffers(m_ColorAttachments.size(), buffers);
 		}
 		else if (m_ColorAttachments.empty())
@@ -321,6 +335,16 @@ namespace Volcano {
 		return pixelData;
 	}
 
+	float OpenGLFramebuffer::ReadPixelFloat(uint32_t attachmentIndex, int x, int y)
+	{
+		VOL_CORE_ASSERT(attachmentIndex < m_ColorAttachments.size());
+		// 读取第二个缓冲区
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
+		float pixelData;
+		glReadPixels(x, y, 1, 1, GL_RED, GL_FLOAT, &pixelData);
+		return pixelData;
+	}
+
 	void OpenGLFramebuffer::ClearAttachment(uint32_t attachmentIndex, int value)
 	{
 		VOL_CORE_ASSERT(attachmentIndex < m_ColorAttachments.size());
@@ -339,4 +363,23 @@ namespace Volcano {
 		glReadBuffer(Utils::VolcanoFBBufferFormatToGL(format));
 	}
 
+	void OpenGLFramebuffer::BlitDepthFramebuffer(
+		uint32_t srcRendererID, uint32_t dstRendererID,
+		const uint32_t srcX0, const uint32_t srcY0, const uint32_t srcX1, const uint32_t srcY1,
+		const uint32_t dstX0, const uint32_t dstY0, const uint32_t dstX1, const uint32_t dstY1)
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, srcRendererID);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstRendererID);
+		glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	}
+
+	void OpenGLFramebuffer::BlitColorFramebuffer(
+		uint32_t srcRendererID, uint32_t dstRendererID,
+		const uint32_t srcX0, const uint32_t srcY0, const uint32_t srcX1, const uint32_t srcY1,
+		const uint32_t dstX0, const uint32_t dstY0, const uint32_t dstX1, const uint32_t dstY1)
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, srcRendererID);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstRendererID);
+		glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
 }

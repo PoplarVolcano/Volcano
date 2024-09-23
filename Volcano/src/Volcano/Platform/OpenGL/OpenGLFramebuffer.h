@@ -19,10 +19,16 @@ namespace Volcano {
 		virtual void Resize(uint32_t width, uint32_t height) override;
 		virtual int ReadPixel(uint32_t attachmentIndex, int x, int y) override;
 
+		virtual float ReadPixelFloat(uint32_t attachmentIndex, int x, int y) override;
+
 		virtual void ClearAttachment(uint32_t attachmentIndex, int value) override;
 
 		virtual void SetDrawBuffer(FramebufferBufferFormat format) override;
 		virtual void SetReadBuffer(FramebufferBufferFormat format) override;
+
+		virtual void BlitDepthFramebuffer(uint32_t srcRendererID, uint32_t dstRendererID, const uint32_t srcX0, const uint32_t srcY0, const uint32_t srcX1, const uint32_t srcY1, const uint32_t dstX0, const uint32_t dstY0, const uint32_t dstX1, const uint32_t dstY1) override;
+
+		virtual void BlitColorFramebuffer(uint32_t srcRendererID, uint32_t dstRendererID, const uint32_t srcX0, const uint32_t srcY0, const uint32_t srcX1, const uint32_t srcY1, const uint32_t dstX0, const uint32_t dstY0, const uint32_t dstX1, const uint32_t dstY1) override;
 
 		virtual uint32_t GetColorAttachmentRendererID(uint32_t index = 0) const override 
 		{ 
@@ -35,6 +41,7 @@ namespace Volcano {
 		}
 
 		virtual const FramebufferSpecification& GetSpecification() const override { return m_Specification; }
+		virtual const uint32_t GetRendererID() const override { return m_RendererID; }
 	private:
 		uint32_t m_RendererID = 0;
 		FramebufferSpecification m_Specification;

@@ -9,10 +9,11 @@ namespace Volcano {
 
 	enum class TextureFormat
 	{
-		None = 0,
-		RGB = 1,
-		RGBA = 2,
-		Float16 = 3
+		None,
+		RGB,
+		RGBA,
+		RGBA8,
+		Float16
 	};
 
 	enum class TextureType
@@ -44,9 +45,11 @@ namespace Volcano {
 	class Texture2D : public Texture
 	{
 	public:
-		static Ref<Texture2D> Create(uint32_t width, uint32_t height);
+		static Ref<Texture2D> Create(uint32_t width, uint32_t height, TextureFormat internalFormat = TextureFormat::RGBA8, TextureFormat dataFormat = TextureFormat::RGBA);
 		static Ref<Texture2D> Create(const std::string& path, bool filp = true);
 		virtual void SetData(void* data, uint32_t size) = 0;
+		virtual void SetDataFormat(TextureFormat format) = 0;
+		virtual void SetInternalFormat(TextureFormat format) = 0;
 
 		virtual const std::string& GetPath() const = 0;
 	};

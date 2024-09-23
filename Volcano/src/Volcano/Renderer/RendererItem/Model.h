@@ -24,6 +24,8 @@ namespace Volcano {
         std::vector<Mesh> meshes;
         std::vector<MeshTexture> textures_loaded; // 存储到目前为止加载的所有纹理，优化以确保纹理不会加载多次。
 
+        Ref<Texture2D> m_BlackTexture;
+
         std::string directory;
 
         void loadModel(std::string path);

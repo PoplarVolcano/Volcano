@@ -1,47 +1,32 @@
 Scene: Untitled
 Entities:
-  - Entity: 15197339571303424745
+  - Entity: 6726356607478384203
     TagComponent:
-      Tag: PointLight
+      Tag: model
     TransformComponent:
-      Translation: [-0.460372686, 1.65655601, 1.64807725]
+      Translation: [0, 0, 0]
       Rotation: [0, 0, 0]
-      Scale: [1, 1, 1]
-    LightComponent:
-      Type: 1
-      Ambient: [0.100000001, 0.100000001, 0.100000001]
-      Diffuse: [0.5, 0.5, 0.5]
-      Specular: [0.5, 0.5, 0.5]
-      Constant: 1
-      Linear: 0.0900000036
-      Quadratic: 0.0320000015
-      CutOff: 0.976296008
-      OuterCutOff: 0.953716934
-  - Entity: 1370942717087224710
-    TagComponent:
-      Tag: Wall2
-    TransformComponent:
-      Translation: [-0.5, 0, -5.5]
-      Rotation: [0, 0, 0]
-      Scale: [10, 10, 1]
-    CubeRendererComponent:
-      Color: [1, 1, 1, 1]
+      Scale: [0.200000003, 0.200000003, 0.200000003]
+    ModelRendererComponent:
+      ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
   - Entity: 13137941688995177560
     TagComponent:
       Tag: Wall1
     TransformComponent:
-      Translation: [-5.5, 0, 0]
+      Translation: [-5.5, 5, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 10, 10]
     CubeRendererComponent:
       Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall.jpg
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall_normal.jpg
   - Entity: 11390127837943345233
     TagComponent:
       Tag: Floor
     TransformComponent:
-      Translation: [0, -1, 0]
+      Translation: [0, -0.500000119, 0]
       Rotation: [0, 0, 0]
-      Scale: [10, 1, 10]
+      Scale: [100, 1, 100]
     CubeRendererComponent:
       Color: [1, 1, 1, 1]
       DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
@@ -60,7 +45,7 @@ Entities:
     TagComponent:
       Tag: Box
     TransformComponent:
-      Translation: [-3, 0, -4.5]
+      Translation: [-3, 0.5, -4.5]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     CubeRendererComponent:
@@ -71,7 +56,7 @@ Entities:
     TagComponent:
       Tag: Camera
     TransformComponent:
-      Translation: [0, 2, 4]
+      Translation: [0, 1, 2]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     CameraComponent:
@@ -98,21 +83,21 @@ Entities:
     TagComponent:
       Tag: Rhodes
     TransformComponent:
-      Translation: [-2, 0, -0.193381757]
+      Translation: [-2, 0.5, 0]
       Rotation: [0, 0, 0]
       Scale: [1, 1, 1]
     CubeRendererComponent:
       Color: [1, 1, 1, 1]
       DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Triangle_old.png
-  - Entity: 13347387996840674705
+  - Entity: 13190209727023942805
     TagComponent:
-      Tag: Light
+      Tag: PointLight
     TransformComponent:
-      Translation: [-40, 40, -40]
-      Rotation: [-0.52359879, 0.785398185, 0]
-      Scale: [0.5, 0.5, 1]
+      Translation: [0, 1, 0]
+      Rotation: [0, 0, 0]
+      Scale: [0.200000003, 0.200000003, 0.200000003]
     LightComponent:
-      Type: 0
+      Type: 1
       Ambient: [0.100000001, 0.100000001, 0.100000001]
       Diffuse: [0.5, 0.5, 0.5]
       Specular: [0.5, 0.5, 0.5]
@@ -136,12 +121,73 @@ Entities:
       Color: [1, 1, 1, 1]
       DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
       SpecularPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box_specular.png
-  - Entity: 497194233680724907
+  - Entity: 1370942717087224710
     TagComponent:
-      Tag: Model
+      Tag: Wall2
     TransformComponent:
-      Translation: [0, -0.5, 0]
+      Translation: [0, 5, -5.5]
       Rotation: [0, 0, 0]
-      Scale: [0.200000003, 0.200000003, 0.200000003]
-    ModelRendererComponent:
-      ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+      Scale: [10, 10, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2.jpg
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_normal.jpg
+      ParallaxPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_disp.jpg
+  - Entity: 4619199084064548474
+    TagComponent:
+      Tag: DirectionalLight
+    TransformComponent:
+      Translation: [-20, 40, -10]
+      Rotation: [-1.04719758, -2.09439516, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 0
+      Ambient: [0.100000001, 0.100000001, 0.100000001]
+      Diffuse: [0.5, 0.5, 0.5]
+      Specular: [0.5, 0.5, 0.5]
+      Constant: 1
+      Linear: 0.0900000036
+      Quadratic: 0.0320000015
+      CutOff: 0.976296008
+      OuterCutOff: 0.953716934
+  - Entity: 11443364752273298905
+    TagComponent:
+      Tag: SpotLight
+    TransformComponent:
+      Translation: [0, 1, 2]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 2
+      Ambient: [0.100000001, 0.100000001, 0.100000001]
+      Diffuse: [0.5, 0.5, 0.5]
+      Specular: [0.5, 0.5, 0.5]
+      Constant: 1
+      Linear: 0.0900000036
+      Quadratic: 0.0320000015
+      CutOff: 0.976296008
+      OuterCutOff: 0.953716934
+    ScriptComponent:
+      ClassName: Sandbox.FlashLight
+  - Entity: 14743498511035837202
+    TagComponent:
+      Tag: Wall3
+    TransformComponent:
+      Translation: [5.5, 5, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 10, 10]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
+  - Entity: 1674134598351960522
+    TagComponent:
+      Tag: ToyBox
+    TransformComponent:
+      Translation: [2, 0.5, 2]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CubeRendererComponent:
+      Color: [1, 1, 1, 1]
+      DiffusePath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_diffuse.png
+      NormalPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_normal.png
+      ParallaxPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_disp.png
