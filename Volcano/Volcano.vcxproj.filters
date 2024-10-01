@@ -1535,6 +1535,13 @@
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Skybox.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Shadow.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Bone.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\AssimpGLMHelpers.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animation.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animator.h" />
+    <ClInclude Include="src\Volcano\Renderer\RenderPass.h" />
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Sphere.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1699,5 +1706,11 @@
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Skybox.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Shadow.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Light.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Bone.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animation.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animator.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RenderPass.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Sphere.cpp" />
   </ItemGroup>
 </Project>

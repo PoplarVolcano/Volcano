@@ -2,6 +2,8 @@
 #include "RendererModel.h"
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/RendererItem/Model.h"
+#include "Volcano/Renderer/RendererItem/Animation.h"
+#include "Volcano/Renderer/RendererItem/Animator.h"
 #include "Volcano/Utils/PlatformUtils.h"
 
 #include "Light.h"
@@ -13,7 +15,7 @@
 namespace Volcano {
 
 	static Ref<UniformBuffer> s_LightUniformBuffer;
-	static std::unordered_map<std::string, Ref<Model>> s_Models;
+	static std::unordered_map<std::string, Ref<Model>> s_ModelMap;
 
 	struct RockData
 	{
@@ -32,22 +34,39 @@ namespace Volcano {
 	static Ref<UniformBuffer> s_TransformUniformBuffer;
 
 	static Ref<Model> s_Model;
+	static Ref<Animation> s_Animation;
+	static Ref<Animator> s_Animator;
+
+#define MAX_BONES = 100;
+	static Ref<UniformBuffer> s_BonesMatricesUniformBuffer;
+
 
 	void RendererModel::Init()
 	{
-		std::string path = "SandBoxProject/Assets/Objects/nanosuit/nanosuit.obj";
-		s_Model = Model::Create(path.c_str(), false);
+		//std::string path = "SandBoxProject/Assets/Objects/nanosuit/nanosuit.obj";
+		std::string path = "SandBoxProject/Assets/Objects/vampire/dancing_vampire.dae";
+		//std::string path = "SandBoxProject/Assets/Objects/m1911/M1911Materials.fbx";
+		//std::string path = "SandBoxProject/Assets/Objects/cyborg/cyborg.obj";
+		s_ModelMap["nanosuit"] = Model::Create(path.c_str(), false);
+
+		s_Animation = std::make_shared<Animation>(std::string("SandBoxProject/Assets/Objects/vampire/dancing_vampire.dae"), s_ModelMap["nanosuit"].get());
+		s_Animator = std::make_shared<Animator>(s_Animation.get());
 
 		Renderer::GetShaderLibrary()->Load("assets/shaders/ModelLoading.glsl");
 		
 		// 在Renderer3D中设置过的uniform全局通用，除非有变动，否则不需要重新设置
 		s_TransformUniformBuffer = UniformBuffer::Create(4 * 4 * 2 * sizeof(float), 6);
 
-
+		s_BonesMatricesUniformBuffer = UniformBuffer::Create(100 * 4 * 4 * sizeof(float), 15);
 	}
 
 	void RendererModel::Shutdown()
 	{
+	}
+
+	void RendererModel::Update(Timestep ts)
+	{
+		s_Animator->UpdateAnimation(ts.GetSeconds());
 	}
 
 	void RendererModel::BeginScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
@@ -61,6 +80,9 @@ namespace Volcano {
 
 	void RendererModel::Flush(RenderType type)
 	{
+		auto finalBoneMatrices = s_Animator->GetFinalBoneMatrices();
+		s_BonesMatricesUniformBuffer->SetData(&finalBoneMatrices, finalBoneMatrices.size() * 4 * 4 * sizeof(float));
+
 		switch (type)
 		{
 		case RenderType::SHADOW_DIRECTIONALLIGHT:
@@ -84,7 +106,7 @@ namespace Volcano {
 		default:
 			VOL_CORE_ASSERT(0);
 		}
-		s_Model->DrawIndexed();
+		s_ModelMap["nanosuit"]->DrawIndexed();
 
 	}
 
@@ -112,7 +134,8 @@ namespace Volcano {
 		s_TransformUniformBuffer->SetData(&s_TransformBuffer.Transform,       sizeof(glm::mat4));
 		s_TransformUniformBuffer->SetData(&s_TransformBuffer.NormalTransform, sizeof(glm::mat4), 4 * 4 * sizeof(float));
 		Ref<Shader> shader = Renderer::GetShaderLibrary()->Get("ModelLoading");
-		s_Model->Draw(*shader, transform, normalTransform, entityID);
+		std::vector<glm::mat4> finalBoneMatrices = s_Animator->GetFinalBoneMatrices();
+		s_ModelMap["nanosuit"]->Draw(*shader, transform, normalTransform, entityID, finalBoneMatrices);
 
 	}
 

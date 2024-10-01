@@ -10,17 +10,32 @@ namespace Volcano {
 	enum class TextureFormat
 	{
 		None,
+		RG,
 		RGB,
 		RGBA,
 		RGBA8,
-		Float16
+		RG16F,
+		RGB16F,
+		RGBA16F
 	};
 
 	enum class TextureType
 	{
 		TEXTURE_2D,
 		TEXTURE_2D_MULTISAMPLE,
-		TEXTURE_CUBE_MAP
+		TEXTURE_CUBE_MAP,
+		TEXTURE_CUBE_MAP_POSITIVE_X,
+		TEXTURE_CUBE_MAP_NEGATIVE_X,
+		TEXTURE_CUBE_MAP_POSITIVE_Y,
+		TEXTURE_CUBE_MAP_NEGATIVE_Y,
+		TEXTURE_CUBE_MAP_POSITIVE_Z,
+		TEXTURE_CUBE_MAP_NEGATIVE_Z
+	};
+
+	enum class TextureWrap
+	{
+		REPEAT,
+		CLAMP_TO_EDGE
 	};
 
 	class Texture
@@ -45,8 +60,8 @@ namespace Volcano {
 	class Texture2D : public Texture
 	{
 	public:
-		static Ref<Texture2D> Create(uint32_t width, uint32_t height, TextureFormat internalFormat = TextureFormat::RGBA8, TextureFormat dataFormat = TextureFormat::RGBA);
-		static Ref<Texture2D> Create(const std::string& path, bool filp = true);
+		static Ref<Texture2D> Create(uint32_t width, uint32_t height, TextureFormat internalFormat = TextureFormat::RGBA8, TextureFormat dataFormat = TextureFormat::RGBA, TextureWrap wrap = TextureWrap::REPEAT);
+		static Ref<Texture2D> Create(const std::string& path, bool filp = true, TextureFormat internalFormat = TextureFormat::None);
 		virtual void SetData(void* data, uint32_t size) = 0;
 		virtual void SetDataFormat(TextureFormat format) = 0;
 		virtual void SetInternalFormat(TextureFormat format) = 0;

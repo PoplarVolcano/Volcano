@@ -5,23 +5,23 @@
 #include "Volcano/Platform/OpenGL/OpenGLTexture.h"
 
 namespace Volcano {
-	Ref<Texture2D> Texture2D::Create(uint32_t width, uint32_t height, TextureFormat internalFormat, TextureFormat dataFormat)
+	Ref<Texture2D> Texture2D::Create(uint32_t width, uint32_t height, TextureFormat internalFormat, TextureFormat dataFormat, TextureWrap wrap)
 	{
 		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::None:    VOL_CORE_ASSERT(false, "Texture2D：API为None不支持"); return nullptr;
-			case RendererAPIType::OpenGL:  return  CreateRef<OpenGLTexture2D>(width, height, internalFormat, dataFormat);
+			case RendererAPIType::OpenGL:  return  CreateRef<OpenGLTexture2D>(width, height, internalFormat, dataFormat, wrap);
 		}
 		VOL_CORE_ASSERT(false, "Buffer：未知API");
 		return nullptr;
 	}
 
-	Ref<Texture2D> Texture2D::Create(const std::string& path, bool filp)
+	Ref<Texture2D> Texture2D::Create(const std::string& path, bool filp, TextureFormat internalFormat)
 	{
 		switch (RendererAPI::Current())
 		{
 			case RendererAPIType::None:    VOL_CORE_ASSERT(false, "Texture2D：API为None不支持"); return nullptr;
-			case RendererAPIType::OpenGL:  return  std::make_shared<OpenGLTexture2D>(path, filp);
+			case RendererAPIType::OpenGL:  return  std::make_shared<OpenGLTexture2D>(path, filp, internalFormat);
 		}
 		VOL_CORE_ASSERT(false, "Buffer：未知API");
 		return nullptr;

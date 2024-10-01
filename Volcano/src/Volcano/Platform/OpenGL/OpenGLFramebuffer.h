@@ -35,13 +35,14 @@ namespace Volcano {
 			VOL_CORE_ASSERT(index < m_ColorAttachments.size());
 			return m_ColorAttachments[index]; 
 		}
-		virtual uint32_t GetDepthAttachmentRendererID() const override
-		{
-			return m_DepthAttachment;
-		}
+		virtual uint32_t GetDepthAttachmentRendererID() const override { return m_DepthAttachment; }
+
+		virtual uint32_t GetRenderbufferObjectRendererID() const override { return m_RenderbufferObject; }
 
 		virtual const FramebufferSpecification& GetSpecification() const override { return m_Specification; }
 		virtual const uint32_t GetRendererID() const override { return m_RendererID; }
+
+		virtual void SetColorAttachment(Ref<Texture> texture, TextureType Type = TextureType::TEXTURE_2D, uint32_t index = 0, uint32_t mip = 0) const override;
 	private:
 		uint32_t m_RendererID = 0;
 		FramebufferSpecification m_Specification;
@@ -51,5 +52,6 @@ namespace Volcano {
 		
 		std::vector<uint32_t> m_ColorAttachments;
 		uint32_t m_DepthAttachment = 0;
+		uint32_t m_RenderbufferObject = 0;
 	};
 }

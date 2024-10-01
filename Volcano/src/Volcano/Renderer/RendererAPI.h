@@ -55,6 +55,8 @@ namespace Volcano {
 		static void SetClearColor(float r, float g, float b, float a);
 
 		static void DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount, bool depthTest = true);
+		static void DrawArrays(const Ref<VertexArray>& vertexArray, uint32_t count, bool depthTest = true);
+		static void DrawStripIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount, bool depthTestt = true);
 		static void DrawInstanced(const Ref<VertexArray>& vertexArray, uint32_t indexCount, uint32_t amount, bool depthTest = true);
 
 		static void DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount);
@@ -62,6 +64,7 @@ namespace Volcano {
 		static void SetLineWidth(float width);
 
 		static void SetDepthTest(bool depthTest);
+		static void SetCullFace(bool depthTest);
 
 		static void SetDepthFunc(DepthFunc func);
 		static void SetCullFaceFunc(CullFaceFunc func);

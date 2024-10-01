@@ -45,5 +45,13 @@
     <None Include="assets\shaders\DeferredShading.glsl" />
     <None Include="assets\shaders\SSAO.glsl" />
     <None Include="assets\shaders\SSAOBlur.glsl" />
+    <None Include="assets\shaders\AnimModel.glsl" />
+    <None Include="assets\shaders\3D\PBR.glsl" />
+    <None Include="assets\shaders\3D\Sphere.glsl" />
+    <None Include="assets\shaders\3D\EquirectangularToCubemap.glsl" />
+    <None Include="assets\shaders\3D\Background.glsl" />
+    <None Include="assets\shaders\3D\IrradianceConvolution.glsl" />
+    <None Include="assets\shaders\3D\Prefilter.glsl" />
+    <None Include="assets\shaders\3D\BRDF.glsl" />
   </ItemGroup>
 </Project>

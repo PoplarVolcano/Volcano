@@ -40,6 +40,7 @@ namespace Volcano {
 		glEnable(GL_LINE_SMOOTH);
 		glEnable(GL_STENCIL_TEST);
 		glEnable(GL_CULL_FACE);
+		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 
 		//glEnable(GL_BLEND);
 		//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -54,6 +55,7 @@ namespace Volcano {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &caps.MaxAnisotropy);
 		glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &caps.MaxTextureUnits);
 
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
 
 	void RendererAPI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
@@ -96,6 +98,32 @@ namespace Volcano {
 			glEnable(GL_DEPTH_TEST);
 	}
 
+	void RendererAPI::DrawArrays(const Ref<VertexArray>& vertexArray, uint32_t count, bool depthTest)
+	{
+		if (!depthTest)
+			glDisable(GL_DEPTH_TEST);
+
+		vertexArray->Bind();
+		glDrawArrays(GL_TRIANGLES, 0, count);// 绘制的模式、起始顶点索引和顶点数量。
+
+		if (!depthTest)
+			glEnable(GL_DEPTH_TEST);
+	}
+
+	void RendererAPI::DrawStripIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount, bool depthTest)
+	{
+		if (!depthTest)
+			glDisable(GL_DEPTH_TEST);
+
+		vertexArray->Bind();
+		uint32_t count = indexCount ? indexCount : vertexArray->GetIndexBuffer()->GetCount();
+		//如何绘制索引， 多少个索引， 索引类型， 偏移量
+	    glDrawElements(GL_TRIANGLE_STRIP, count, GL_UNSIGNED_INT, nullptr);
+
+		if (!depthTest)
+			glEnable(GL_DEPTH_TEST);
+	}
+
 	void RendererAPI::DrawInstanced(const Ref<VertexArray>& vertexArray, uint32_t indexCount, uint32_t amount, bool depthTest)
 	{
 		if (!depthTest)
@@ -128,6 +156,14 @@ namespace Volcano {
 			glEnable(GL_DEPTH_TEST);
 		else
 			glDisable(GL_DEPTH_TEST);
+	}
+
+	void RendererAPI::SetCullFace(bool cullFace)
+	{
+		if (cullFace)
+			glEnable(GL_CULL_FACE);
+		else
+			glDisable(GL_CULL_FACE);
 	}
 
 	void RendererAPI::SetDepthFunc(DepthFunc func)

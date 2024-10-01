@@ -94,6 +94,21 @@ namespace Volcano {
 			: Color(color) {}
 	};
 
+	struct SphereRendererComponent
+	{
+		glm::vec4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+		Ref<Texture2D> Albedo;
+		Ref<Texture2D> Normal;
+		Ref<Texture2D> Metallic;
+		Ref<Texture2D> Roughness;
+		Ref<Texture2D> AO;
+
+		SphereRendererComponent() = default;
+		SphereRendererComponent(const SphereRendererComponent&) = default;
+		SphereRendererComponent(const glm::vec4 color)
+			: Color(color) {}
+	};
+
 	struct ModelRendererComponent
 	{
 		std::string ModelPath;
@@ -225,6 +240,7 @@ namespace Volcano {
 								SpriteRendererComponent,
 								CircleRendererComponent,
 								CubeRendererComponent,
+								SphereRendererComponent,
 								ModelRendererComponent,
 								LightComponent,
 								CameraComponent, 

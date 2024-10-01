@@ -28,7 +28,9 @@ namespace Volcano {
 			{ ShaderDataType::Float,  "a_SpecularIndex"   },
 			{ ShaderDataType::Float,  "a_NormalIndex"     },
 			{ ShaderDataType::Float,  "a_ParallaxIndex"   },
-            { ShaderDataType::Int,    "a_EntityID"        }
+            { ShaderDataType::Int,    "a_EntityID"        },
+            { ShaderDataType::Int4,   "a_BoneIDs"         },
+            { ShaderDataType::Float4, "a_Weights"         }
             });
         va->AddVertexBuffer(vb);
         Ref<IndexBuffer> ib = IndexBuffer::Create(&indices[0], indices.size());
@@ -38,7 +40,7 @@ namespace Volcano {
 
     }
 
-    void Mesh::Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID)
+    void Mesh::Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID, std::vector<glm::mat4>& finalBoneMatrices)
     {
         float diffuseIndex  = 0.0f;
         float specularIndex = 0.0f;
@@ -93,7 +95,7 @@ namespace Volcano {
             //vertexBufferPtr->Normal        = vertices[i].Normal;
             //vertexBufferPtr->Tangent       = vertices[i].Tangent;
             //vertexBufferPtr->Bitangent     = vertices[i].Bitangent;
-            vertexBufferPtr->Position      = transform * glm::vec4(vertices[i].Position, 1.0f);
+            vertexBufferPtr->Position      = vertices[i].Position;//transform * glm::vec4(vertices[i].Position, 1.0f);
             vertexBufferPtr->Normal        = normalTransform * vertices[i].Normal;
             vertexBufferPtr->TexCoords     = vertices[i].TexCoords;
             vertexBufferPtr->Tangent       = normalTransform * vertices[i].Tangent;
@@ -103,6 +105,24 @@ namespace Volcano {
             vertexBufferPtr->NormalIndex   = normalIndex;
             vertexBufferPtr->ParallaxIndex = parallaxIndex;
             vertexBufferPtr->EntityID      = entityID;
+            glm::vec4 totalPosition = glm::vec4(0.0f);
+            for (uint32_t index = 0; index < MAX_BONE_INFLUENCE; index++)
+            {
+                vertexBufferPtr->BoneIDs[index] = vertices[i].BoneIDs[index];
+                vertexBufferPtr->Weights[index] = vertices[i].Weights[index];
+
+                if (vertexBufferPtr->BoneIDs[index] == -1)
+                    continue;
+                if (vertexBufferPtr->BoneIDs[index] >= 100)
+                {
+                    totalPosition = glm::vec4(vertexBufferPtr->Position, 1.0f);
+                    break;
+                }
+                glm::vec4 localPosition = finalBoneMatrices[vertexBufferPtr->BoneIDs[index]] * glm::vec4(vertexBufferPtr->Position, 1.0f);
+                totalPosition += localPosition * vertexBufferPtr->Weights[index];
+            }
+            //if(totalPosition.a != 0.0)
+                vertexBufferPtr->Position = transform * totalPosition;
             vertexBufferPtr++;
         }
         vb->SetData(vertexBufferBase, vertices.size() * sizeof(MeshVertex));

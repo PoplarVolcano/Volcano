@@ -13,12 +13,26 @@ namespace Volcano {
 	{
 		switch (format)
 		{
+		case TextureFormat::RG:      return GL_RG;
 		case TextureFormat::RGB:     return GL_RGB;
 		case TextureFormat::RGBA:    return GL_RGBA;
 		case TextureFormat::RGBA8:   return GL_RGBA8;
-		case TextureFormat::Float16: return GL_RGBA16F;
+		case TextureFormat::RG16F:   return GL_RG16F;
+		case TextureFormat::RGB16F:  return GL_RGB16F;
+		case TextureFormat::RGBA16F: return GL_RGBA16F;
 		}
 		VOL_CORE_ASSERT(false, "Unknown texture format!");
+		return 0;
+	}
+
+	static GLenum VolcanoToOpenGLTextureWrap(TextureWrap wrap)
+	{
+		switch (wrap)
+		{
+		case TextureWrap::REPEAT:        return GL_REPEAT;
+		case TextureWrap::CLAMP_TO_EDGE: return GL_CLAMP_TO_EDGE;
+		}
+		VOL_CORE_ASSERT(false, "Unknown texture wrap!");
 		return 0;
 	}
 
@@ -26,7 +40,7 @@ namespace Volcano {
 	// Texture2D
 	//////////////////////////////////////////////////////////////////////////////////
 
-	OpenGLTexture2D::OpenGLTexture2D(uint32_t width, uint32_t height, TextureFormat internalFormat, TextureFormat dataFormat)
+	OpenGLTexture2D::OpenGLTexture2D(uint32_t width, uint32_t height, TextureFormat internalFormat, TextureFormat dataFormat, TextureWrap wrap)
 		:m_Width(width), m_Height(height)
 	{
 		m_InternalFormat = VolcanoToOpenGLTextureFormat(internalFormat);
@@ -38,14 +52,14 @@ namespace Volcano {
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, VolcanoToOpenGLTextureWrap(wrap));
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, VolcanoToOpenGLTextureWrap(wrap));
 		
 
 	}
 
 	// 图像文件相对路径
-	OpenGLTexture2D::OpenGLTexture2D(const std::string& path, bool filp)
+	OpenGLTexture2D::OpenGLTexture2D(const std::string& path, bool filp, TextureFormat internalFormat)
 		: m_FilePath(path)
 	{
 		int width, height, channels;
@@ -57,27 +71,48 @@ namespace Volcano {
 		m_Width = width;
 		m_Height = height;
 
-		if (channels == 4)
+		switch (channels)
 		{
-			m_InternalFormat = GL_RGBA8;
-			m_DataFormat = GL_RGBA;
-		}
-		else if (channels == 3)
-		{
-			m_InternalFormat = GL_RGB8;
+		case 1:
+			m_InternalFormat = GL_RED;
+			m_DataFormat = GL_RED;
+			break;
+		case 2:
+			if (internalFormat == TextureFormat::RG16F)
+				m_InternalFormat = GL_RG16F;
+			else
+				m_InternalFormat = GL_RG8;
+			m_DataFormat = GL_RG;
+			break;
+		case 3:
+			if (internalFormat == TextureFormat::RGB16F)
+				m_InternalFormat = GL_RGB16F;
+			else
+				m_InternalFormat = GL_RGB8;
 			m_DataFormat = GL_RGB;
+			break;
+		case 4:
+			if (internalFormat == TextureFormat::RGBA16F)
+				m_InternalFormat = GL_RGBA16F;
+			else
+				m_InternalFormat = GL_RGBA8;
+			m_DataFormat = GL_RGBA;
+			break;
 		}
 
 		VOL_CORE_ASSERT(m_InternalFormat && m_DataFormat, "Format not supported!");
 
 		// 获取数据缓冲区并上传到OpenGL，然后上传到GPU
 		// 创建2D纹理
-		glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
+		glGenTextures(1, &m_RendererID);
+		glBindTexture(GL_TEXTURE_2D, m_RendererID);
+		//glCreateTextures(GL_TEXTURE_2D, 1, &m_RendererID);
 		// 在GPU上分配内存，便于存储图像数据
 		// internalformat OpenGL如何存储（GL_RGB8处理一个纹理，每个通道有八位）
-		glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
+		//glTextureStorage2D(m_RendererID, 1, m_InternalFormat, m_Width, m_Height);
 		// 更新纹理数据
-		glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
+		//glTextureSubImage2D(m_RendererID, 0, 0, 0, m_Width, m_Height, m_DataFormat, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, m_InternalFormat, width, height, 0, m_DataFormat, GL_UNSIGNED_BYTE, data);
 		// 设置纹理参数, GL_TEXTURE_MIN_FILTER用什么样的过滤来缩小, 
 		// GL_LINEAR linear filtering 线性滤波（用线性插值计算想要什么颜色）
 		glGenerateMipmap(GL_TEXTURE_2D);
@@ -132,15 +167,26 @@ namespace Volcano {
 
 		uint32_t levels = Texture::CalculateMipMapCount(width, height);
 
-			glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_RendererID);
-			glTextureStorage2D(m_RendererID, levels, VolcanoToOpenGLTextureFormat(m_Format), width, height);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, levels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
-			glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+		glGenTextures(1, &m_RendererID);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, m_RendererID);
+		//glCreateTextures(GL_TEXTURE_CUBE_MAP, 1, &m_RendererID);
 
-			// glTextureParameterf(m_RendererID, GL_TEXTURE_MAX_ANISOTROPY, 16);
+		for (uint32_t i = 0; i < 6; ++i)
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, VolcanoToOpenGLTextureFormat(m_Format), m_Width, m_Height, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+		//glTextureStorage2D(m_RendererID, levels, VolcanoToOpenGLTextureFormat(m_Format), width, height);
+		//glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, levels > 1 ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR);
+		//glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		//glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+		// glTextureParameterf(m_RendererID, GL_TEXTURE_MAX_ANISOTROPY, 16);
 	}
 
 	OpenGLTextureCube::OpenGLTextureCube(const std::string& path)

@@ -3,6 +3,7 @@
 #include "Scene.h"
 #include "Volcano/Core/UUID.h"
 #include "Components.h"
+#include "Volcano/Renderer/RendererItem/Mesh.h"
 
 #include "entt.hpp"
 
@@ -56,6 +57,11 @@ namespace  Volcano {
 		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
 		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
 
+		void SetMesh(const Ref<Mesh>& mesh) { m_Mesh = mesh; }
+		Ref<Mesh> GetMesh() { return m_Mesh; }
+		const glm::mat4& GetTransform() const { return m_Transform; }
+		glm::mat4& Transform() { return m_Transform; }
+
 		operator bool() const { return m_EntityHandle != entt::null; }
 		operator entt::entity() const { return m_EntityHandle; }
 		operator uint32_t() const { return (uint32_t)m_EntityHandle; }
@@ -71,5 +77,7 @@ namespace  Volcano {
 	private:
 		entt::entity m_EntityHandle{ entt::null };
 		Scene* m_Scene = nullptr;
+		Ref<Mesh> m_Mesh;
+		glm::mat4 m_Transform;
 	};
 }

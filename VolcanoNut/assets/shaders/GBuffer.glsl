@@ -34,6 +34,8 @@ layout (location = 5) out VertexOutput Output;
 
 void main()
 {
+	gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
+
 	vec3 T = normalize(a_Tangent);
     vec3 B = normalize(a_Bitangent);
     vec3 N = normalize(a_Normal);
@@ -49,7 +51,6 @@ void main()
 	Output.Normal    = N;
 	Output.TBN       = TBN;
 
-	gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
 }
 
 

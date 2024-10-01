@@ -1,6 +1,5 @@
 #include "volpch.h"
 #include "Skybox.h"
-#include "Volcano/Renderer/Texture.h"
 #include "Volcano/Renderer/Renderer.h"
 
 namespace Volcano {
@@ -107,11 +106,15 @@ namespace Volcano {
 
     void Skybox::DrawSkybox()
     {
-        // Bind textures
         s_SkyboxData.Texture->Bind();
         s_SkyboxData.Shader->Bind();
         Renderer::DrawIndexed(s_SkyboxData.VertexArray, s_SkyboxData.VertexArray->GetIndexBuffer()->GetCount());
 
+    }
+
+    void Skybox::SetTexture(Ref<TextureCube> texture)
+    {
+        s_SkyboxData.Texture = texture;
     }
 
 }

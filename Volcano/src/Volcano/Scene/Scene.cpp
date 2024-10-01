@@ -8,6 +8,7 @@
 #include "Volcano/Renderer/Renderer2D.h"
 #include "Volcano/Renderer/Renderer3D.h"
 #include "Volcano/Renderer/RendererModel.h"
+#include "Volcano/Renderer/RendererItem/Sphere.h"
 #include "Volcano/Renderer/RendererItem/Skybox.h"
 #include "Volcano/Physics/Physics2D.h"
 #include "Volcano/Renderer/Light.h"
@@ -234,6 +235,12 @@ namespace Volcano {
 			// Script - Physic - RenderÀ≥–Ú
 			Physics(ts);
 		}
+
+		auto view = m_Registry.view<TransformComponent, ModelRendererComponent>();
+		for (auto entity : view)
+		{
+			RendererModel::Update(ts);
+		}
 	}
 
 	void Scene::OnRenderRuntime(Timestep ts)
@@ -275,6 +282,11 @@ namespace Volcano {
 
 	void Scene::OnUpdateEditor(Timestep ts, EditorCamera& camera)
 	{
+		auto view = m_Registry.view<TransformComponent, ModelRendererComponent>();
+		for (auto entity : view)
+		{
+			RendererModel::Update(ts);
+		}
 	}
 
 	void Scene::OnRenderEditor(Timestep ts, EditorCamera& camera)
@@ -460,6 +472,8 @@ namespace Volcano {
 	// …„œÒÕ∑‰÷»æ≥°æ∞£¨…„œÒÕ∑£¨…„œÒÕ∑TRS£¨…„œÒÕ∑Œª÷√£®translation£©£¨…„œÒÕ∑∑ΩœÚ
 	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
 	{
+		UpdateLight();
+
 		if (m_RenderType == RenderType::SKYBOX)
 		{
 			RendererAPI::SetDepthFunc(DepthFunc::LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
@@ -468,6 +482,21 @@ namespace Volcano {
 			Skybox::EndScene();
 			RendererAPI::SetDepthFunc(DepthFunc::LESS); // set depth function back to default
 			return;
+		}
+
+		if (m_RenderType == RenderType::NORMAL)
+		{
+			// DrawSphere
+			Sphere::BeginScene(camera, transform, position, direction);
+			{
+				auto view = m_Registry.view<TransformComponent, SphereRendererComponent>();
+				for (auto entity : view)
+				{
+					auto [transform, sphere] = view.get<TransformComponent, SphereRendererComponent>(entity);
+					Sphere::DrawSphere(transform.GetTransform(), transform.GetNormalTransform(), sphere, (int)entity);
+				}
+			}
+			Sphere::EndScene(m_RenderType);
 		}
 
 		Renderer2D::BeginScene(camera, transform);
@@ -494,10 +523,9 @@ namespace Volcano {
 		Renderer2D::EndScene();
 
 
-		UpdateLight();
 
-		Renderer3D::BeginScene(camera, transform, position, direction);
 		// Draw cube
+		Renderer3D::BeginScene(camera, transform, position, direction);
 		{
 			auto view = m_Registry.view<TransformComponent, CubeRendererComponent>();
 			for (auto entity : view)
@@ -509,8 +537,9 @@ namespace Volcano {
 		Renderer3D::EndScene(m_RenderType);
 		
 
-		RendererModel::BeginScene(camera, transform, position, direction);
+
 		// Draw model
+		RendererModel::BeginScene(camera, transform, position, direction);
 		{
 			auto view = m_Registry.view<TransformComponent,ModelRendererComponent>();
 			for (auto entity : view)
@@ -521,6 +550,8 @@ namespace Volcano {
 			}
 		}
 		RendererModel::EndScene(m_RenderType);
+
+
 
 		// draw skybox as last
 		
@@ -758,6 +789,11 @@ namespace Volcano {
 
 	template<>
 	void Scene::OnComponentAdded<CubeRendererComponent>(Entity entity, CubeRendererComponent& component)
+	{
+	}
+		
+	template<>
+	void Scene::OnComponentAdded<SphereRendererComponent>(Entity entity, SphereRendererComponent& component)
 	{
 	}
 

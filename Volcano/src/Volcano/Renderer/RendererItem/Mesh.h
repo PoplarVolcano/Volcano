@@ -7,6 +7,8 @@
 
 namespace Volcano {
 
+#define MAX_BONE_INFLUENCE 4
+
 	struct MeshVertex
 	{
 		glm::vec3 Position;
@@ -20,6 +22,11 @@ namespace Volcano {
 		float ParallaxIndex;
 
 		int EntityID;
+		//bone indexes which will influence this vertex
+		int BoneIDs[MAX_BONE_INFLUENCE];
+		//weights from each bone
+		float Weights[MAX_BONE_INFLUENCE];
+
 	};
 
 	struct MeshTexture
@@ -37,7 +44,7 @@ namespace Volcano {
 		Ref<VertexBuffer> vb;
 
 		Mesh(std::vector<MeshVertex> vertices, std::vector<uint32_t> indices, std::vector<MeshTexture> textures);
-		void Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID);
+		void Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID, std::vector<glm::mat4>& finalBoneMatrices);
 		void DrawIndexed();
 	private:
 		// ¶¥µãÊý¾Ý

@@ -66,6 +66,13 @@ namespace Volcano {
 		Ref<Framebuffer> m_SSAOFramebuffer;
 		Ref<Framebuffer> m_SSAOBlurFramebuffer;
 		Ref<Texture2D>   m_NoiseTexture;
+		Ref<Framebuffer> m_PBRFramebuffer;
+		Ref<Texture2D> m_EquirectangularMap;
+		Ref<TextureCube> m_EnvCubemap;
+		Ref<TextureCube> m_IrradianceMap;
+		Ref<VertexArray> va;
+		Ref<TextureCube> m_PrefilterMap;
+		Ref<Texture2D> m_BRDFLUT;
 
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
 		glm::vec2 m_ViewportBounds[2];

@@ -1,6 +1,7 @@
 #pragma once
-#include <Volcano/Renderer/VertexArray.h>
+#include "Volcano/Renderer/VertexArray.h"
 #include "Volcano/Renderer/Camera.h"
+#include "Volcano/Renderer/Texture.h"
 
 namespace Volcano {
 
@@ -15,5 +16,7 @@ namespace Volcano {
 		static void EndScene();
 
 		static void DrawSkybox();
+
+		static void SetTexture(Ref<TextureCube> texture);
 	};
 }

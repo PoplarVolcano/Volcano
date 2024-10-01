@@ -87,7 +87,7 @@ namespace Volcano {
 	{
 		auto [xSpeed, ySpeed] = PanSpeed();
 		m_FocalPoint += -GetRightDirection() * delta.x * xSpeed * m_Distance;
-		m_FocalPoint += -GetUpDirection() * delta.y * ySpeed * m_Distance;
+		m_FocalPoint += GetUpDirection() * delta.y * ySpeed * m_Distance;
 	}
 
 	void EditorCamera::MouseRotate(const glm::vec2& delta)

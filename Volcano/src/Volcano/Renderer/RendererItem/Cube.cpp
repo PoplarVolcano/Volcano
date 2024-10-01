@@ -54,7 +54,7 @@ namespace Volcano {
 			{ ShaderDataType::Float3, "a_Position"     },
 			{ ShaderDataType::Float3, "a_Normal"       },
 			{ ShaderDataType::Float4, "a_Color"        },
-			{ ShaderDataType::Float2, "a_TexCoords"     },
+			{ ShaderDataType::Float2, "a_TexCoords"    },
 			{ ShaderDataType::Float,  "a_DiffuseIndex" },
 			{ ShaderDataType::Float,  "a_SpecularIndex"},
 			{ ShaderDataType::Int,    "a_EntityID"     }

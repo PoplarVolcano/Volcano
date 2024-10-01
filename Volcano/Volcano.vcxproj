@@ -165,6 +165,7 @@
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLBuffer.h" />
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLContext.h" />
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLFramebuffer.h" />
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.h" />
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLShader.h" />
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLTexture.h" />
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLUniformBuffer.h" />
@@ -178,6 +179,10 @@
     <ClInclude Include="src\Volcano\Renderer\Framebuffer.h" />
     <ClInclude Include="src\Volcano\Renderer\GraphicsContext.h" />
     <ClInclude Include="src\Volcano\Renderer\Light.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animation.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animator.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\AssimpGLMHelpers.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Bone.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Mesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Model.h" />
     <ClInclude Include="src\Volcano\Renderer\Renderer.h" />
@@ -186,7 +191,9 @@
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Shadow.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Skybox.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Sphere.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererModel.h" />
+    <ClInclude Include="src\Volcano\Renderer\RenderPass.h" />
     <ClInclude Include="src\Volcano\Renderer\Shader.h" />
     <ClInclude Include="src\Volcano\Renderer\SubTexture2D.h" />
     <ClInclude Include="src\Volcano\Renderer\Texture.h" />
@@ -643,6 +650,7 @@
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLContext.cpp" />
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLFramebuffer.cpp" />
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRendererAPI.cpp" />
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.cpp" />
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLShader.cpp" />
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLTexture.cpp" />
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLUniformBuffer.cpp" />
@@ -657,6 +665,9 @@
     <ClCompile Include="src\Volcano\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Light.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animation.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animator.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Bone.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Mesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Model.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
@@ -664,7 +675,9 @@
     <ClCompile Include="src\Volcano\Renderer\Renderer3D.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Shadow.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Skybox.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Sphere.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererModel.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Shader.cpp" />
     <ClCompile Include="src\Volcano\Renderer\SubTexture2D.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Texture.cpp" />

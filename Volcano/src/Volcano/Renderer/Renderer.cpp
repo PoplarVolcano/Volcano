@@ -5,12 +5,14 @@
 #include "RendererModel.h"
 #include "RendererItem/Skybox.h"
 #include "RendererItem/Shadow.h"
+#include "Volcano/Renderer/RendererItem/Sphere.h"
 
 
 namespace Volcano {
 
 	RendererAPIType RendererAPI::s_CurrentRendererAPI = RendererAPIType::OpenGL;
 
+	static Ref<RenderPass> s_ActiveRenderPass;
 	static Scope<ShaderLibrary> s_ShaderLibrary;
 
 	void Renderer::Init()
@@ -27,12 +29,17 @@ namespace Volcano {
 		RendererModel::Init();
 		Skybox::Init();
 		Shadow::Init();
+		Sphere::Init();
 
 
 		Renderer::GetShaderLibrary()->Load("assets/shaders/GBuffer.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/DeferredShading.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/SSAO.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/SSAOBlur.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/EquirectangularToCubemap.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/IrradianceConvolution.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Prefilter.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/BRDF.glsl");
 	}
 
 	void Renderer::Shutdown()
@@ -48,6 +55,16 @@ namespace Volcano {
 	void Renderer::DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
 	{
 		RendererAPI::DrawIndexed(vertexArray, indexCount);
+	}
+
+	void Renderer::DrawArrays(const Ref<VertexArray>& vertexArray, uint32_t count)
+	{
+		RendererAPI::DrawArrays(vertexArray, count);
+	}
+
+	void Renderer::DrawStripIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
+	{
+		RendererAPI::DrawStripIndexed(vertexArray, indexCount);
 	}
 
 	void Renderer::DrawLines(const Ref<VertexArray>& vertexArray, uint32_t vertexCount)
@@ -82,5 +99,28 @@ namespace Volcano {
 	void Renderer::SetDepthTest(bool depthTest)
 	{
 		RendererAPI::SetDepthTest(depthTest);
+	}
+
+
+	void Renderer::BeginRenderPass(const Ref<RenderPass>& renderPass, bool clear)
+	{
+		VOL_CORE_ASSERT(renderPass, "Render pass cannot be null!");
+
+		// TODO: Convert all of this into a render command buffer
+		s_ActiveRenderPass = renderPass;
+
+		renderPass->GetSpecification().TargetFramebuffer->Bind();
+		if (clear)
+		{
+			const glm::vec4& clearColor = renderPass->GetSpecification().TargetFramebuffer->GetSpecification().ClearColor;
+			RendererAPI::Clear(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+		}
+	}
+
+	void Renderer::EndRenderPass()
+	{
+		VOL_CORE_ASSERT(s_ActiveRenderPass, "No active render pass! Have you called Renderer::EndRenderPass twice?");
+		s_ActiveRenderPass->GetSpecification().TargetFramebuffer->Unbind();
+		s_ActiveRenderPass = nullptr;
 	}
 }

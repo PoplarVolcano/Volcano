@@ -253,6 +253,7 @@ namespace Volcano {
 			DisplayAddComponentEntry<SpriteRendererComponent>("Sprite Renderer");
 			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
 			DisplayAddComponentEntry<CubeRendererComponent>("Cube Renderer");
+			DisplayAddComponentEntry<SphereRendererComponent>("Sphere Renderer");
 			DisplayAddComponentEntry<ModelRendererComponent>("Model Renderer");
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
 			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
@@ -497,7 +498,8 @@ namespace Volcano {
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
 
-				ImGui::Button("Texture", ImVec2(100.0f, 100.0f));
+				if (ImGui::Button("Texture", ImVec2(100.0f, 100.0f)))
+					component.Texture = nullptr;
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
@@ -517,7 +519,8 @@ namespace Volcano {
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
 
-				ImGui::Button("Diffuse", ImVec2(100.0f, 100.0f));
+				if (ImGui::Button("Diffuse", ImVec2(100.0f, 100.0f)))
+					component.Diffuse = nullptr;
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
@@ -529,7 +532,8 @@ namespace Volcano {
 					ImGui::EndDragDropTarget();
 				}
 
-				ImGui::Button("Specular", ImVec2(100.0f, 100.0f));
+				if (ImGui::Button("Specular", ImVec2(100.0f, 100.0f)))
+					component.Specular = nullptr;
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
@@ -541,7 +545,8 @@ namespace Volcano {
 					ImGui::EndDragDropTarget();
 				}
 
-				ImGui::Button("Normal", ImVec2(100.0f, 100.0f));
+				if (ImGui::Button("Normal", ImVec2(100.0f, 100.0f)))
+					component.Normal = nullptr;
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
@@ -553,7 +558,8 @@ namespace Volcano {
 					ImGui::EndDragDropTarget();
 				}
 
-				ImGui::Button("Parallax", ImVec2(100.0f, 100.0f));
+				if (ImGui::Button("Parallax", ImVec2(100.0f, 100.0f)))
+					component.Parallax = nullptr;
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
@@ -566,9 +572,80 @@ namespace Volcano {
 				}
 			});
 
+		DrawComponent<SphereRendererComponent>("Sphere Renderer", entity, [](auto& component)
+			{
+				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
+
+				if (ImGui::Button("Albedo", ImVec2(100.0f, 100.0f)))
+					component.Albedo = nullptr;
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path albedoPath = path;
+						component.Albedo = Texture2D::Create(albedoPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				if (ImGui::Button("Normal", ImVec2(100.0f, 100.0f)))
+					component.Normal = nullptr;
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path normalPath = path;
+						component.Normal = Texture2D::Create(normalPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				if (ImGui::Button("Metallic", ImVec2(100.0f, 100.0f)))
+					component.Metallic = nullptr;
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path metallicPath = path;
+						component.Metallic = Texture2D::Create(metallicPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				if (ImGui::Button("Roughness", ImVec2(100.0f, 100.0f)))
+					component.Roughness = nullptr;
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path roughnesslPath = path;
+						component.Roughness = Texture2D::Create(roughnesslPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				if (ImGui::Button("AO", ImVec2(100.0f, 100.0f)))
+					component.AO = nullptr;
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path AOPath = path;
+						component.AO = Texture2D::Create(AOPath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+			});
+
 		DrawComponent<ModelRendererComponent>("Model Renderer", entity, [](auto& component)
 			{
-				ImGui::Button("ModelPath", ImVec2(100.0f, 100.0f));
+				if (ImGui::Button("ModelPath", ImVec2(100.0f, 100.0f)))
+					component.ModelPath = nullptr;
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))

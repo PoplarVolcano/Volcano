@@ -86,10 +86,10 @@ layout (location = 3) in flat float v_ParallaxIndex;
 layout (location = 4) in flat int v_EntityID;
 layout (location = 5) in VertexOutput Input;
 
-layout (binding = 0)  uniform sampler2D u_Textures[30];
-layout (binding = 30) uniform sampler2D u_SpotDepthMap;
-layout (binding = 31) uniform sampler2D u_DepthMap;
-layout (binding = 0)  uniform samplerCube u_DepthCubeMap;
+layout (binding = 0)  uniform sampler2D u_Textures[29];
+layout (binding = 29) uniform sampler2D u_SpotDepthMap;
+layout (binding = 30) uniform sampler2D u_DepthMap;
+layout (binding = 31)  uniform samplerCube u_DepthCubeMap;
 
 layout(std140, binding = 1) uniform CameraPosition
 {

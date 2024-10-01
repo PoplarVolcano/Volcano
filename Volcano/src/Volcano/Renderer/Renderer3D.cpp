@@ -23,6 +23,9 @@ namespace Volcano {
 
 		// Editor-only
 		int EntityID;
+
+		int BoneIDs[4];
+		float Weights[4];
 	};
 
 	struct Renderer3DData
@@ -67,7 +70,9 @@ namespace Volcano {
 			{ ShaderDataType::Float,  "a_SpecularIndex"},
 			{ ShaderDataType::Float,  "a_NormalIndex"  },
 			{ ShaderDataType::Float,  "a_ParallaxIndex"},
-			{ ShaderDataType::Int,    "a_EntityID"     }
+			{ ShaderDataType::Int,    "a_EntityID"     },
+            { ShaderDataType::Int4,   "a_BoneIDs"      },
+            { ShaderDataType::Float4, "a_Weights"      }
 			});
 		s_Renderer3DData.CubeVertexArray->AddVertexBuffer(s_Renderer3DData.CubeVertexBuffer);
 		s_Renderer3DData.CubeVertexBufferBase = new CubeVertex[s_Renderer3DData.MaxVertices];
@@ -293,6 +298,11 @@ namespace Volcano {
 			s_Renderer3DData.CubeVertexBufferPtr->NormalIndex = normalIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->ParallaxIndex = parallaxIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->EntityID = entityID;
+			for (uint32_t index = 0; index < 4; index++)
+			{
+				s_Renderer3DData.CubeVertexBufferPtr->BoneIDs[index] = -1;
+				s_Renderer3DData.CubeVertexBufferPtr->Weights[index] = 0.0f;
+			}
 			s_Renderer3DData.CubeVertexBufferPtr++;
 		}
 
@@ -418,6 +428,11 @@ namespace Volcano {
 			s_Renderer3DData.CubeVertexBufferPtr->NormalIndex = normalIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->ParallaxIndex = parallaxIndex;
 			s_Renderer3DData.CubeVertexBufferPtr->EntityID = entityID;
+			for (uint32_t index = 0; index < 4; index++)
+			{
+				s_Renderer3DData.CubeVertexBufferPtr->BoneIDs[index] = -1;
+				s_Renderer3DData.CubeVertexBufferPtr->Weights[index] = 0.0f;
+			}
 			s_Renderer3DData.CubeVertexBufferPtr++;
 		}
 

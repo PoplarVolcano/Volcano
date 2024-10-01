@@ -1,13 +1,13 @@
 #include "volpch.h"
 #include "Model.h"
 #include "glad/glad.h"
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
+
+#include "Volcano/Renderer/RendererItem/AssimpGLMHelpers.h"
 
 #include <stb_image.h>
 
 namespace Volcano {
+
 
     Ref<Model> Model::Create(const char* path, bool gamma)
     {
@@ -31,10 +31,10 @@ namespace Volcano {
         m_Path = path;
     }
 
-    void Model::Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID)
+    void Model::Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID, std::vector<glm::mat4>& finalBoneMatrices)
     {
         for (uint32_t i = 0; i < meshes.size(); i++)
-            meshes[i].Draw(shader, transform, normalTransform, entityID);
+            meshes[i].Draw(shader, transform, normalTransform, entityID, finalBoneMatrices);
     }
 
     void Model::DrawIndexed()
@@ -45,6 +45,61 @@ namespace Volcano {
 
         for (uint32_t i = 0; i < meshes.size(); i++)
             meshes[i].DrawIndexed();
+    }
+
+    void Model::SetVertexBoneDataToDefault(MeshVertex& vertex)
+    {
+        for (int i = 0; i < MAX_BONE_INFLUENCE; i++)
+        {
+            vertex.BoneIDs[i] = -1;
+            vertex.Weights[i] = 0.0f;
+        }
+    }
+
+    void Model::SetVertexBoneData(MeshVertex& vertex, int boneID, float weight)
+    {
+        for (int i = 0; i < MAX_BONE_INFLUENCE; ++i)
+        {
+            if (vertex.BoneIDs[i] < 0)
+            {
+                vertex.Weights[i] = weight;
+                vertex.BoneIDs[i] = boneID;
+                break;
+            }
+        }
+    }
+
+    void Model::ExtractBoneWeightForVertices(std::vector<MeshVertex>& vertices, aiMesh* mesh, const aiScene* scene)
+    {
+        for (int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
+        {
+            int boneID = -1;
+            std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
+            if (m_BoneInfoMap.find(boneName) == m_BoneInfoMap.end())
+            {
+                BoneInfo newBoneInfo;
+                newBoneInfo.id = m_BoneCounter;
+                newBoneInfo.offset = AssimpGLMHelpers::ConvertMatrixToGLMFormat(mesh->mBones[boneIndex]->mOffsetMatrix);
+                m_BoneInfoMap[boneName] = newBoneInfo;
+                boneID = m_BoneCounter;
+                m_BoneCounter++;
+            }
+            else
+            {
+                boneID = m_BoneInfoMap[boneName].id;
+            }
+            VOL_CORE_ASSERT(boneID != -1);
+            auto weights = mesh->mBones[boneIndex]->mWeights;
+            int numWeights = mesh->mBones[boneIndex]->mNumWeights;
+
+            for (int weightIndex = 0; weightIndex < numWeights; ++weightIndex)
+            {
+                int vertexId = weights[weightIndex].mVertexId;
+                float weight = weights[weightIndex].mWeight;
+                VOL_CORE_ASSERT(vertexId <= vertices.size());
+                SetVertexBoneData(vertices[vertexId], boneID, weight);
+            }
+        }
     }
 
     // 从文件加载具有支持ASSIMP扩展名的模型，并将生成的网格mesh存储在网格向量meshes中。
@@ -93,42 +148,20 @@ namespace Volcano {
         for (uint32_t i = 0; i < mesh->mNumVertices; i++)
         {
             MeshVertex vertex;
-            // 处理顶点位置、法线和纹理坐标
-            //因为assimp使用它自己的向量类，该类不直接转换为glm的vec3类，所以我们首先将数据传输到这个glm:：vec3。
-            glm::vec3 vector;
-            vector.x = mesh->mVertices[i].x;
-            vector.y = mesh->mVertices[i].y;
-            vector.z = mesh->mVertices[i].z;
-            vertex.Position = vector;
+            SetVertexBoneDataToDefault(vertex);
 
-            vector.x = mesh->mNormals[i].x;
-            vector.y = mesh->mNormals[i].y;
-            vector.z = mesh->mNormals[i].z;
-            vertex.Normal = vector;
+            // 处理顶点位置、法线和纹理坐标
+            vertex.Position = AssimpGLMHelpers::GetGLMVec3(mesh->mVertices[i]);
+            vertex.Normal = AssimpGLMHelpers::GetGLMVec3(mesh->mNormals[i]);
 
             if (mesh->mTextureCoords[0]) // 网格是否有纹理坐标？
             {
-                glm::vec2 vec;
                 //一个顶点最多可以包含8个不同的纹理坐标。假设我们不使用顶点可以有多个纹理坐标的模型，我们总是取第一组（0）。
-                vec.x = mesh->mTextureCoords[0][i].x;
-                vec.y = mesh->mTextureCoords[0][i].y;
-                vertex.TexCoords = vec;
+                vertex.TexCoords = AssimpGLMHelpers::GetGLMVec2(mesh->mTextureCoords[0][i]);
                 if (mesh->mTangents)
-                {
-                    // tangent
-                    vector.x = mesh->mTangents[i].x;
-                    vector.y = mesh->mTangents[i].y;
-                    vector.z = mesh->mTangents[i].z;
-                    vertex.Tangent = vector;
-                }
+                    vertex.Tangent = AssimpGLMHelpers::GetGLMVec3(mesh->mTangents[i]);
                 if (mesh->mBitangents)
-                {
-                    // bitangent
-                    vector.x = mesh->mBitangents[i].x;
-                    vector.y = mesh->mBitangents[i].y;
-                    vector.z = mesh->mBitangents[i].z;
-                    vertex.Bitangent = vector;
-                }
+                    vertex.Bitangent = AssimpGLMHelpers::GetGLMVec3(mesh->mBitangents[i]);
             }
             else
                 vertex.TexCoords = glm::vec2(0.0f, 0.0f);
@@ -159,6 +192,8 @@ namespace Volcano {
             textures.insert(textures.end(), normalMaps.begin(),   normalMaps.end());
             std::vector<MeshTexture> heightMaps   = loadMaterialTextures(material, aiTextureType_AMBIENT,  "texture_height");
         }
+
+        ExtractBoneWeightForVertices(vertices, mesh, scene);
 
         return Mesh(vertices, indices, textures);
     }

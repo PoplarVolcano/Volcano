@@ -11,6 +11,7 @@ namespace Volcano {
 		static void Init();
 		static void Shutdown();
 
+		static void Update(Timestep ts);
 		static void BeginScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
 		static void EndScene(RenderType type = RenderType::NORMAL);
 		static void Flush(RenderType type = RenderType::NORMAL);

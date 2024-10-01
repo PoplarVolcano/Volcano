@@ -62,6 +62,7 @@ namespace Volcano {
 	struct FramebufferSpecification
 	{
 		uint32_t Width, Height;
+		glm::vec4 ClearColor = glm::vec4(0.0f);
 		FramebufferAttachmentSpecification Attachments;
 		uint32_t Samples = 1;
 		TextureType ColorType = TextureType::TEXTURE_2D;
@@ -89,8 +90,11 @@ namespace Volcano {
 
 		virtual uint32_t GetColorAttachmentRendererID(uint32_t index = 0) const = 0;
 		virtual uint32_t GetDepthAttachmentRendererID() const = 0;
+		virtual uint32_t GetRenderbufferObjectRendererID() const = 0;
 		virtual const FramebufferSpecification& GetSpecification() const = 0;
 		virtual const uint32_t GetRendererID() const = 0;
+
+		virtual void SetColorAttachment(Ref<Texture> texture, TextureType Type = TextureType::TEXTURE_2D, uint32_t index = 0, uint32_t mip = 0) const = 0;
 
 		static Ref<Framebuffer> Create(const FramebufferSpecification& spec);
 	};

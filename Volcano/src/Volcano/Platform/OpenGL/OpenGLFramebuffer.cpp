@@ -13,9 +13,15 @@ namespace Volcano {
 		{
 			switch (type)
 			{
-				case TextureType::TEXTURE_2D:             return GL_TEXTURE_2D;
-				case TextureType::TEXTURE_2D_MULTISAMPLE: return GL_TEXTURE_2D_MULTISAMPLE;
-				case TextureType::TEXTURE_CUBE_MAP:       return GL_TEXTURE_CUBE_MAP;
+				case TextureType::TEXTURE_2D:                  return GL_TEXTURE_2D;
+				case TextureType::TEXTURE_2D_MULTISAMPLE:      return GL_TEXTURE_2D_MULTISAMPLE;
+				case TextureType::TEXTURE_CUBE_MAP:            return GL_TEXTURE_CUBE_MAP;
+				case TextureType::TEXTURE_CUBE_MAP_POSITIVE_X: return GL_TEXTURE_CUBE_MAP_POSITIVE_X;
+				case TextureType::TEXTURE_CUBE_MAP_NEGATIVE_X: return GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
+				case TextureType::TEXTURE_CUBE_MAP_POSITIVE_Y: return GL_TEXTURE_CUBE_MAP_POSITIVE_Y;
+				case TextureType::TEXTURE_CUBE_MAP_NEGATIVE_Y: return GL_TEXTURE_CUBE_MAP_NEGATIVE_Y;
+				case TextureType::TEXTURE_CUBE_MAP_POSITIVE_Z: return GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
+				case TextureType::TEXTURE_CUBE_MAP_NEGATIVE_Z: return GL_TEXTURE_CUBE_MAP_NEGATIVE_Z;
 				default:
 					return GL_TEXTURE_2D;
 			}
@@ -44,6 +50,20 @@ namespace Volcano {
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			}
+			else if (type == TextureType::TEXTURE_CUBE_MAP)
+			{
+				for (unsigned int i = 0; i < 6; ++i)
+				{
+					// note that we store each face with 16 bit floating point values
+					glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, width, height, 0, format, GL_UNSIGNED_BYTE, NULL);
+				}
+				glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+				glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
 			}
 			// 附加到帧缓冲
 			glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, id, 0);
@@ -151,6 +171,7 @@ namespace Volcano {
 	OpenGLFramebuffer::OpenGLFramebuffer(const FramebufferSpecification& spec)
 		: m_Specification(spec)
 	{
+		// 预处理，将spec中的颜色附件参数和深度附件参数保存到成员变量
 		for (auto spec : m_Specification.Attachments.Attachments)
 		{
 			if (!Utils::IsDepthFormat(spec.TextureFormat))
@@ -284,12 +305,22 @@ namespace Volcano {
 			GLenum buffers[5] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4 };
 			glDrawBuffers(m_ColorAttachments.size(), buffers);
 		}
-		else if (m_ColorAttachments.empty())
+		else if (m_ColorAttachments.empty() && m_DepthAttachmentSpecification.TextureFormat != FramebufferTextureFormat::None)
 		{
 			// Only depth-pass
 			glDrawBuffer(GL_NONE);
 			glReadBuffer(GL_NONE);
 		}
+
+		// 如果颜色附件和深度附件都为空，设置渲染缓冲对象
+		if (m_ColorAttachments.empty() && m_DepthAttachmentSpecification.TextureFormat == FramebufferTextureFormat::None)
+		{
+			glGenRenderbuffers(1, &m_RenderbufferObject);
+			glBindRenderbuffer(GL_RENDERBUFFER, m_RenderbufferObject);
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, m_Specification.Width, m_Specification.Height);
+			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_RenderbufferObject);
+		}
+
 		VOL_CORE_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "Framebuffer is incomplete!");
 
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -338,7 +369,7 @@ namespace Volcano {
 	float OpenGLFramebuffer::ReadPixelFloat(uint32_t attachmentIndex, int x, int y)
 	{
 		VOL_CORE_ASSERT(attachmentIndex < m_ColorAttachments.size());
-		// 读取第二个缓冲区
+		// 读取第attachmentIndex个缓冲区
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
 		float pixelData;
 		glReadPixels(x, y, 1, 1, GL_RED, GL_FLOAT, &pixelData);
@@ -381,5 +412,13 @@ namespace Volcano {
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, srcRendererID);
 		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dstRendererID);
 		glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	}
+
+	void OpenGLFramebuffer::SetColorAttachment(Ref<Texture> texture, TextureType Type, uint32_t index, uint32_t mip) const
+	{
+		if (texture)
+		{
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + index, Utils::TextureTarget(Type), texture->GetRendererID(), mip);
+		}
 	}
 }

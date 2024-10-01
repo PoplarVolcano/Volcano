@@ -6,8 +6,8 @@ namespace Volcano {
 	class OpenGLTexture2D : public Texture2D
 	{
 	public:
-		OpenGLTexture2D(uint32_t width, uint32_t height, TextureFormat internalFormat, TextureFormat dataFormat);
-		OpenGLTexture2D(const std::string& path, bool filp = true);
+		OpenGLTexture2D(uint32_t width, uint32_t height, TextureFormat internalFormat, TextureFormat dataFormat, TextureWrap wrap = TextureWrap::REPEAT);
+		OpenGLTexture2D(const std::string& path, bool filp = true, TextureFormat internalFormat = TextureFormat::None);
 		virtual ~OpenGLTexture2D();
 
 		virtual void Bind(uint32_t slot = 0) const override;

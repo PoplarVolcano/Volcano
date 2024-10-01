@@ -404,6 +404,25 @@ namespace Volcano {
 			out << YAML::EndMap;//CubeRendererComponent
 		}
 
+		if (entity.HasComponent<SphereRendererComponent>())
+		{
+			out << YAML::Key << "SphereRendererComponent";
+			out << YAML::BeginMap;//SphereRendererComponent
+			auto& sphereRendererComponent = entity.GetComponent<SphereRendererComponent>();
+			out << YAML::Key << "Color" << YAML::Value << sphereRendererComponent.Color;
+			if (sphereRendererComponent.Albedo)
+				out << YAML::Key << "AlbedoPath" << YAML::Value << sphereRendererComponent.Albedo->GetPath();
+			if (sphereRendererComponent.Normal)
+				out << YAML::Key << "NormalPath" << YAML::Value << sphereRendererComponent.Normal->GetPath();
+			if (sphereRendererComponent.Metallic)
+				out << YAML::Key << "MetallicPath" << YAML::Value << sphereRendererComponent.Metallic->GetPath();
+			if (sphereRendererComponent.Roughness)
+				out << YAML::Key << "RoughnessPath" << YAML::Value << sphereRendererComponent.Roughness->GetPath();
+			if (sphereRendererComponent.AO)
+				out << YAML::Key << "AOPath" << YAML::Value << sphereRendererComponent.AO->GetPath();
+			out << YAML::EndMap;//sphereRendererComponent
+		}
+
 		if (entity.HasComponent<ModelRendererComponent>())
 		{
 			out << YAML::Key << "ModelRendererComponent";
@@ -656,31 +675,68 @@ namespace Volcano {
 				auto cubeRendererComponent = entity["CubeRendererComponent"];
 				if (cubeRendererComponent)
 				{
-					auto& src = deserializedEntity.AddComponent<CubeRendererComponent>();
-					src.Color = cubeRendererComponent["Color"].as<glm::vec4>();
+					auto& crc = deserializedEntity.AddComponent<CubeRendererComponent>();
+					crc.Color = cubeRendererComponent["Color"].as<glm::vec4>();
 					if (cubeRendererComponent["DiffusePath"])
 					{
 						std::string diffusePath = cubeRendererComponent["DiffusePath"].as<std::string>();
 						auto path = Project::GetAssetFileSystemPath(diffusePath);
-						src.Diffuse = Texture2D::Create(path.string());
+						crc.Diffuse = Texture2D::Create(path.string());
 					}
 					if (cubeRendererComponent["SpecularPath"])
 					{
 						std::string specularPath = cubeRendererComponent["SpecularPath"].as<std::string>();
 						auto path = Project::GetAssetFileSystemPath(specularPath);
-						src.Specular = Texture2D::Create(path.string());
+						crc.Specular = Texture2D::Create(path.string());
 					}
 					if (cubeRendererComponent["NormalPath"])
 					{
 						std::string normalPath = cubeRendererComponent["NormalPath"].as<std::string>();
 						auto path = Project::GetAssetFileSystemPath(normalPath);
-						src.Normal = Texture2D::Create(path.string());
+						crc.Normal = Texture2D::Create(path.string());
 					}
 					if (cubeRendererComponent["ParallaxPath"])
 					{
 						std::string parallaxPath = cubeRendererComponent["ParallaxPath"].as<std::string>();
 						auto path = Project::GetAssetFileSystemPath(parallaxPath);
-						src.Parallax = Texture2D::Create(path.string());
+						crc.Parallax = Texture2D::Create(path.string());
+					}
+				}
+
+				auto sphereRendererComponent = entity["SphereRendererComponent"];
+				if (sphereRendererComponent)
+				{
+					auto& src = deserializedEntity.AddComponent<SphereRendererComponent>();
+					src.Color = sphereRendererComponent["Color"].as<glm::vec4>();
+					if (sphereRendererComponent["AlbedoPath"])
+					{
+						std::string albedoPath = sphereRendererComponent["AlbedoPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(albedoPath);
+						src.Albedo = Texture2D::Create(path.string());
+					}
+					if (sphereRendererComponent["NormalPath"])
+					{
+						std::string normalPath = sphereRendererComponent["NormalPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(normalPath);
+						src.Normal = Texture2D::Create(path.string());
+					}
+					if (sphereRendererComponent["MetallicPath"])
+					{
+						std::string metallicPath = sphereRendererComponent["MetallicPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(metallicPath);
+						src.Metallic = Texture2D::Create(path.string());
+					}
+					if (sphereRendererComponent["RoughnessPath"])
+					{
+						std::string roughnessPath = sphereRendererComponent["RoughnessPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(roughnessPath);
+						src.Roughness = Texture2D::Create(path.string());
+					}
+					if (sphereRendererComponent["AOPath"])
+					{
+						std::string AOPath = sphereRendererComponent["AOPath"].as<std::string>();
+						auto path = Project::GetAssetFileSystemPath(AOPath);
+						src.AO = Texture2D::Create(path.string());
 					}
 				}
 
