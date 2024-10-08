@@ -16,7 +16,6 @@ namespace Volcano {
 		glm::vec3 specular;
 	};
 	static DirectionalLight s_DirectionalLightBuffer;
-	static Ref<UniformBuffer> s_DirectionalLightUniformBuffer;
 
 	// 点光源
 	struct PointLight
@@ -32,7 +31,6 @@ namespace Volcano {
 		float quadratic;
 	};
 	static PointLight s_PointLightBuffer;
-	static Ref<UniformBuffer> s_PointLightUniformBuffer;
 
 	// 聚光(手电筒Flashlight)
 	struct SpotLight
@@ -51,14 +49,6 @@ namespace Volcano {
 
 	};
 	static SpotLight s_SpotLightBuffer;
-	static Ref<UniformBuffer> s_SpotLightUniformBuffer;
-
-	struct Material
-	{
-		float shininess;
-	};
-	static Material s_MaterialBuffer;
-	static Ref<UniformBuffer> s_MaterialUniformBuffer;
 
 	/*
 	class Light

@@ -5,19 +5,11 @@
 
 namespace Volcano {
 
-	struct CameraData
-	{
-		glm::mat4 viewProjection;
-	};
-	static CameraData s_CameraBuffer;
-	static Ref<UniformBuffer> s_CameraUniformBuffer;
-
 	struct CameraPositionData
 	{
 		glm::vec3 CameraPosition;
 	};
 	static CameraPositionData s_CameraPositionBuffer;
-	static Ref<UniformBuffer> s_CameraPositionUniformBuffer;
 
 	struct CameraDataBuffer
 	{
@@ -25,7 +17,6 @@ namespace Volcano {
 		glm::mat4 Projection;
 	};
 	static CameraDataBuffer s_CameraDataBuffer;
-	static Ref<UniformBuffer> s_CameraDataUniformBuffer;
 
 	class Camera
 	{

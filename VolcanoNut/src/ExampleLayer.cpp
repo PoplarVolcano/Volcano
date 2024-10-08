@@ -1,9 +1,9 @@
 #include "ExampleLayer.h"
 
-#include <glm/ext/matrix_transform.hpp>
 #include "Volcano/Renderer/Renderer2D.h"
+#include "Volcano/Renderer/RendererItem/FullQuad.h"
+#include "Volcano/Renderer/SceneRenderer.h"
 #include "Volcano/Renderer/RendererItem/Skybox.h"
-#include "Volcano/Renderer/RendererItem/Sphere.h"
 
 #include <chrono>
 #include <imgui/imgui.h>
@@ -16,23 +16,10 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/MouseBuffer.h"
 #include "Volcano/Core/Window.h"
-#include <random>
 
 
 namespace Volcano{
 
-    static Ref<UniformBuffer> s_BlurUniformBuffer;
-    static Ref<UniformBuffer> s_ExposureUniformBuffer;
-    static float s_Exposure = 1.5f;
-    static bool s_Bloom = true;
-    static Ref<UniformBuffer> s_SamplesUniformBuffer;
-    static Ref<UniformBuffer> s_SSAOUniformBuffer;
-    static int s_KernelSize = 64;
-    static float s_Radius = 0.5;
-    static float s_Bias = 0.035;
-    static float s_Power = 1.0;
-    static Ref<UniformBuffer> s_PBRUniformBuffer;
-    static Ref<UniformBuffer> s_PrefilterUniformBuffer;
 
     template<typename Fn>
     class Timer {
@@ -66,390 +53,23 @@ namespace Volcano{
 
 #define PROFILE_SCOPE(name) Timer timer##__LINE__(name, [&](ProfileResult profileResult) { m_ProfileResults.push_back(profileResult); })
 
-    ExampleLayer::ExampleLayer()
-    {
-    }
+    ExampleLayer::ExampleLayer() {}
 
-    ExampleLayer::~ExampleLayer()
-    {
-    }
+    ExampleLayer::~ExampleLayer() {}
 
     void ExampleLayer::OnAttach()
     {
-        m_IconPlay = Texture2D::Create("Resources/Icons/PlayButton.png");
-        m_IconPause = Texture2D::Create("Resources/Icons/PauseButton.png");
-        m_IconStop = Texture2D::Create("Resources/Icons/StopButton.png");
+        m_IconPlay     = Texture2D::Create("Resources/Icons/PlayButton.png");
+        m_IconPause    = Texture2D::Create("Resources/Icons/PauseButton.png");
+        m_IconStop     = Texture2D::Create("Resources/Icons/StopButton.png");
         m_IconSimulate = Texture2D::Create("Resources/Icons/SimulateButton.png");
-        m_IconStep = Texture2D::Create("Resources/Icons/StepButton.png");
+        m_IconStep     = Texture2D::Create("Resources/Icons/StepButton.png");
 
-        // 将FrameBuffer的图像放到window上
-
-        m_WindowVertex[0].Position = { -1.0, -1.0, 0.0f };
-        m_WindowVertex[1].Position = { 1.0, -1.0, 0.0f };
-        m_WindowVertex[2].Position = { 1.0,  1.0, 0.0f };
-        m_WindowVertex[3].Position = { -1.0,  1.0, 0.0f };
-        m_WindowVertex[0].TextureCoords = { 0.0f, 0.0f };
-        m_WindowVertex[1].TextureCoords = { 1.0f, 0.0f };
-        m_WindowVertex[2].TextureCoords = { 1.0f, 1.0f };
-        m_WindowVertex[3].TextureCoords = { 0.0f, 1.0f };
-
-        windowVa = VertexArray::Create();
-        Ref<VertexBuffer> windowVb = VertexBuffer::Create((void*)&m_WindowVertex[0], sizeof(m_WindowVertex));
-        windowVb->SetLayout({
-            { ShaderDataType::Float3, "a_Position"     },
-            { ShaderDataType::Float2, "a_TexCoords"    }
-            });
-        windowVa->AddVertexBuffer(windowVb);
-        uint32_t indices[] = { 0, 1, 2, 2, 3 ,0 };
-        Ref<IndexBuffer> windowIb = IndexBuffer::Create(indices, sizeof(indices) / sizeof(uint32_t));;
-        windowVa->SetIndexBuffer(windowIb);
-        m_WindowShader = Renderer::GetShaderLibrary()->Get("window");
-        m_HDRShader = Renderer::GetShaderLibrary()->Get("HDR");
-
+        FullQuad::Init();
 
         // =========================================Framebuffer===============================================
-        FramebufferSpecification fbSpec;
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::RGBA16F,
-            FramebufferTextureFormat::RED_INTEGER,
-            FramebufferTextureFormat::RGBA16F,
-            FramebufferTextureFormat::Depth     //添加一个深度附件，默认Depth = DEPTH24STENCIL8
-        };
-        fbSpec.Width  = 1280;
-        fbSpec.Height = 720;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_Framebuffer = Framebuffer::Create(fbSpec);
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::DEPTH_COMPONENT
-        };
-        fbSpec.Width  = 1024;
-        fbSpec.Height = 1024;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_DirectionalDepthMapFramebuffer = Framebuffer::Create(fbSpec);
-
-        
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::DEPTH_COMPONENT
-        };
-        fbSpec.Width = 1024;
-        fbSpec.Height = 1024;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_CUBE_MAP;
-        m_PointDepthMapFramebuffer = Framebuffer::Create(fbSpec);
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::DEPTH_COMPONENT
-        };
-        fbSpec.Width = 1024;
-        fbSpec.Height = 1024;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_SpotDepthMapFramebuffer = Framebuffer::Create(fbSpec);
-        
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::RGBA16F
-        };
-        fbSpec.Width = 1280;
-        fbSpec.Height = 720;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_BlurFramebuffer[0] = Framebuffer::Create(fbSpec);
-        m_BlurFramebuffer[1] = Framebuffer::Create(fbSpec);
-        m_HDRFramebuffer     = Framebuffer::Create(fbSpec);
-
-        s_ExposureUniformBuffer = UniformBuffer::Create(2 * sizeof(float), 11);
-        s_BlurUniformBuffer = UniformBuffer::Create(sizeof(float), 12);
-
-        s_ExposureUniformBuffer->SetData(&s_Exposure, sizeof(float));
-        s_ExposureUniformBuffer->SetData(&s_Bloom, sizeof(bool), sizeof(float));
-
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::RGBA16F,  // 位置+深度缓冲
-            FramebufferTextureFormat::RGBA16F,  // 法线+EntityID缓冲
-            FramebufferTextureFormat::RGBA8,    // 颜色缓冲
-            FramebufferTextureFormat::RGBA8,    // 镜面缓冲
-            FramebufferTextureFormat::Depth
-        };
-        fbSpec.Width = 1280;
-        fbSpec.Height = 720;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_GBufferFramebuffer = Framebuffer::Create(fbSpec);
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::RGBA16F,
-            FramebufferTextureFormat::RED_INTEGER,
-            FramebufferTextureFormat::RGBA16F,
-            FramebufferTextureFormat::Depth     //添加一个深度附件，默认Depth = DEPTH24STENCIL8
-        };
-        fbSpec.Width = 1280;
-        fbSpec.Height = 720;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_DeferredShadingFramebuffer = Framebuffer::Create(fbSpec);
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::RED
-        };
-        fbSpec.Width = 1280;
-        fbSpec.Height = 720;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_SSAOFramebuffer = Framebuffer::Create(fbSpec);
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::RED
-        };
-        fbSpec.Width = 1280;
-        fbSpec.Height = 720;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_SSAOBlurFramebuffer = Framebuffer::Create(fbSpec);
-
-        // Sample kernel
-        // 采样核心
-        std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // 随机浮点数，[0.0, 1.0]
-        std::default_random_engine generator;
-        std::vector<glm::vec3> ssaoKernel;
-        for (uint32_t i = 0; i < 64; ++i)
-        {
-            glm::vec3 sample(
-                randomFloats(generator) * 2.0 - 1.0, 
-                randomFloats(generator) * 2.0 - 1.0, 
-                randomFloats(generator));
-            sample = glm::normalize(sample);
-            sample *= randomFloats(generator);
-            float scale = float(i) / 64.0;
-
-            // 将核心样本靠近原点分布Scale samples s.t. they're more aligned to center of kernel
-            scale = 0.1f + scale * scale * (1.0f - 0.1f);//lerp(0.1f, 1.0f, scale * scale);  //return a + f * (b - a);
-            sample *= scale;
-            ssaoKernel.push_back(sample);
-        }
-        s_SamplesUniformBuffer = UniformBuffer::Create(ssaoKernel.size() * 4 * sizeof(float), 13);
-        for (uint32_t i = 0; i < ssaoKernel.size(); i++)
-            s_SamplesUniformBuffer->SetData(&ssaoKernel[i], sizeof(glm::vec3), i * 4 * sizeof(float));
-
-
-        // Noise texture
-        // 4x4朝向切线空间平面法线的随机旋转向量数组
-        std::vector<glm::vec3> ssaoNoise;
-        for (uint32_t i = 0; i < 16; i++)
-        {
-            glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f); // rotate around z-axis (in tangent space)
-            ssaoNoise.push_back(noise);
-        }
-
-        m_NoiseTexture = Texture2D::Create(4, 4, TextureFormat::RGBA16F, TextureFormat::RGB);
-        m_NoiseTexture->SetData(&ssaoNoise[0], ssaoNoise.size() * 3);
-
-        s_SSAOUniformBuffer = UniformBuffer::Create(4 * sizeof(float), 14);
-
-
-
-        fbSpec.Attachments = {
-            FramebufferTextureFormat::RGBA16F
-        };
-        fbSpec.Width = 512;
-        fbSpec.Height = 512;
-        fbSpec.Samples = 1;
-        fbSpec.ColorType = TextureType::TEXTURE_2D;
-        fbSpec.DepthType = TextureType::TEXTURE_2D;
-        m_PBRFramebuffer = Framebuffer::Create(fbSpec);
-
-        glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-        glm::mat4 captureViewProjections[] =
-        {
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
-        };
-        for(uint32_t i = 0; i < 6; i++)
-            captureViewProjections[i] = captureProjection * captureViewProjections[i];
-
-        s_PBRUniformBuffer = UniformBuffer::Create(4 * 4 * sizeof(float), 16);
-        m_EquirectangularMap = Texture2D::Create("SandBoxProject/Assets/Textures/hdr/newport_loft.hdr", true, TextureFormat::RGB16F);
-        m_EnvCubemap = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
-        
-        float vertices[] = {
-            // back face
-            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
-             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
-             1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 0.0f, // bottom-right         
-             1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 1.0f, 1.0f, // top-right
-            -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 0.0f, // bottom-left
-            -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, -1.0f, 0.0f, 1.0f, // top-left
-            // front face
-            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
-             1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 0.0f, // bottom-right
-             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
-             1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 1.0f, 1.0f, // top-right
-            -1.0f,  1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 1.0f, // top-left
-            -1.0f, -1.0f,  1.0f,  0.0f,  0.0f,  1.0f, 0.0f, 0.0f, // bottom-left
-            // left face
-            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
-            -1.0f,  1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-left
-            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
-            -1.0f, -1.0f, -1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-left
-            -1.0f, -1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-right
-            -1.0f,  1.0f,  1.0f, -1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-right
-            // right face
-             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
-             1.0f,  1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 1.0f, // top-right         
-             1.0f, -1.0f, -1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 1.0f, // bottom-right
-             1.0f,  1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 1.0f, 0.0f, // top-left
-             1.0f, -1.0f,  1.0f,  1.0f,  0.0f,  0.0f, 0.0f, 0.0f, // bottom-left     
-            // bottom face
-            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
-             1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 1.0f, // top-left
-             1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
-             1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 1.0f, 0.0f, // bottom-left
-            -1.0f, -1.0f,  1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 0.0f, // bottom-right
-            -1.0f, -1.0f, -1.0f,  0.0f, -1.0f,  0.0f, 0.0f, 1.0f, // top-right
-            // top face
-            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-             1.0f,  1.0f , 1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-             1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 1.0f, // top-right     
-             1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 1.0f, 0.0f, // bottom-right
-            -1.0f,  1.0f, -1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 1.0f, // top-left
-            -1.0f,  1.0f,  1.0f,  0.0f,  1.0f,  0.0f, 0.0f, 0.0f  // bottom-left        
-        };
-        va = VertexArray::Create();
-        Ref<VertexBuffer> vb = VertexBuffer::Create(vertices, sizeof(vertices));
-        vb->SetLayout({
-            { ShaderDataType::Float3, "a_Position"     },
-            { ShaderDataType::Float3, "a_Normal"       },
-            { ShaderDataType::Float2, "a_TexCoords"    }
-            });
-        va->AddVertexBuffer(vb);
-        uint32_t cubeIndicesBuffer[36];
-        for (uint32_t i = 0; i < 36; i++)
-            cubeIndicesBuffer[i] = i;
-        Ref<IndexBuffer> ib = IndexBuffer::Create(cubeIndicesBuffer, 36);
-        va->SetIndexBuffer(ib);
-        Renderer::SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-
-        m_PBRFramebuffer->Bind();
-        {
-            Renderer::GetShaderLibrary()->Get("EquirectangularToCubemap")->Bind();
-            m_EquirectangularMap->Bind();
-            
-            for (uint32_t i = 0; i < 6; ++i)
-            {
-                s_PBRUniformBuffer->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
-                // 将envCubemap的6个面依次绑定到m_PBRFramebuffer的颜色附件
-                m_PBRFramebuffer->SetColorAttachment(m_EnvCubemap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i));
-                Renderer::Clear();
-
-                // 取消面剔除
-                RendererAPI::SetCullFace(false);
-                Renderer::DrawIndexed(va, va->GetIndexBuffer()->GetCount());
-                RendererAPI::SetCullFace(true);
-
-            }
-            m_PBRFramebuffer->Unbind();
-        }
-
-        std::vector<std::string> faces
-        {
-            std::string("SandBoxProject/Assets/Textures/skybox/right.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/left.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/top.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/bottom.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/front.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/back.jpg"),
-        };
-        m_EnvCubemap = TextureCube::Create(faces);
-
-        m_IrradianceMap = TextureCube::Create(TextureFormat::RGB16F, 32, 32);
-        m_PBRFramebuffer->Resize(32, 32);
-
-        m_PBRFramebuffer->Bind();
-        {
-            Renderer::GetShaderLibrary()->Get("IrradianceConvolution")->Bind();
-            m_EnvCubemap->Bind();
-
-            for (uint32_t i = 0; i < 6; ++i)
-            {
-                s_PBRUniformBuffer->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
-                m_PBRFramebuffer->SetColorAttachment(m_IrradianceMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i));
-                Renderer::Clear();
-                RendererAPI::SetCullFace(false);
-                Renderer::DrawIndexed(va, va->GetIndexBuffer()->GetCount());
-                RendererAPI::SetCullFace(true);
-            }
-            m_PBRFramebuffer->Unbind();
-        }
-
-        s_PrefilterUniformBuffer = UniformBuffer::Create(sizeof(float), 17);
-        uint32_t prefilterMapWidth = 128;
-        uint32_t prefilterMapHeight = 128;
-        m_PrefilterMap = TextureCube::Create(TextureFormat::RGB16F, prefilterMapWidth, prefilterMapHeight);
-
-        uint32_t maxMipLevels = 5;
-        for (uint32_t mip = 0; mip < maxMipLevels; ++mip)
-        {
-            // reisze framebuffer according to mip-level size.
-            prefilterMapWidth  = static_cast<uint32_t>(128 * std::pow(0.5, mip));
-            prefilterMapHeight = static_cast<uint32_t>(128 * std::pow(0.5, mip));
-            m_PBRFramebuffer->Resize(prefilterMapWidth, prefilterMapHeight);
-            m_PBRFramebuffer->Bind();
-            {
-                Renderer::GetShaderLibrary()->Get("Prefilter")->Bind();
-                m_EnvCubemap->Bind();
-                float roughness = (float)mip / (float)(maxMipLevels - 1);
-                s_PrefilterUniformBuffer->SetData(&roughness, sizeof(float));
-                for (uint32_t i = 0; i < 6; ++i)
-                {
-                    s_PBRUniformBuffer->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
-                    m_PBRFramebuffer->SetColorAttachment(m_PrefilterMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i), 0, mip);
-                    Renderer::Clear();
-                    RendererAPI::SetCullFace(false);
-                    Renderer::DrawIndexed(va, va->GetIndexBuffer()->GetCount());
-                    RendererAPI::SetCullFace(true);
-                }
-                m_PBRFramebuffer->Unbind();
-            }
-        }
-
-        /*
-        m_BRDFLUT = Texture2D::Create(512, 512, TextureFormat::RG16F, TextureFormat::RG, TextureWrap::CLAMP_TO_EDGE);
-        m_PBRFramebuffer->Resize(512, 512);
-        m_PBRFramebuffer->Bind();
-        {
-            Renderer::GetShaderLibrary()->Get("BRDF")->Bind();
-            m_PBRFramebuffer->SetColorAttachment(m_BRDFLUT, TextureType::TEXTURE_2D);
-            Renderer::Clear();
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-            m_PBRFramebuffer->Unbind();
-        }
-        */
-        m_BRDFLUT = Texture2D::Create("SandBoxProject/Assets/Textures/BRDF_LUT.tga", true, TextureFormat::RG16F);
-        
-        Sphere::SetIrradianceMap(m_IrradianceMap);
-        Sphere::SetPrefilterMap(m_PrefilterMap);
-        Sphere::SetBRDFLUT(m_BRDFLUT);
-        Skybox::SetTexture(m_EnvCubemap);
-        
-
+        SceneRenderer::Init();
+        m_Framebuffer = SceneRenderer::GetDeferredShadingFramebuffer();
         //================================================================================================
 
         // 初始化场景
@@ -464,7 +84,6 @@ namespace Volcano{
             OpenProject(projectFilePath);
         }
         else {
-            // NOTE: this is while we don't have a new project path
             // 引导用户选择一个项目路径prompt the user to select a directory
             // 如果没有打开项目则关闭VolcanoNut If no project is opened, close VolcanoNut
             if (!OpenProject())
@@ -474,35 +93,9 @@ namespace Volcano{
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
 
         Renderer2D::SetLineWidth(4.0f);
-
-        
     }
 
-    void ExampleLayer::OnDetach()
-    {
-    }
-
-    void ExampleLayer::RenderScene(Timestep ts)
-    {
-        switch (m_SceneState)
-        {
-        case SceneState::Edit:
-        {
-            m_ActiveScene->OnRenderEditor(ts, m_EditorCamera);
-            break;
-        }
-        case SceneState::Simulate:
-        {
-            m_ActiveScene->OnRenderSimulation(ts, m_EditorCamera);
-            break;
-        }
-        case SceneState::Play:
-        {
-            m_ActiveScene->OnRenderRuntime(ts);
-            break;
-        }
-        }
-    }
+    void ExampleLayer::OnDetach() {}
 
     void ExampleLayer::OnUpdate(Timestep ts)
     {
@@ -549,237 +142,42 @@ namespace Volcano{
 
         Renderer::SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-        //============================================Framebuffer=============================================
-        // 
-        // 渲染阴影
-        m_DirectionalDepthMapFramebuffer->Bind();
+        //============================================SceneRender=============================================
+        SceneRenderer::BeginScene(m_ActiveScene, ts, m_SceneState, m_EditorCamera);
+        SceneRenderer::DirectionalShadow();
+        SceneRenderer::PointShadow();
+        SceneRenderer::SpotShadow();
+        SceneRenderer::GBuffer();
+        SceneRenderer::SSAO();
+        SceneRenderer::DeferredShading();
+
+
+        auto [mx, my] = ImGui::GetMousePos();
+        // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
+        mx -= m_ViewportBounds[0].x;
+        my -= m_ViewportBounds[0].y;
+        // viewport窗口的右下角绝对位置-左上角的绝对位置=viewport窗口的大小
+        glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
+        // 翻转y,使其左下角开始才是(0,0)
+        my = viewportSize.y - my;
+        int mouseX = (int)mx;
+        int mouseY = (int)my;
+
+        // 设置点击鼠标时选中实体
+        if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
         {
-            Renderer::Clear();
-
-            //RendererAPI::SetCullFaceFunc(CullFaceFunc::FRONT);
-
-            m_ActiveScene->SetRenderType(RenderType::SHADOW_DIRECTIONALLIGHT);
-            RenderScene(ts);
-            m_ActiveScene->SetRenderType(RenderType::NORMAL);
-            //RendererAPI::SetCullFaceFunc(CullFaceFunc::BACK);
-
-            m_DirectionalDepthMapFramebuffer->Unbind();
-            // 把深度贴图绑定到31号纹理槽，所有shader读取阴影都读取31号槽
-            Texture::Bind(m_DirectionalDepthMapFramebuffer->GetDepthAttachmentRendererID(), 30);
+            // 读取帧缓冲第二个缓冲区的数据
+            //int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
+            int pixelData = SceneRenderer::GetDeferredShadingFramebuffer()->ReadPixel(1, mouseX, mouseY);
+            // TODO：若shader中没有输出EntityID，则这里会设置一个有错误ID的Entity并且无法读取会报错
+            //VOL_TRACE(pixelData);
+            auto entityTemp = m_ActiveScene->GetEntityEnttMap()[(entt::entity)pixelData];
+            if (entityTemp != nullptr)
+                m_HoveredEntity = entityTemp;
         }
 
-
-        m_PointDepthMapFramebuffer->Bind();
-        {
-            Renderer::Clear();
-            //RendererAPI::SetCullFaceFunc(CullFaceFunc::FRONT);
-            m_ActiveScene->SetRenderType(RenderType::SHADOW_POINTLIGHT);
-            RenderScene(ts);
-            m_ActiveScene->SetRenderType(RenderType::NORMAL);
-            //RendererAPI::SetCullFaceFunc(CullFaceFunc::BACK);
-            m_PointDepthMapFramebuffer->Unbind();
-            Texture::Bind(m_PointDepthMapFramebuffer->GetDepthAttachmentRendererID(), 31);
-        }
-
-        m_SpotDepthMapFramebuffer->Bind();
-        {
-            Renderer::Clear();
-
-            //RendererAPI::SetCullFaceFunc(CullFaceFunc::FRONT);
-
-            m_ActiveScene->SetRenderType(RenderType::SHADOW_SPOTLIGHT);
-            RenderScene(ts);
-            m_ActiveScene->SetRenderType(RenderType::NORMAL);
-            //RendererAPI::SetCullFaceFunc(CullFaceFunc::BACK);
-
-            m_SpotDepthMapFramebuffer->Unbind();
-            Texture::Bind(m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID(), 29);
-        }
-
-        m_GBufferFramebuffer->Bind();
-        {
-            Renderer::Clear();
-            m_GBufferFramebuffer->ClearAttachment(1, -1);
-
-            m_ActiveScene->SetRenderType(RenderType::G_BUFFER);
-            RenderScene(ts);
-            m_ActiveScene->SetRenderType(RenderType::NORMAL);
-
-            m_GBufferFramebuffer->Unbind();
-
-        }
-        /*
-        m_DeferredShadingFramebuffer->Bind();
-        {
-            Renderer::Clear();
-
-            // Clear entity ID attachment to -1
-            m_DeferredShadingFramebuffer->ClearAttachment(1, -1);
-
-            m_ActiveScene->SetRenderType(RenderType::DEFERRED_SHADING);
-
-            Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
-            uint32_t positionTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
-            uint32_t normalTextureID     = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
-            uint32_t albedoSpecTextureID = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
-            uint32_t entityIDTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
-            Texture::Bind(positionTextureID,   0);
-            Texture::Bind(normalTextureID,     1);
-            Texture::Bind(albedoSpecTextureID, 2);
-            Texture::Bind(entityIDTextureID,   3);
-            Renderer::SetDepthTest(false);
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-            Renderer::SetDepthTest(true);
-
-
-            m_ActiveScene->SetRenderType(RenderType::NORMAL);
-
-            m_DeferredShadingFramebuffer->Unbind();
-
-        }
-        */
-
-        
-        s_SSAOUniformBuffer->SetData(&s_KernelSize, sizeof(float));
-        s_SSAOUniformBuffer->SetData(&s_Radius,     sizeof(float), sizeof(float));
-        s_SSAOUniformBuffer->SetData(&s_Bias,       sizeof(float), 2 * sizeof(float));
-        s_SSAOUniformBuffer->SetData(&s_Power,      sizeof(float), 3 * sizeof(float));
-
-        m_SSAOFramebuffer->Bind();
-        {
-            Renderer::Clear();
-            Renderer::GetShaderLibrary()->Get("SSAO")->Bind();
-            uint32_t positionTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
-            uint32_t normalTextureID     = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
-            Texture::Bind(positionTextureID,   0);
-            Texture::Bind(normalTextureID,     1);
-            m_NoiseTexture->Bind(2);
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-
-            m_SSAOFramebuffer->Unbind();
-        }
-        
-        m_SSAOBlurFramebuffer->Bind();
-        {
-            Renderer::Clear();
-            Renderer::GetShaderLibrary()->Get("SSAOBlur")->Bind();
-            uint32_t ssaoColorBuffer = m_SSAOFramebuffer->GetColorAttachmentRendererID(0);
-            Texture::Bind(ssaoColorBuffer, 0);
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-            m_SSAOFramebuffer->Unbind();
-        }
-        
-        m_Framebuffer->BlitDepthFramebuffer(
-            m_GBufferFramebuffer->GetRendererID(), m_Framebuffer->GetRendererID(),
-            0, 0, m_Framebuffer->GetSpecification().Width, m_Framebuffer->GetSpecification().Height,
-            0, 0, m_Framebuffer->GetSpecification().Width, m_Framebuffer->GetSpecification().Height);
-
-        m_Framebuffer->Bind();
-        {
-            Renderer::Clear();
-
-            // Clear entity ID attachment to -1
-            m_Framebuffer->ClearAttachment(1, -1);
-            
-            m_ActiveScene->SetRenderType(RenderType::DEFERRED_SHADING);
-
-            Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
-            uint32_t positionTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
-            uint32_t normalTextureID     = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
-            uint32_t diffuseTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
-            uint32_t specularTextureID   = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
-            uint32_t ssaoColorBufferBlur = m_SSAOBlurFramebuffer->GetColorAttachmentRendererID(0);
-            Texture::Bind(positionTextureID,   0);
-            Texture::Bind(normalTextureID,     1);
-            Texture::Bind(diffuseTextureID,    2);
-            Texture::Bind(specularTextureID,   3);
-            Texture::Bind(ssaoColorBufferBlur, 4);
-            //Renderer::SetDepthTest(false);
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-            //Renderer::SetDepthTest(true);
-
-
-            m_ActiveScene->SetRenderType(RenderType::NORMAL);
-            RenderScene(ts);
-            m_ActiveScene->SetRenderType(RenderType::SKYBOX);
-            RenderScene(ts);
-            m_ActiveScene->SetRenderType(RenderType::NORMAL);
-
-
-            auto [mx, my] = ImGui::GetMousePos();
-            // 鼠标绝对位置减去viewport窗口的左上角绝对位置=鼠标相对于viewport窗口左上角的位置
-            mx -= m_ViewportBounds[0].x;
-            my -= m_ViewportBounds[0].y;
-            // viewport窗口的右下角绝对位置-左上角的绝对位置=viewport窗口的大小
-            glm::vec2 viewportSize = m_ViewportBounds[1] - m_ViewportBounds[0];
-            // 翻转y,使其左下角开始才是(0,0)
-            my = viewportSize.y - my;
-            int mouseX = (int)mx;
-            int mouseY = (int)my;
-
-            // 设置点击鼠标时选中实体
-            if (mouseX >= 0 && mouseY >= 0 && mouseX < viewportSize.x && mouseY < viewportSize.y)
-            {
-                // 读取帧缓冲第二个缓冲区的数据
-                int pixelData = m_Framebuffer->ReadPixel(1, mouseX, mouseY);
-                // TODO：若shader中没有输出EntityID，则这里会设置一个有错误ID的Entity并且无法读取会报错
-                m_HoveredEntity = pixelData == -1 ? Entity() : Entity({ (entt::entity)pixelData, m_ActiveScene.get() });
-            
-            }
-
-
-            // 覆盖层
-            OnOverlayRender();
-
-            m_Framebuffer->Unbind();
-        }
-
-        Renderer::SetDepthTest(false);
-        bool horizontal = true, first_iteration = true;
-        uint32_t amount = 10;
-        Renderer::GetShaderLibrary()->Get("Blur")->Bind();
-        m_BlurFramebuffer[horizontal]->Bind();
-        Renderer::Clear();
-        m_BlurFramebuffer[!horizontal]->Bind();
-        Renderer::Clear();
-        for (uint32_t i = 0; i < amount; i++)
-        {
-            m_BlurFramebuffer[horizontal]->Bind();
-            s_BlurUniformBuffer->SetData(&horizontal, sizeof(float));
-            uint32_t bloomTextureID = m_Framebuffer->GetColorAttachmentRendererID(2);
-            Texture::Bind(first_iteration ? bloomTextureID : m_BlurFramebuffer[!horizontal]->GetColorAttachmentRendererID(0), 0);
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-            horizontal = !horizontal;
-            if (first_iteration)
-                first_iteration = false;
-        }
-        m_BlurFramebuffer[0]->Unbind();
-        Renderer::SetDepthTest(true);
-
-
-
-        s_ExposureUniformBuffer->SetData(&s_Exposure, sizeof(float));
-        s_ExposureUniformBuffer->SetData(&s_Bloom, sizeof(bool), sizeof(float));
-        m_Framebuffer->Bind();
-        {
-            m_HDRShader->Bind();
-            uint32_t hdrTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
-            Texture::Bind(hdrTextureID, 0);
-            uint32_t blurTextureID = m_BlurFramebuffer[!horizontal]->GetColorAttachmentRendererID(0);
-            Texture::Bind(blurTextureID, 1);
-            Renderer::SetDepthTest(false);
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-            Renderer::SetDepthTest(true);
-
-
-            m_Framebuffer->Unbind();
-
-        }
-
-
-
-
-
+        SceneRenderer::HDR();
+        SceneRenderer::EndScene();
 
 
         //=============================================================================================================
@@ -790,41 +188,18 @@ namespace Volcano{
         // 还原视图尺寸
         Application::Get().GetWindow().ResetViewport();
         // TODO: 帧缓冲画面会被拉伸至视图尺寸，参考ShaderToy代码将画面保持正常尺寸
-        m_WindowShader->Bind();
+        Renderer::GetShaderLibrary()->Get("window")->Bind();
         //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(2);
         //uint32_t windowTextureID = m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID();
-        //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(0);
-        uint32_t windowTextureID = m_BRDFLUT->GetRendererID();
-        Texture::Bind(windowTextureID, 0);
+        uint32_t windowTextureID = SceneRenderer::GetPointDepthMapFramebuffer()->GetDepthAttachmentRendererID();
+        //uint32_t windowTextureID = m_BRDFLUT->GetRendererID();
+        //Texture::Bind(windowTextureID, 0);
         Renderer::SetDepthTest(false);
-        Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+        FullQuad::DrawIndexed();
+        //Renderer::GetShaderLibrary()->Get("Skybox")->Bind();
+        //Skybox::DrawIndexed();
         Renderer::SetDepthTest(true);
 
-
-        // Particle Scene
-        /*
-        Renderer2D::BeginScene(m_CameraEntity.GetComponent<CameraComponent>().Camera, m_CameraEntity.GetComponent<CameraComponent>().Camera.GetProjection());
-        {
-            //如果按下空格
-            if (Input::IsMouseButtonPressed(VOL_MOUSE_BUTTON_LEFT))
-            {
-                auto [x, y] = Input::GetMousePosition();
-                auto width = Application::Get().GetWindow().GetWidth();
-                auto height = Application::Get().GetWindow().GetHeight();
-
-                auto bounds = m_CameraController.GetBounds();
-                auto pos = m_CameraController.GetCamera().GetPosition();
-                x = (x / width) * bounds.GetWidth() - bounds.GetWidth() * 0.5f;
-                y = bounds.GetHeight() * 0.5f - (y / height) * bounds.GetHeight();
-                m_Particle.Position = { x + pos.x, y + pos.y };
-                for (int i = 0; i < 5; i++)
-                    m_ParticleSystem.Emit(m_Particle);
-            }
-            m_ParticleSystem.OnUpdate(ts);
-            m_ParticleSystem.OnRender();
-            Renderer2D::EndScene();
-        }
-        */
     }
 
     void ExampleLayer::OnImGuiRender()
@@ -939,6 +314,57 @@ namespace Volcano{
 
         // =====================================================Viewport=====================================================
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+
+        ImGui::Begin("ViewportTemp");
+        {
+            uint32_t textureID = 0;
+            const char* frameBuffers[] = { "None", "DirectionalShadow", "PointShadow", "SpotShadow", "GBuffer1", "GBuffer2", "GBuffer3", "SSAO", "SSAOBlur", "DefferedShading", "HDR" };
+            ImGui::Combo("FrameBuffer", &m_ViewportTempIndex, frameBuffers, IM_ARRAYSIZE(frameBuffers));
+            switch (m_ViewportTempIndex)
+            {
+            case 0:
+                textureID = 0;
+                break;
+            case 1:
+                textureID = SceneRenderer::GetDirectionalDepthMapFramebuffer()->GetDepthAttachmentRendererID();
+                break;
+            case 2:
+                textureID = SceneRenderer::GetPointDepthMapFramebuffer()->GetDepthAttachmentRendererID();
+                break;
+            case 3:
+                textureID = SceneRenderer::GetSpotDepthMapFramebuffer()->GetDepthAttachmentRendererID();
+                break;
+            case 4:
+                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(0);
+                break;
+            case 5:
+                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(1);
+                break;
+            case 6:
+                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(2);
+                break;
+            case 7:
+                textureID = SceneRenderer::GetSSAOFramebuffer()->GetColorAttachmentRendererID(0);
+                break;
+            case 8:
+                textureID = SceneRenderer::GetSSAOBlurFramebuffer()->GetColorAttachmentRendererID(0);
+                break;
+            case 9:
+                textureID = SceneRenderer::GetDeferredShadingFramebuffer()->GetColorAttachmentRendererID();
+                break;
+            case 10:
+                textureID = SceneRenderer::GetHDRFramebuffer()->GetColorAttachmentRendererID();
+                break;
+            default:
+                textureID = 0;
+                break;
+            }
+            
+            ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+            
+            ImGui::End();
+        }
+
         ImGui::Begin("Viewport");
 
         // 获取Viewport视口左上角与viewport视口标题栏距离的偏移位置（0, 24) - 必须放这，因为标题栏后就是视口的左上角
@@ -987,7 +413,7 @@ namespace Volcano{
         m_ViewportBounds[1] = { maxBound.x, maxBound.y };
 
         //Gizmos
-        Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
+        Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
         if (selectedEntity && m_GizmoType != -1 && m_SceneState == SceneState::Edit)
         {
             ImGuizmo::SetOrthographic(false);
@@ -1001,7 +427,7 @@ namespace Volcano{
             glm::mat4 cameraView = m_EditorCamera.GetViewMatrix();
 
             // Selected Entity transform
-            auto& tc = selectedEntity.GetComponent<TransformComponent>();
+            auto& tc = selectedEntity->GetComponent<TransformComponent>();
             glm::mat4 transform = tc.GetTransform();
 
             // Snapping
@@ -1047,6 +473,17 @@ namespace Volcano{
         // =====================================================Settings=====================================================
         ImGui::Begin("Stats");
 
+        // Stats
+        ImGui::DragFloat("Exposure", SceneRenderer::GetExposure(), 0.01f);
+        ImGui::Checkbox("Bloom", SceneRenderer::GetBloom());
+
+        ImGui::Checkbox("SSAO", SceneRenderer::GetSSAOSwitch());
+        ImGui::DragInt("KernelSize", SceneRenderer::GetKernelSize());
+        ImGui::DragFloat("Radius", SceneRenderer::GetRadius(), 0.01f);
+        ImGui::DragFloat("Bias", SceneRenderer::GetBias(), 0.01f);
+        ImGui::DragFloat("Power", SceneRenderer::GetPower(), 0.01f);
+
+
         std::string name = "None";
         if (m_HoveredEntity)
         {
@@ -1071,14 +508,6 @@ namespace Volcano{
         }
         m_ProfileResults.clear();
 
-        // Stats
-        ImGui::DragFloat("Exposure", &s_Exposure, 0.01f);
-        ImGui::Checkbox("Bloom", &s_Bloom);
-
-        ImGui::DragInt("KernelSize",   &s_KernelSize);
-        ImGui::DragFloat("Radius",     &s_Radius,     0.01f);
-        ImGui::DragFloat("Bias",       &s_Bias,       0.01f);
-        ImGui::DragFloat("Power",      &s_Power,      0.01f);
 
 
             
@@ -1268,7 +697,7 @@ namespace Volcano{
         case Key::Delete:
             if (Application::Get().GetImGuiLayer()->GetActiveWidgetID() == 0)
             {
-                Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
+                Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
                 if (selectedEntity)
                 {
                     m_SceneHierarchyPanel.SetSelectedEntity({});
@@ -1325,10 +754,10 @@ namespace Volcano{
         // 播放状态下
         if (m_SceneState == SceneState::Play)
         {
-            Entity camera = m_ActiveScene->GetPrimaryCameraEntity();
+            Ref<Entity> camera = m_ActiveScene->GetPrimaryCameraEntity();
             if (!camera)
                 return;  // 找不到就退出
-            Renderer2D::BeginScene(camera.GetComponent<CameraComponent>().Camera, camera.GetComponent<TransformComponent>().GetTransform());
+            Renderer2D::BeginScene(camera->GetComponent<CameraComponent>().Camera, camera->GetComponent<TransformComponent>().GetTransform());
         }
         else
         {
@@ -1379,9 +808,9 @@ namespace Volcano{
         }
 
         // Draw selected entity outline 
-        if (Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity())
+        if (Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity())
         {
-            const TransformComponent& transform = selectedEntity.GetComponent<TransformComponent>();
+            const TransformComponent& transform = selectedEntity->GetComponent<TransformComponent>();
             Renderer2D::DrawRect(transform.GetTransform(), glm::vec4(1.0f, 0.5f, 0.0f, 1.0f)); 
         }
 
@@ -1506,7 +935,7 @@ namespace Volcano{
 
         if (m_SceneHierarchyPanel.GetSelectedEntity())
         {
-            UUID selectedEntityID = m_SceneHierarchyPanel.GetSelectedEntity().GetUUID();
+            UUID selectedEntityID = m_SceneHierarchyPanel.GetSelectedEntity()->GetUUID();
             m_SceneHierarchyPanel.SetSelectedEntity(m_ActiveScene->GetEntityByUUID(selectedEntityID));
         }
 
@@ -1579,10 +1008,10 @@ namespace Volcano{
         if (m_SceneState != SceneState::Edit)
             return;
 
-        Entity selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
+        Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
         if (selectedEntity)
         {
-            Entity newEntity = m_ActiveScene->DuplicateEntity(selectedEntity);
+            Ref<Entity> newEntity = m_ActiveScene->DuplicateEntity(selectedEntity);
             m_SceneHierarchyPanel.SetSelectedEntity(newEntity);
         }
     }

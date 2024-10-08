@@ -81,7 +81,8 @@ namespace Volcano {
 		virtual void Resize(uint32_t width, uint32_t height) = 0;
 		virtual int ReadPixel(uint32_t attachmentIndex, int x, int y) = 0;
 		virtual float ReadPixelFloat(uint32_t attachmentIndex, int x, int y) = 0;
-		virtual void ClearAttachment(uint32_t attachmentIndex, const int value) = 0;
+		virtual void ClearAttachmentInt(uint32_t attachmentIndex, const int value) = 0;
+		virtual void ClearAttachmentFloat(uint32_t attachmentIndex, const float value) = 0;
 
 		virtual void SetDrawBuffer(FramebufferBufferFormat format) = 0;
 		virtual void SetReadBuffer(FramebufferBufferFormat format) = 0;

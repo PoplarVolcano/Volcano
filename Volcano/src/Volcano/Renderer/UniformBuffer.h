@@ -10,4 +10,14 @@ namespace Volcano {
 
 		static Ref<UniformBuffer> Create(uint32_t size, uint32_t binding);
 	};
+
+	class UniformBufferManager
+	{
+	public:
+		static void Init();
+		static Ref<UniformBuffer> GetUniformBuffer(std::string name) { return m_UniformBuffers[name]; }
+	private:
+		UniformBufferManager();
+		static std::unordered_map<std::string, Ref<UniformBuffer>> m_UniformBuffers;
+	};
 }

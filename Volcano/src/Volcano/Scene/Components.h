@@ -8,6 +8,8 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
+#include "Volcano/Renderer/RendererItem/MeshTemp.h"
+#include "Volcano/Renderer/RendererItem/CubeMesh.h"
 
 namespace Volcano {
 
@@ -69,6 +71,61 @@ namespace Volcano {
 			: Color(color) {}
 	};
 
+	struct MeshComponent
+	{
+		MeshType meshType = MeshType::None;
+		Ref<MeshTemp> mesh;
+		MeshComponent() = default;
+		MeshComponent(const MeshComponent&) = default;
+		void SetMeshType(MeshType type, Entity* entity) {
+			meshType = type;
+			switch (type)
+			{
+			case MeshType::None:
+				mesh = nullptr;
+				break;
+			case MeshType::Cube:
+				mesh = std::make_shared<CubeMesh>();
+				mesh->SetEntity(entity);
+				break;
+			default:
+				VOL_TRACE("MeshComponent: ÎÞÐ§MeshType");
+				mesh = nullptr;
+				break;
+			}
+		}
+	};
+
+	struct MeshRendererComponent
+	{
+		std::vector<std::pair<ImageType, Ref<Texture>>> Textures;
+		MeshRendererComponent() = default;
+		MeshRendererComponent(const MeshRendererComponent&) = default;
+		void SetTexture(ImageType type, Ref<Texture> texture) { Textures.push_back({ type, texture }); }
+		void DeleteTexture(uint32_t index) { Textures.erase(Textures.begin() + index); }
+		void AddTexture()
+		{
+			Ref<Texture2D> whiteTexture = Texture2D::Create(1, 1);
+			uint32_t whiteTextureData = 0xffffffff;
+			whiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
+			Textures.push_back({ ImageType::Diffuse, whiteTexture });
+		}
+		void SetTextureWhite(uint32_t index) 
+		{
+			Ref<Texture2D> whiteTexture = Texture2D::Create(1, 1);
+			uint32_t whiteTextureData = 0xffffffff;
+			whiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
+			Textures[index].second = whiteTexture;
+		}
+		void SetTextureBlack(uint32_t index)
+		{
+			Ref<Texture2D> blackTexture = Texture2D::Create(1, 1);
+			uint32_t blackTextureData = 0x00000000;
+			blackTexture->SetData(&blackTextureData, sizeof(uint32_t));
+			Textures[index].second = blackTexture;
+		}
+	};
+
 	struct CircleRendererComponent
 	{
 		glm::vec4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
@@ -80,19 +137,6 @@ namespace Volcano {
 		CircleRendererComponent(const CircleRendererComponent&) = default;
 	};
 
-	struct CubeRendererComponent
-	{
-		glm::vec4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
-		Ref<Texture2D> Diffuse;
-		Ref<Texture2D> Specular;
-		Ref<Texture2D> Normal;
-		Ref<Texture2D> Parallax;
-
-		CubeRendererComponent() = default;
-		CubeRendererComponent(const CubeRendererComponent&) = default;
-		CubeRendererComponent(const glm::vec4 color)
-			: Color(color) {}
-	};
 
 	struct SphereRendererComponent
 	{
@@ -238,13 +282,13 @@ namespace Volcano {
 	using AllComponents = ComponentGroup<
 								TransformComponent, 
 								SpriteRendererComponent,
+		                        MeshComponent,
+		                        MeshRendererComponent,
 								CircleRendererComponent,
-								CubeRendererComponent,
 								SphereRendererComponent,
 								ModelRendererComponent,
 								LightComponent,
 								CameraComponent, 
-								ScriptComponent,
 								ScriptComponent,
 								NativeScriptComponent,
 								Rigidbody2DComponent, 

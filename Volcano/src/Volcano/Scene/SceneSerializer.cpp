@@ -230,12 +230,12 @@ namespace Volcano {
 	{
 	}
 
-	static void SerializeEntity(YAML::Emitter& out, Entity entity)
+	static void SerializeEntity(YAML::Emitter& out, Entity& entity)
 	{
 		VOL_CORE_ASSERT(entity.HasComponent<IDComponent>());
 
 		out << YAML::BeginMap;//Entity
-		out << YAML::Key << "Entity" << YAML::Value << entity.GetUUID();
+		out << YAML::Key << "EntityID" << YAML::Value << entity.GetUUID();
 		
 		if (entity.HasComponent<TagComponent>())
 		{
@@ -372,6 +372,40 @@ namespace Volcano {
 			out << YAML::EndMap;//SpriteRendererComponent
 		}
 
+		if (entity.HasComponent<MeshComponent>())
+		{
+			out << YAML::Key << "MeshComponent";
+			out << YAML::BeginMap; // MeshComponent
+			{
+				auto& meshComponent = entity.GetComponent<MeshComponent>();
+				out << YAML::Key << "MeshType" << YAML::Value << (int)meshComponent.meshType;
+				out << YAML::EndMap; // CircleRendererComponent
+			}
+		}
+
+		if (entity.HasComponent<MeshRendererComponent>())
+		{
+			out << YAML::Key << "MeshRendererComponent";
+			out << YAML::BeginMap; // MeshRendererComponent
+			{
+				auto& meshRendererComponent = entity.GetComponent<MeshRendererComponent>();
+				auto& textures = meshRendererComponent.Textures;
+				if (!textures.empty())
+				{
+					out << YAML::Key << "Textures" << YAML::Value << YAML::BeginSeq;
+					for (uint32_t i = 0; i < textures.size(); i++)
+					{
+						out << YAML::BeginMap;
+						out << YAML::Key << "ImageType" << YAML::Value << (int)textures[i].first;
+						out << YAML::Key << "Path"      << YAML::Value << textures[i].second->GetPath();
+						out << YAML::EndMap;
+					}
+					out << YAML::EndSeq;
+				}
+				out << YAML::EndMap; // MeshRendererComponent
+			}
+		}
+
 		if (entity.HasComponent<CircleRendererComponent>())
 		{
 			out << YAML::Key << "CircleRendererComponent";
@@ -387,22 +421,6 @@ namespace Volcano {
 			out << YAML::EndMap; // CircleRendererComponent
 		}
 
-		if (entity.HasComponent<CubeRendererComponent>())
-		{
-			out << YAML::Key << "CubeRendererComponent";
-			out << YAML::BeginMap;//CubeRendererComponent
-			auto& cubeRendererComponent = entity.GetComponent<CubeRendererComponent>();
-			out << YAML::Key << "Color" << YAML::Value << cubeRendererComponent.Color;
-			if (cubeRendererComponent.Diffuse)
-				out << YAML::Key << "DiffusePath" << YAML::Value << cubeRendererComponent.Diffuse->GetPath();
-			if (cubeRendererComponent.Specular)
-				out << YAML::Key << "SpecularPath" << YAML::Value << cubeRendererComponent.Specular->GetPath();
-			if (cubeRendererComponent.Normal)
-				out << YAML::Key << "NormalPath" << YAML::Value << cubeRendererComponent.Normal->GetPath();
-			if (cubeRendererComponent.Parallax)
-				out << YAML::Key << "ParallaxPath" << YAML::Value << cubeRendererComponent.Parallax->GetPath();
-			out << YAML::EndMap;//CubeRendererComponent
-		}
 
 		if (entity.HasComponent<SphereRendererComponent>())
 		{
@@ -411,11 +429,11 @@ namespace Volcano {
 			auto& sphereRendererComponent = entity.GetComponent<SphereRendererComponent>();
 			out << YAML::Key << "Color" << YAML::Value << sphereRendererComponent.Color;
 			if (sphereRendererComponent.Albedo)
-				out << YAML::Key << "AlbedoPath" << YAML::Value << sphereRendererComponent.Albedo->GetPath();
-			if (sphereRendererComponent.Normal)
-				out << YAML::Key << "NormalPath" << YAML::Value << sphereRendererComponent.Normal->GetPath();
-			if (sphereRendererComponent.Metallic)
-				out << YAML::Key << "MetallicPath" << YAML::Value << sphereRendererComponent.Metallic->GetPath();
+				out << YAML::Key << "AlbedoPath"    << YAML::Value << sphereRendererComponent.Albedo->GetPath();
+			if (sphereRendererComponent.Normal)	    
+				out << YAML::Key << "NormalPath"    << YAML::Value << sphereRendererComponent.Normal->GetPath();
+			if (sphereRendererComponent.Metallic)   
+				out << YAML::Key << "MetallicPath"  << YAML::Value << sphereRendererComponent.Metallic->GetPath();
 			if (sphereRendererComponent.Roughness)
 				out << YAML::Key << "RoughnessPath" << YAML::Value << sphereRendererComponent.Roughness->GetPath();
 			if (sphereRendererComponent.AO)
@@ -477,29 +495,32 @@ namespace Volcano {
 			out << YAML::EndMap; // CircleCollider2DComponent
 		}
 
-
+		if (!entity.GetEntityChildren().empty())
+		{
+		    out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
+			for (auto& [name, entity] : entity.GetEntityChildren())
+				SerializeEntity(out, *entity.get());
+		    out << YAML::EndSeq; // 结束序列化
+		}
 
 		out << YAML::EndMap;//Entity
 	}
 	
 	void SceneSerializer::Serialize(const std::string& filepath)
 	{
+		std::string sceneName = "Untitled";// TODO：获取filepath的文件名
 		YAML::Emitter out;
 		out << YAML::BeginMap;
-		out << YAML::Key << "Scene" << YAML::Value << "Untitled";
-		out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
-
-		for (auto entityID : m_Scene->m_Registry.view<entt::entity>())
+		out << YAML::Key << "Scene" << YAML::Value << sceneName;
+		if (!m_Scene->GetEntityNameMap().empty())
 		{
-			Entity entity = { entityID ,m_Scene.get() };
-			if (!entity)
-				return;
-			// 序列化实体
-			SerializeEntity(out, entity);
+			out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
+			for (auto& [name, entity] : m_Scene->GetEntityNameMap())
+				SerializeEntity(out, *entity.get());
+			out << YAML::EndSeq; // 结束序列化
 		}
-		out << YAML::EndSeq; // 结束序列化
-		out << YAML::EndMap;
 
+		out << YAML::EndMap;
 		std::ofstream fout(filepath);
 		fout << out.c_str();
 	}
@@ -508,6 +529,259 @@ namespace Volcano {
 	{
 		// Not implemented
 		VOL_CORE_ASSERT(false);
+	}
+
+	bool DeserializeLoadEntity(YAML::Node& entity, Scene* scene, Ref<Entity> entityParent = nullptr)
+	{
+
+		uint64_t uuid = entity["EntityID"].as<uint64_t>();
+		std::string name;
+		auto tagComponent = entity["TagComponent"];
+		if (tagComponent)
+			name = tagComponent["Tag"].as<std::string>();
+
+		VOL_CORE_TRACE("Deserialized entity with ID = {0}, name = {1}", uuid, name);
+
+		Ref<Entity> deserializedEntity = scene->CreateEntityWithUUID(uuid, name, entityParent);
+
+		auto transformComponent = entity["TransformComponent"];
+		if (transformComponent)
+		{
+			//Entitys always have transforms
+			auto& tc = deserializedEntity->GetComponent<TransformComponent>();
+			tc.Translation = transformComponent["Translation"].as<glm::vec3>();
+			tc.Rotation = transformComponent["Rotation"].as<glm::vec3>();
+			tc.Scale = transformComponent["Scale"].as<glm::vec3>();
+		}
+
+		auto lightComponent = entity["LightComponent"];
+		if (lightComponent)
+		{
+			auto& lc = deserializedEntity->AddComponent<LightComponent>();
+			lc.Type = (LightComponent::LightType)lightComponent["Type"].as<int>();
+			lc.Ambient = lightComponent["Ambient"].as<glm::vec3>();
+			lc.Diffuse = lightComponent["Diffuse"].as<glm::vec3>();
+			lc.Specular = lightComponent["Specular"].as<glm::vec3>();
+			lc.Constant = lightComponent["Constant"].as<float>();
+			lc.Linear = lightComponent["Linear"].as<float>();
+			lc.Quadratic = lightComponent["Quadratic"].as<float>();
+			lc.CutOff = lightComponent["CutOff"].as<float>();
+			lc.OuterCutOff = lightComponent["OuterCutOff"].as<float>();
+		}
+
+		auto cameraComponent = entity["CameraComponent"];
+		if (cameraComponent)
+		{
+			auto& cc = deserializedEntity->AddComponent<CameraComponent>();
+			auto cameraProps = cameraComponent["Camera"];
+			cc.Camera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["ProjectionType"].as<int>());
+
+			cc.Camera.SetPerspectiveVerticalFOV(cameraProps["PerspectiveFOV"].as<float>());
+			cc.Camera.SetPerspectiveNearClip(cameraProps["PerspectiveNear"].as<float>());
+			cc.Camera.SetPerspectiveFarClip(cameraProps["PerspectiveFar"].as<float>());
+			cc.Camera.SetOrthographicSize(cameraProps["OrthographicSize"].as<float>());
+			cc.Camera.SetOrthographicNearClip(cameraProps["OrthographicNear"].as<float>());
+			cc.Camera.SetOrthographicFarClip(cameraProps["OrthographicFar"].as<float>());
+
+			cc.Primary = cameraComponent["Primary"].as<bool>();
+			cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
+		}
+
+		auto scriptComponent = entity["ScriptComponent"];
+		if (scriptComponent)
+		{
+			auto& sc = deserializedEntity->AddComponent<ScriptComponent>();
+			sc.ClassName = scriptComponent["ClassName"].as<std::string>();
+
+			// 获取脚本字段数据
+			auto scriptFields = scriptComponent["ScriptFields"];
+			if (scriptFields)
+			{
+				Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(sc.ClassName);
+
+				if (entityClass)
+				{
+					const auto& fields = entityClass->GetFields();
+					auto& entityFields = ScriptEngine::GetScriptFieldMap(*deserializedEntity.get());
+
+					for (auto scriptField : scriptFields)
+					{
+						std::string name = scriptField["Name"].as<std::string>();
+						std::string typeString = scriptField["Type"].as<std::string>();
+						ScriptFieldType type = Utils::ScriptFieldTypeFromString(typeString);
+
+						ScriptFieldInstance& fieldInstance = entityFields[name];
+
+						// TODO(Yan): turn this assert into Hazelnut log warning
+						VOL_CORE_ASSERT(fields.find(name) != fields.end(), "Deserialize.ScriptComponent");
+
+						if (fields.find(name) == fields.end())
+							continue;
+
+						fieldInstance.Field = fields.at(name);
+
+						switch (type)
+						{
+							READ_SCRIPT_FIELD(Float, float);
+							READ_SCRIPT_FIELD(Double, double);
+							READ_SCRIPT_FIELD(Bool, bool);
+							READ_SCRIPT_FIELD(Char, char);
+							READ_SCRIPT_FIELD(Byte, int8_t);
+							READ_SCRIPT_FIELD(Short, int16_t);
+							READ_SCRIPT_FIELD(Int, int32_t);
+							READ_SCRIPT_FIELD(Long, int64_t);
+							READ_SCRIPT_FIELD(UByte, uint8_t);
+							READ_SCRIPT_FIELD(UShort, uint16_t);
+							READ_SCRIPT_FIELD(UInt, uint32_t);
+							READ_SCRIPT_FIELD(ULong, uint64_t);
+							READ_SCRIPT_FIELD(Vector2, glm::vec2);
+							READ_SCRIPT_FIELD(Vector3, glm::vec3);
+							READ_SCRIPT_FIELD(Vector4, glm::vec4);
+							READ_SCRIPT_FIELD(Quaternion, glm::quat);
+							READ_SCRIPT_FIELD(Matrix4x4, glm::mat4);
+							READ_SCRIPT_FIELD(Entity, UUID);
+						}
+					}
+				}
+			}
+		}
+
+		auto spriteRendererComponent = entity["SpriteRendererComponent"];
+		if (spriteRendererComponent)
+		{
+			auto& src = deserializedEntity->AddComponent<SpriteRendererComponent>();
+			src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
+			if (spriteRendererComponent["TexturePath"])
+			{
+				std::string texturePath = spriteRendererComponent["TexturePath"].as<std::string>();
+				auto path = Project::GetAssetFileSystemPath(texturePath);
+				src.Texture = Texture2D::Create(path.string());
+			}
+
+			if (spriteRendererComponent["TilingFactor"])
+				src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
+		}
+
+		auto meshComponent = entity["MeshComponent"];
+		if (meshComponent)
+		{
+			auto& mc = deserializedEntity->AddComponent<MeshComponent>();
+			mc.meshType = (MeshType)meshComponent["MeshType"].as<int>();
+			mc.SetMeshType(mc.meshType, deserializedEntity.get());
+		}
+
+		auto meshRendererComponent = entity["MeshRendererComponent"];
+		if (meshRendererComponent)
+		{
+			auto& mrc = deserializedEntity->AddComponent<MeshRendererComponent>();
+			auto textures = meshRendererComponent["Textures"];
+			if (!textures.IsNull())
+			{
+				for (auto texture : textures)
+				{
+					ImageType type = (ImageType)texture["ImageType"].as<int>();
+					std::string path = texture["Path"].as<std::string>();
+					auto filePath = Project::GetAssetFileSystemPath(path);
+					mrc.SetTexture(type, Texture2D::Create(filePath.string()));
+				}
+			}
+		}
+
+		auto circleRendererComponent = entity["CircleRendererComponent"];
+		if (circleRendererComponent)
+		{
+			auto& crc = deserializedEntity->AddComponent<CircleRendererComponent>();
+			crc.Color = circleRendererComponent["Color"].as<glm::vec4>();
+			if (circleRendererComponent["TexturePath"])
+				crc.Texture = Texture2D::Create(circleRendererComponent["TexturePath"].as<std::string>());
+			crc.Thickness = circleRendererComponent["Thickness"].as<float>();
+			crc.Fade = circleRendererComponent["Fade"].as<float>();
+		}
+
+
+		auto sphereRendererComponent = entity["SphereRendererComponent"];
+		if (sphereRendererComponent)
+		{
+			auto& src = deserializedEntity->AddComponent<SphereRendererComponent>();
+			src.Color = sphereRendererComponent["Color"].as<glm::vec4>();
+			if (sphereRendererComponent["AlbedoPath"])
+			{
+				std::string albedoPath = sphereRendererComponent["AlbedoPath"].as<std::string>();
+				auto path = Project::GetAssetFileSystemPath(albedoPath);
+				src.Albedo = Texture2D::Create(path.string());
+			}
+			if (sphereRendererComponent["NormalPath"])
+			{
+				std::string normalPath = sphereRendererComponent["NormalPath"].as<std::string>();
+				auto path = Project::GetAssetFileSystemPath(normalPath);
+				src.Normal = Texture2D::Create(path.string());
+			}
+			if (sphereRendererComponent["MetallicPath"])
+			{
+				std::string metallicPath = sphereRendererComponent["MetallicPath"].as<std::string>();
+				auto path = Project::GetAssetFileSystemPath(metallicPath);
+				src.Metallic = Texture2D::Create(path.string());
+			}
+			if (sphereRendererComponent["RoughnessPath"])
+			{
+				std::string roughnessPath = sphereRendererComponent["RoughnessPath"].as<std::string>();
+				auto path = Project::GetAssetFileSystemPath(roughnessPath);
+				src.Roughness = Texture2D::Create(path.string());
+			}
+			if (sphereRendererComponent["AOPath"])
+			{
+				std::string AOPath = sphereRendererComponent["AOPath"].as<std::string>();
+				auto path = Project::GetAssetFileSystemPath(AOPath);
+				src.AO = Texture2D::Create(path.string());
+			}
+		}
+
+		auto modelRendererComponent = entity["ModelRendererComponent"];
+		if (modelRendererComponent)
+		{
+			auto& mrc = deserializedEntity->AddComponent<ModelRendererComponent>();
+			std::string specularPath = modelRendererComponent["ModelPath"].as<std::string>();
+			mrc.ModelPath = specularPath;
+		}
+
+		auto rigidbody2DComponent = entity["Rigidbody2DComponent"];
+		if (rigidbody2DComponent)
+		{
+			auto& rb2d = deserializedEntity->AddComponent<Rigidbody2DComponent>();
+			rb2d.Type = RigidBody2DBodyTypeFromString(rigidbody2DComponent["BodyType"].as<std::string>());
+			rb2d.FixedRotation = rigidbody2DComponent["FixedRotation"].as<bool>();
+		}
+
+		auto boxCollider2DComponent = entity["BoxCollider2DComponent"];
+		if (boxCollider2DComponent)
+		{
+			auto& bc2d = deserializedEntity->AddComponent<BoxCollider2DComponent>();
+			bc2d.Offset = boxCollider2DComponent["Offset"].as<glm::vec2>();
+			bc2d.Size = boxCollider2DComponent["Size"].as<glm::vec2>();
+			bc2d.Density = boxCollider2DComponent["Density"].as<float>();
+			bc2d.Friction = boxCollider2DComponent["Friction"].as<float>();
+			bc2d.Restitution = boxCollider2DComponent["Restitution"].as<float>();
+			bc2d.RestitutionThreshold = boxCollider2DComponent["RestitutionThreshold"].as<float>();
+		}
+
+		auto circleCollider2DComponent = entity["CircleCollider2DComponent"];
+		if (circleCollider2DComponent)
+		{
+			auto& cc2d = deserializedEntity->AddComponent<CircleCollider2DComponent>();
+			cc2d.Offset = circleCollider2DComponent["Offset"].as<glm::vec2>();
+			cc2d.Radius = circleCollider2DComponent["Radius"].as<float>();
+			cc2d.Density = circleCollider2DComponent["Density"].as<float>();
+			cc2d.Friction = circleCollider2DComponent["Friction"].as<float>();
+			cc2d.Restitution = circleCollider2DComponent["Restitution"].as<float>();
+			cc2d.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
+		}
+
+		auto entities = entity["Entities"];
+		if (entities)
+			for (auto entity : entities)
+				DeserializeLoadEntity(entity, scene, deserializedEntity);
+
+		return false;
 	}
 
 	bool SceneSerializer::Deserialize(const std::string& filepath)
@@ -530,257 +804,8 @@ namespace Volcano {
 
 		auto entities = data["Entities"];
 		if (entities)
-		{
 			for (auto entity : entities)
-			{
-				uint64_t uuid = entity["Entity"].as<uint64_t>();
-				std::string name;
-				auto tagComponent = entity["TagComponent"];
-				if (tagComponent)
-					name = tagComponent["Tag"].as<std::string>();
-
-				VOL_CORE_TRACE("Deserialized entity with ID = {0}, name = {1}", uuid, name);
-
-				Entity deserializedEntity = m_Scene->CreateEntityWithUUID(uuid, name);
-
-				auto transformComponent = entity["TransformComponent"];
-				if (transformComponent)
-				{
-					//Entitys always have transforms
-					auto& tc = deserializedEntity.GetComponent<TransformComponent>();
-					tc.Translation = transformComponent["Translation"].as<glm::vec3>();
-					tc.Rotation = transformComponent["Rotation"].as<glm::vec3>();
-					tc.Scale = transformComponent["Scale"].as<glm::vec3>();
-				}
-
-				auto lightComponent = entity["LightComponent"];
-				if (lightComponent)
-				{
-					auto& lc = deserializedEntity.AddComponent<LightComponent>();
-					lc.Type = (LightComponent::LightType)lightComponent["Type"].as<int>();
-					lc.Ambient = lightComponent["Ambient"].as<glm::vec3>();
-					lc.Diffuse = lightComponent["Diffuse"].as<glm::vec3>();
-					lc.Specular = lightComponent["Specular"].as<glm::vec3>();
-					lc.Constant = lightComponent["Constant"].as<float>();
-					lc.Linear = lightComponent["Linear"].as<float>();
-					lc.Quadratic = lightComponent["Quadratic"].as<float>();
-					lc.CutOff = lightComponent["CutOff"].as<float>();
-					lc.OuterCutOff = lightComponent["OuterCutOff"].as<float>();
-				}
-
-				auto cameraComponent = entity["CameraComponent"];
-				if (cameraComponent)
-				{
-					auto& cc = deserializedEntity.AddComponent<CameraComponent>();
-					auto cameraProps = cameraComponent["Camera"];
-					cc.Camera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["ProjectionType"].as<int>());
-
-					cc.Camera.SetPerspectiveVerticalFOV(cameraProps["PerspectiveFOV"].as<float>());
-					cc.Camera.SetPerspectiveNearClip(cameraProps["PerspectiveNear"].as<float>());
-					cc.Camera.SetPerspectiveFarClip(cameraProps["PerspectiveFar"].as<float>());
-					cc.Camera.SetOrthographicSize(cameraProps["OrthographicSize"].as<float>());
-					cc.Camera.SetOrthographicNearClip(cameraProps["OrthographicNear"].as<float>());
-					cc.Camera.SetOrthographicFarClip(cameraProps["OrthographicFar"].as<float>());
-
-					cc.Primary = cameraComponent["Primary"].as<bool>();
-					cc.FixedAspectRatio = cameraComponent["FixedAspectRatio"].as<bool>();
-				}
-
-				auto scriptComponent = entity["ScriptComponent"];
-				if (scriptComponent)
-				{
-					auto& sc = deserializedEntity.AddComponent<ScriptComponent>();
-					sc.ClassName = scriptComponent["ClassName"].as<std::string>();
-
-					// 获取脚本字段数据
-					auto scriptFields = scriptComponent["ScriptFields"];
-					if (scriptFields)
-					{
-						Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(sc.ClassName);
-
-						if (entityClass)
-						{
-							const auto& fields = entityClass->GetFields();
-							auto& entityFields = ScriptEngine::GetScriptFieldMap(deserializedEntity);
-
-							for (auto scriptField : scriptFields)
-							{
-								std::string name = scriptField["Name"].as<std::string>();
-								std::string typeString = scriptField["Type"].as<std::string>();
-								ScriptFieldType type = Utils::ScriptFieldTypeFromString(typeString);
-
-								ScriptFieldInstance& fieldInstance = entityFields[name];
-
-								// TODO(Yan): turn this assert into Hazelnut log warning
-								VOL_CORE_ASSERT(fields.find(name) != fields.end(), "Deserialize.ScriptComponent");
-
-								if (fields.find(name) == fields.end())
-									continue;
-
-								fieldInstance.Field = fields.at(name);
-
-								switch (type)
-								{
-									READ_SCRIPT_FIELD(Float,      float    );
-									READ_SCRIPT_FIELD(Double,     double   );
-									READ_SCRIPT_FIELD(Bool,       bool     );
-									READ_SCRIPT_FIELD(Char,       char     );
-									READ_SCRIPT_FIELD(Byte,       int8_t   );
-									READ_SCRIPT_FIELD(Short,      int16_t  );
-									READ_SCRIPT_FIELD(Int,        int32_t  );
-									READ_SCRIPT_FIELD(Long,       int64_t  );
-									READ_SCRIPT_FIELD(UByte,      uint8_t  );
-									READ_SCRIPT_FIELD(UShort,     uint16_t );
-									READ_SCRIPT_FIELD(UInt,       uint32_t );
-									READ_SCRIPT_FIELD(ULong,      uint64_t );
-									READ_SCRIPT_FIELD(Vector2,    glm::vec2);
-									READ_SCRIPT_FIELD(Vector3,    glm::vec3);
-									READ_SCRIPT_FIELD(Vector4,    glm::vec4);
-									READ_SCRIPT_FIELD(Quaternion, glm::quat);
-									READ_SCRIPT_FIELD(Matrix4x4,  glm::mat4);
-									READ_SCRIPT_FIELD(Entity,     UUID     );
-								}
-							}
-						}
-					}
-				}
-
-				auto spriteRendererComponent = entity["SpriteRendererComponent"];
-				if (spriteRendererComponent)
-				{
-					auto& src = deserializedEntity.AddComponent<SpriteRendererComponent>();
-					src.Color = spriteRendererComponent["Color"].as<glm::vec4>();
-					if (spriteRendererComponent["TexturePath"])
-					{
-						std::string texturePath = spriteRendererComponent["TexturePath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(texturePath);
-						src.Texture = Texture2D::Create(path.string());
-					}
-
-					if (spriteRendererComponent["TilingFactor"])
-						src.TilingFactor = spriteRendererComponent["TilingFactor"].as<float>();
-				}
-
-				auto circleRendererComponent = entity["CircleRendererComponent"];
-				if (circleRendererComponent)
-				{
-					auto& crc = deserializedEntity.AddComponent<CircleRendererComponent>();
-					crc.Color = circleRendererComponent["Color"].as<glm::vec4>();
-					if (circleRendererComponent["TexturePath"])
-						crc.Texture = Texture2D::Create(circleRendererComponent["TexturePath"].as<std::string>());
-					crc.Thickness = circleRendererComponent["Thickness"].as<float>();
-					crc.Fade = circleRendererComponent["Fade"].as<float>();
-				}
-
-				auto cubeRendererComponent = entity["CubeRendererComponent"];
-				if (cubeRendererComponent)
-				{
-					auto& crc = deserializedEntity.AddComponent<CubeRendererComponent>();
-					crc.Color = cubeRendererComponent["Color"].as<glm::vec4>();
-					if (cubeRendererComponent["DiffusePath"])
-					{
-						std::string diffusePath = cubeRendererComponent["DiffusePath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(diffusePath);
-						crc.Diffuse = Texture2D::Create(path.string());
-					}
-					if (cubeRendererComponent["SpecularPath"])
-					{
-						std::string specularPath = cubeRendererComponent["SpecularPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(specularPath);
-						crc.Specular = Texture2D::Create(path.string());
-					}
-					if (cubeRendererComponent["NormalPath"])
-					{
-						std::string normalPath = cubeRendererComponent["NormalPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(normalPath);
-						crc.Normal = Texture2D::Create(path.string());
-					}
-					if (cubeRendererComponent["ParallaxPath"])
-					{
-						std::string parallaxPath = cubeRendererComponent["ParallaxPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(parallaxPath);
-						crc.Parallax = Texture2D::Create(path.string());
-					}
-				}
-
-				auto sphereRendererComponent = entity["SphereRendererComponent"];
-				if (sphereRendererComponent)
-				{
-					auto& src = deserializedEntity.AddComponent<SphereRendererComponent>();
-					src.Color = sphereRendererComponent["Color"].as<glm::vec4>();
-					if (sphereRendererComponent["AlbedoPath"])
-					{
-						std::string albedoPath = sphereRendererComponent["AlbedoPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(albedoPath);
-						src.Albedo = Texture2D::Create(path.string());
-					}
-					if (sphereRendererComponent["NormalPath"])
-					{
-						std::string normalPath = sphereRendererComponent["NormalPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(normalPath);
-						src.Normal = Texture2D::Create(path.string());
-					}
-					if (sphereRendererComponent["MetallicPath"])
-					{
-						std::string metallicPath = sphereRendererComponent["MetallicPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(metallicPath);
-						src.Metallic = Texture2D::Create(path.string());
-					}
-					if (sphereRendererComponent["RoughnessPath"])
-					{
-						std::string roughnessPath = sphereRendererComponent["RoughnessPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(roughnessPath);
-						src.Roughness = Texture2D::Create(path.string());
-					}
-					if (sphereRendererComponent["AOPath"])
-					{
-						std::string AOPath = sphereRendererComponent["AOPath"].as<std::string>();
-						auto path = Project::GetAssetFileSystemPath(AOPath);
-						src.AO = Texture2D::Create(path.string());
-					}
-				}
-
-				auto modelRendererComponent = entity["ModelRendererComponent"];
-				if (modelRendererComponent)
-				{
-					auto& mrc = deserializedEntity.AddComponent<ModelRendererComponent>();
-					std::string specularPath = modelRendererComponent["ModelPath"].as<std::string>();
-					mrc.ModelPath = specularPath;
-				}
-
-				auto rigidbody2DComponent = entity["Rigidbody2DComponent"];
-				if (rigidbody2DComponent)
-				{
-					auto& rb2d = deserializedEntity.AddComponent<Rigidbody2DComponent>();
-					rb2d.Type = RigidBody2DBodyTypeFromString(rigidbody2DComponent["BodyType"].as<std::string>());
-					rb2d.FixedRotation = rigidbody2DComponent["FixedRotation"].as<bool>();
-				}
-
-				auto boxCollider2DComponent = entity["BoxCollider2DComponent"];
-				if (boxCollider2DComponent)
-				{
-					auto& bc2d = deserializedEntity.AddComponent<BoxCollider2DComponent>();
-					bc2d.Offset = boxCollider2DComponent["Offset"].as<glm::vec2>();
-					bc2d.Size = boxCollider2DComponent["Size"].as<glm::vec2>();
-					bc2d.Density = boxCollider2DComponent["Density"].as<float>();
-					bc2d.Friction = boxCollider2DComponent["Friction"].as<float>();
-					bc2d.Restitution = boxCollider2DComponent["Restitution"].as<float>();
-					bc2d.RestitutionThreshold = boxCollider2DComponent["RestitutionThreshold"].as<float>();
-				}
-
-				auto circleCollider2DComponent = entity["CircleCollider2DComponent"];
-				if (circleCollider2DComponent)
-				{
-					auto& cc2d = deserializedEntity.AddComponent<CircleCollider2DComponent>();
-					cc2d.Offset = circleCollider2DComponent["Offset"].as<glm::vec2>();
-					cc2d.Radius = circleCollider2DComponent["Radius"].as<float>();
-					cc2d.Density = circleCollider2DComponent["Density"].as<float>();
-					cc2d.Friction = circleCollider2DComponent["Friction"].as<float>();
-					cc2d.Restitution = circleCollider2DComponent["Restitution"].as<float>();
-					cc2d.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
-				}
-			}
-		}
+				DeserializeLoadEntity(entity, m_Scene.get());
 		return true;
 	}
 

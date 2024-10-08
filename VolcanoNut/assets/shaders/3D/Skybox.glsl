@@ -4,7 +4,7 @@ layout (location = 0) in vec3 a_Position;
 
 layout(std140, binding = 7) uniform CameraData
 {
-	mat4 u_View; // 传入的view矩阵经过mat4(mat3(view))，去除了移动
+	mat4 u_View;
     mat4 u_Projection;
 };
 
@@ -13,7 +13,9 @@ layout (location = 0) out vec3 v_TexCoords;
 void main()
 {
     v_TexCoords = a_Position;
-    vec4 position = u_Projection * u_View * vec4(a_Position, 1.0);
+    
+    mat4 view = mat4(mat3(u_View)); // 去除移动
+    vec4 position = u_Projection * view * vec4(a_Position, 1.0);
     gl_Position = position.xyww;
 }  
 

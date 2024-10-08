@@ -16,7 +16,6 @@
 
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/Renderer2D.h"
-#include "Volcano/Renderer/Renderer3D.h"
 #include "Volcano/Renderer/Framebuffer.h"
 #include "Volcano/Renderer/VertexArray.h"
 #include "Volcano/Renderer/Texture.h"

@@ -219,9 +219,6 @@
     <ClInclude Include="src\Volcano\Renderer\Renderer2D.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\Renderer3D.h">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
@@ -1542,6 +1539,12 @@
     <ClInclude Include="src\Volcano\Renderer\RenderPass.h" />
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Sphere.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Cube.h" />
+    <ClInclude Include="src\Volcano\Renderer\SceneRenderer.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Quad.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\FullQuad.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\MeshTemp.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\CubeMesh.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1646,9 +1649,6 @@
     <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\Renderer3D.cpp">
-      <Filter>src\Volcano\Renderer</Filter>
-    </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\RendererModel.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
@@ -1712,5 +1712,11 @@
     <ClCompile Include="src\Volcano\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Sphere.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Cube.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\SceneRenderer.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Quad.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\FullQuad.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\MeshTemp.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\CubeMesh.cpp" />
   </ItemGroup>
 </Project>

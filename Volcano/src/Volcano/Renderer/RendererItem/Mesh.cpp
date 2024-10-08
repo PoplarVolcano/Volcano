@@ -24,10 +24,6 @@ namespace Volcano {
             { ShaderDataType::Float2, "a_TexCoords"       },
             { ShaderDataType::Float3, "a_Tangent"         },
             { ShaderDataType::Float3, "a_Bitangent"       },
-			{ ShaderDataType::Float,  "a_DiffuseIndex"    },
-			{ ShaderDataType::Float,  "a_SpecularIndex"   },
-			{ ShaderDataType::Float,  "a_NormalIndex"     },
-			{ ShaderDataType::Float,  "a_ParallaxIndex"   },
             { ShaderDataType::Int,    "a_EntityID"        },
             { ShaderDataType::Int4,   "a_BoneIDs"         },
             { ShaderDataType::Float4, "a_Weights"         }
@@ -100,10 +96,6 @@ namespace Volcano {
             vertexBufferPtr->TexCoords     = vertices[i].TexCoords;
             vertexBufferPtr->Tangent       = normalTransform * vertices[i].Tangent;
             vertexBufferPtr->Bitangent     = glm::cross(vertexBufferPtr->Normal, vertexBufferPtr->Tangent);
-            vertexBufferPtr->DiffuseIndex  = diffuseIndex;
-            vertexBufferPtr->SpecularIndex = specularIndex;
-            vertexBufferPtr->NormalIndex   = normalIndex;
-            vertexBufferPtr->ParallaxIndex = parallaxIndex;
             vertexBufferPtr->EntityID      = entityID;
             glm::vec4 totalPosition = glm::vec4(0.0f);
             for (uint32_t index = 0; index < MAX_BONE_INFLUENCE; index++)

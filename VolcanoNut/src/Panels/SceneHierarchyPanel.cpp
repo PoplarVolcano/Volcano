@@ -19,8 +19,8 @@ namespace Volcano {
 		m_Context = context;
 		if (m_SelectionContext)
 		{
-			UUID SelectedEntityID = m_SelectionContext.GetUUID();
-			Entity target = m_Context->GetEntityByUUID(SelectedEntityID);
+			UUID SelectedEntityID = m_SelectionContext->GetUUID();
+			Ref<Entity> target = m_Context->GetEntityByUUID(SelectedEntityID);
 			if(target)
 				m_SelectionContext = target;
 			else
@@ -45,10 +45,10 @@ namespace Volcano {
 				ImGui::EndPopup();
 			}
 
-			for (auto entityID : m_Context->m_Registry.view<entt::entity>())
+			auto entityNameMap = m_Context->GetEntityNameMap();
+			for (auto itr = entityNameMap.begin(); itr != entityNameMap.end(); itr++)
 			{
-				Entity entity{ entityID, m_Context.get() };
-				DrawEntityNode(entity);
+				DrawEntityNode(itr->second);
 			}
 
 			if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
@@ -66,19 +66,19 @@ namespace Volcano {
 		ImGui::End();
 	}
 
-	void SceneHierarchyPanel::SetSelectedEntity(Entity entity)
+	void SceneHierarchyPanel::SetSelectedEntity(Ref<Entity> entity)
 	{
 		m_SelectionContext = entity;
 	}
 
-	void SceneHierarchyPanel::DrawEntityNode(Entity entity)
+	void SceneHierarchyPanel::DrawEntityNode(Ref<Entity> entity)
 	{
-		auto& tag = entity.GetComponent<TagComponent>().Tag;
+		auto& tag = entity->GetComponent<TagComponent>().Tag;
 		// 若是被点击标记为选中状态|有下一级
 		ImGuiTreeNodeFlags flags = ((m_SelectionContext == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
 		flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
 		// 第一个参数是唯一ID 64的，
-		bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, tag.c_str());
+		bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity.get(), flags, tag.c_str());
 		if (ImGui::IsItemClicked())
 		{
 			m_SelectionContext = entity;
@@ -88,6 +88,10 @@ namespace Volcano {
 		//if (ImGui::BeginPopupContextWindow(0, 1))
 		if (ImGui::BeginPopupContextItem())
 		{
+			if (ImGui::MenuItem("Create Empty Entity"))
+			{
+				m_Context->CreateEntity("Empty Entity", entity);
+			}
 			if (ImGui::MenuItem("Delete Entity"))
 				entityDeleted = true;
 			ImGui::EndPopup();
@@ -95,18 +99,26 @@ namespace Volcano {
 
 		if (opened)
 		{
-			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
-			bool opened = ImGui::TreeNodeEx((void*)10086, flags, tag.c_str());
-			if (opened)
-				ImGui::TreePop();
+			auto entityChildren = entity->GetEntityChildren();
+			for (auto& [name, entityChild] : entityChildren)
+			{
+				DrawEntityNode(entityChild);
+				//ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
+				//bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity.m_Children[i], flags, tag.c_str());
+				//if (opened)
+				//	ImGui::TreePop();
+			}
 			ImGui::TreePop();
 		}
 
 		if (entityDeleted)
 		{
-			m_Context->DestroyEntity(entity);
 			if (m_SelectionContext == entity)
 				m_SelectionContext = {};
+			if(entity->GetEntityParent())
+			    m_Context->DestroyEntityChild(entity);
+			else
+				m_Context->DestroyEntity(entity);
 		}
 	}
 
@@ -179,7 +191,7 @@ namespace Volcano {
 	}
 
 	template<typename T, typename UIFunction>
-	static void DrawComponent(const std::string& name, Entity entity, UIFunction uiFunction)
+	static void DrawComponent(const std::string& name, Ref<Entity> entity, UIFunction uiFunction)
 	{
 		const ImGuiTreeNodeFlags treeNodeFlags = 
 			ImGuiTreeNodeFlags_DefaultOpen 
@@ -187,9 +199,9 @@ namespace Volcano {
 			| ImGuiTreeNodeFlags_SpanAvailWidth 
 			| ImGuiTreeNodeFlags_AllowItemOverlap 
 			| ImGuiTreeNodeFlags_FramePadding;
-		if (entity.HasComponent<T>())
+		if (entity->HasComponent<T>())
 		{
-			auto& component = entity.GetComponent<T>();
+			auto& component = entity->GetComponent<T>();
 			// 为了定位+按钮在最右边
 			ImVec2 contentRegionAvailable = ImGui::GetContentRegionAvail();
 
@@ -221,22 +233,44 @@ namespace Volcano {
 				ImGui::TreePop();
 			}
 			if (removeComponent)
-				entity.RemoveComponent<T>();
+				entity->RemoveComponent<T>();
 		}
 
 	}
 
-	void SceneHierarchyPanel::DrawComponents(Entity entity)
+	void SceneHierarchyPanel::DrawComponents(Ref<Entity> entity)
 	{
-		if (entity.HasComponent<TagComponent>())
+		if (entity->HasComponent<TagComponent>())
 		{
-			auto& tag = entity.GetComponent<TagComponent>().Tag;
+			auto& tag = entity->GetComponent<TagComponent>().Tag;
 			char buffer[256];
 			memset(buffer, 0, sizeof(buffer));
 			strncpy_s(buffer, sizeof(buffer), tag.c_str(), sizeof(buffer));
-			if (ImGui::InputText("##Tag", buffer, sizeof(buffer)))
+
+			ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue;
+
+			if (ImGui::InputText("##Tag", buffer, sizeof(buffer), flags))
 			{
-				tag = std::string(buffer);
+				Entity* entityParent = entity->GetEntityParent();
+				if (entityParent)
+				{
+					auto& entityMap = entityParent->GetEntityChildren();
+					Ref<Entity> entityTemp = entityMap[tag];
+					entityMap.erase(tag);
+					std::string newName = Scene::NewName(entityMap, buffer);
+					entityMap[newName] = entityTemp;
+					tag = std::string(newName);
+
+				}
+				else
+				{
+					auto& entityMap = m_Context->GetEntityNameMap();
+					Ref<Entity> entityTemp = entityMap[tag];
+					entityMap.erase(tag);
+					std::string newName = Scene::NewName(entityMap, buffer);
+					entityMap[newName] = entityTemp;
+					tag = std::string(newName);
+				}
 			}
 		}
 
@@ -251,8 +285,9 @@ namespace Volcano {
 			DisplayAddComponentEntry<CameraComponent>("Camera");
 			DisplayAddComponentEntry<ScriptComponent>("Script");
 			DisplayAddComponentEntry<SpriteRendererComponent>("Sprite Renderer");
+			DisplayAddComponentEntry<MeshComponent>("Mesh");
+			DisplayAddComponentEntry<MeshRendererComponent>("Mesh Renderer");
 			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
-			DisplayAddComponentEntry<CubeRendererComponent>("Cube Renderer");
 			DisplayAddComponentEntry<SphereRendererComponent>("Sphere Renderer");
 			DisplayAddComponentEntry<ModelRendererComponent>("Model Renderer");
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
@@ -410,7 +445,7 @@ namespace Volcano {
 				if (sceneRunning)
 				{
 					// 运行状态下将mono类获取的字段实时返回editor
-					Ref<ScriptInstance> scriptInstance = ScriptEngine::GetEntityScriptInstance(entity.GetUUID());
+					Ref<ScriptInstance> scriptInstance = ScriptEngine::GetEntityScriptInstance(entity->GetUUID());
 					if (scriptInstance)
 					{
 						const auto& fields = scriptInstance->GetScriptClass()->GetFields();
@@ -440,7 +475,7 @@ namespace Volcano {
 						const auto& fields = entityClass->GetFields();
 
 						// 获取字段field的map
-						auto& entityFields = ScriptEngine::GetScriptFieldMap(entity);
+						auto& entityFields = ScriptEngine::GetScriptFieldMap(*entity.get());
 						for (const auto& [name, field] : fields)
 						{
 							// Field has been set in editor
@@ -494,6 +529,57 @@ namespace Volcano {
 				ImGui::DragFloat("Tiling Factor", &component.TilingFactor, 0.1f, 0.0f, 100.0f);
 			});
 
+		DrawComponent<MeshComponent>("Mesh", entity, [entity](MeshComponent& component)
+			{
+				const char* items[] = { "None", "Quad", "Circle", "Line", "Cube", "Sphere" };
+				int meshType = (int)component.meshType;
+				if (ImGui::Combo("MeshType", &meshType, items, IM_ARRAYSIZE(items)))
+				{
+					component.SetMeshType((MeshType)meshType, entity.get());
+				}
+			});
+
+		DrawComponent<MeshRendererComponent>("Mesh Renderer", entity, [](MeshRendererComponent& component)
+			{
+				const char* items[] = { "Diffuse", "Specular", "Normal", "Height" };
+				auto& textures = component.Textures;
+
+				for (uint32_t i = 0; i < textures.size(); i++)
+				{
+					ImGui::PushID(i);
+					int imageType = (int)textures[i].first;
+					if (ImGui::Combo("ImageType", &imageType, items, IM_ARRAYSIZE(items)))
+					{
+						component.Textures[i].first = (ImageType)imageType;
+					}
+
+					//ImGui::SameLine();
+
+					if (ImGui::Button(items[(int)textures[i].first], ImVec2(100.0f, 50.0f)))
+						textures[i].second = nullptr;
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+						{
+							const wchar_t* path = (const wchar_t*)payload->Data;
+							std::filesystem::path filePath = path;
+							textures[i].second = Texture2D::Create(filePath.string());
+						}
+						ImGui::EndDragDropTarget();
+					}
+					ImGui::PopID();
+				}
+
+				if(ImGui::Button("+"))
+					component.AddTexture();
+
+				ImGui::SameLine();
+
+				if (ImGui::Button("-"))
+					if (textures.size() > 0)
+						component.DeleteTexture(textures.size() - 1);
+			});
+
 		DrawComponent<CircleRendererComponent>("Circle Renderer", entity, [](auto& component)
 			{
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
@@ -513,63 +599,6 @@ namespace Volcano {
 
 				ImGui::DragFloat("Thickness", &component.Thickness, 0.025f, 0.0f, 1.0f);
 				ImGui::DragFloat("Fade", &component.Fade, 0.00025f, 0.0f, 1.0f);
-			});
-
-		DrawComponent<CubeRendererComponent>("Cube Renderer", entity, [](auto& component)
-			{
-				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
-
-				if (ImGui::Button("Diffuse", ImVec2(100.0f, 100.0f)))
-					component.Diffuse = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path diffusePath = path;
-						component.Diffuse = Texture2D::Create(diffusePath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				if (ImGui::Button("Specular", ImVec2(100.0f, 100.0f)))
-					component.Specular = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path specularPath = path;
-						component.Specular = Texture2D::Create(specularPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				if (ImGui::Button("Normal", ImVec2(100.0f, 100.0f)))
-					component.Normal = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path normalPath = path;
-						component.Normal = Texture2D::Create(normalPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				if (ImGui::Button("Parallax", ImVec2(100.0f, 100.0f)))
-					component.Parallax = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path parallaxPath = path;
-						component.Parallax = Texture2D::Create(parallaxPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
 			});
 
 		DrawComponent<SphereRendererComponent>("Sphere Renderer", entity, [](auto& component)
@@ -707,11 +736,11 @@ namespace Volcano {
 	template<typename T>
 	inline void SceneHierarchyPanel::DisplayAddComponentEntry(const std::string& entryName)
 	{
-		if (!m_SelectionContext.HasComponent<T>())
+		if (!m_SelectionContext->HasComponent<T>())
 		{
 			if (ImGui::MenuItem(entryName.c_str()))
 			{
-				m_SelectionContext.AddComponent<T>();
+				m_SelectionContext->AddComponent<T>();
 				ImGui::CloseCurrentPopup();
 			}
 		}

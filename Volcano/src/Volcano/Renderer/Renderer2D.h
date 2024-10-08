@@ -7,6 +7,8 @@
 #include "Volcano/Renderer/SubTexture2D.h"
 #include "EditorCamera.h"
 
+#include "Volcano/Renderer/RendererItem/Quad.h"
+
 #include "Volcano/Scene/Components.h"
 
 namespace Volcano {
@@ -68,6 +70,8 @@ namespace Volcano {
 	private:
 		static void StartBatch();
 		static void NextBatch();
+
+		static Ref<QuadData> m_QuadData;
 	};
 
 }

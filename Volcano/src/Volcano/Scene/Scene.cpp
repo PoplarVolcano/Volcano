@@ -4,9 +4,10 @@
 #include "Components.h"
 #include "ScriptableEntity.h"
 #include "Volcano/Scripting/ScriptEngine.h"
+#include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/RendererAPI.h"
 #include "Volcano/Renderer/Renderer2D.h"
-#include "Volcano/Renderer/Renderer3D.h"
+//#include "Volcano/Renderer/Renderer3D.h"
 #include "Volcano/Renderer/RendererModel.h"
 #include "Volcano/Renderer/RendererItem/Sphere.h"
 #include "Volcano/Renderer/RendererItem/Skybox.h"
@@ -27,10 +28,6 @@
 
 namespace Volcano {
 
-	static Ref<UniformBuffer> s_DirectionalLightSpaceMatrixUniformBuffer;
-	static Ref<UniformBuffer> s_PointLightSpaceMatrixUniformBuffer;
-	static Ref<UniformBuffer> s_SpotLightSpaceMatrixUniformBuffer;
-
 	Scene::Scene()
 	{
 		InitializeUniform();
@@ -43,17 +40,11 @@ namespace Volcano {
 
 	void Scene::InitializeUniform()
 	{
-		s_DirectionalLightUniformBuffer            = UniformBuffer::Create((4 + 4 + 4 + 4) * sizeof(float), 2);
-		s_PointLightUniformBuffer                  = UniformBuffer::Create((4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float), 3);
-		s_SpotLightUniformBuffer                   = UniformBuffer::Create((4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
-		s_DirectionalLightSpaceMatrixUniformBuffer = UniformBuffer::Create(4 * 4 * sizeof(float), 8);
-		s_PointLightSpaceMatrixUniformBuffer       = UniformBuffer::Create((4 * 4 * 6 + 1) * sizeof(float), 9);
-		s_SpotLightSpaceMatrixUniformBuffer        = UniformBuffer::Create((4 * 4 + 1) * sizeof(float), 10);
 	}
 
 	// 将源注册表下实体复制到目标注册表，Map以UUID作为标记获取新实体
 	template<typename... Component>
-	static void CopyComponent(entt::registry& dst, entt::registry& src, const std::unordered_map<UUID, entt::entity>& enttMap)
+	static void CopyComponent(entt::registry& dst, entt::registry& src, const std::unordered_map<UUID, Ref<Entity>>& entityIDMap)
 	{ 
 		// 这个lambda会递归调用
 		// [&]表示引用传递方式捕捉所有父作用域的变量（包括this）
@@ -63,7 +54,7 @@ namespace Volcano {
 			auto view = src.view<Component>();
 			for (auto srcEntity : view)
 			{
-				entt::entity dstEntity = enttMap.at(src.get<IDComponent>(srcEntity).ID);
+				entt::entity dstEntity = entityIDMap.at(src.get<IDComponent>(srcEntity).ID)->GetEntityHandle();
 				auto& srcComponent = src.get<Component>(srcEntity);
 				dst.emplace_or_replace<Component>(dstEntity, srcComponent);
 			}
@@ -72,78 +63,153 @@ namespace Volcano {
 	}
 
 	template<typename... Component>
-	static void CopyComponent(ComponentGroup<Component...>, entt::registry& dst, entt::registry& src, const std::unordered_map<UUID, entt::entity>& enttMap)
+	static void CopyComponent(ComponentGroup<Component...>, entt::registry& dst, entt::registry& src, const std::unordered_map<UUID, Ref<Entity>>& entityIDMap)
 	{
-		CopyComponent<Component...>(dst, src, enttMap);
+		CopyComponent<Component...>(dst, src, entityIDMap);
 	}
 
 	// 如果源实体存在则把对应组件复制到目标实体
 	template<typename... Component>
-	static void CopyComponentIfExists(Entity dst, Entity src)
+	static void CopyComponentIfExists(Ref<Entity> dst, Ref<Entity> src)
 	{
 		([&]()
 		{
-			if (src.HasComponent<Component>())
-				dst.AddOrReplaceComponent<Component>(src.GetComponent<Component>());
+			if (src->HasComponent<Component>())
+				dst->AddOrReplaceComponent<Component>(src->GetComponent<Component>());
 		}(), ...);
 	}
 
 	template<typename... Component>
-	static void CopyComponentIfExists(ComponentGroup<Component...>, Entity dst, Entity src)
+	static void CopyComponentIfExists(ComponentGroup<Component...>, Ref<Entity> dst, Ref<Entity> src)
 	{
 		CopyComponentIfExists<Component...>(dst, src);
+	}
+
+	void CopyEntityChildren(Ref<Entity>& srcEntity, Ref<Entity>& dstEntity, std::unordered_map<UUID, Ref<Entity>>& entityIDMap, std::unordered_map<entt::entity, Ref<Entity>>& entityEnttMap)
+	{
+		if (!srcEntity->GetEntityChildren().empty())
+		{
+			auto& dstEntityChildren = dstEntity->GetEntityChildren();
+			for (auto& [name, entityChild] : srcEntity->GetEntityChildren())
+			{
+				Ref<Entity> entity = Entity::Create(*dstEntity->GetScene(), entityChild->GetUUID(), entityChild->GetName());
+				entity->SetEntityParent(srcEntity.get());
+				entityIDMap[entity->GetUUID()] = entity;
+				entityEnttMap[entity->GetEntityHandle()] = entity;
+				dstEntityChildren[entityChild->GetName()] = entity;
+				CopyEntityChildren(entityChild, entity, entityIDMap, entityEnttMap);
+			}
+		}
 	}
 
 	Ref<Scene> Scene::Copy(Ref<Scene> other)
 	{
 		// 创建新场景，为新场景创建和旧场景同名和uuid的实体，并用map存入（旧实体的uuid对应新实体）的关系
 		Ref<Scene> newScene = CreateRef<Scene>();
-		newScene->m_ViewportWidth = other->m_ViewportWidth;
+		newScene->m_ViewportWidth  = other->m_ViewportWidth;
 		newScene->m_ViewportHeight = other->m_ViewportHeight;
 
 		auto& srcSceneRegistry = other->m_Registry;
 		auto& dstSceneRegistry = newScene->m_Registry;
-		std::unordered_map<UUID, entt::entity> enttMap;
+		auto& entityIDMap   = newScene->GetEntityIDMap();
+		auto& entityEnttMap = newScene->GetEntityEnttMap();
+		auto& entityNameMap = newScene->GetEntityNameMap();
 
-		// 遍历旧场景所有uuid组件的旧实体，用旧实体的uuid和name创建新实体
-		auto idView = srcSceneRegistry.view<IDComponent>();
-		for (auto e : idView)
+		for (auto& [name, entityChild] : other->GetEntityNameMap())
 		{
-			UUID uuid = srcSceneRegistry.get<IDComponent>(e).ID;
-			const auto& name = srcSceneRegistry.get<TagComponent>(e).Tag;
-			Entity newEntity = newScene->CreateEntityWithUUID(uuid, name);
-			enttMap[uuid] = (entt::entity)newEntity;
+			Ref<Entity> entity = Entity::Create(*newScene.get(), entityChild->GetUUID(), entityChild->GetName());
+			entityIDMap[entity->GetUUID()] = entity;
+			entityEnttMap[entity->GetEntityHandle()] = entity;
+			entityNameMap[entity->GetName()] = entity;
+			CopyEntityChildren(entityChild, entity, entityIDMap, entityEnttMap);
 		}
 
 		// 获取旧实体的所有组件，然后用API，复制旧实体的所有组件给新实体，复制组件会包括复制组件的属性值
 		// Copy components (except IDComponent and TagComponent)
-		CopyComponent(AllComponents{}, dstSceneRegistry, srcSceneRegistry, enttMap);
+		CopyComponent(AllComponents{}, dstSceneRegistry, srcSceneRegistry, entityIDMap);
+
+		// MeshComponent的Mesh指针复制后还是绑定旧mesh，旧mesh绑定旧Entity，需要单独遍历一遍重新声明新mesh并绑定新Entity
+		auto view = dstSceneRegistry.view<MeshComponent>();
+		for (auto entity : view)
+		{
+			auto& mc = dstSceneRegistry.get<MeshComponent>(entity);
+			mc.SetMeshType(mc.meshType, entityEnttMap[entity].get());
+		}
 
 		return newScene;
 	}
 
-	Entity Scene::CreateEntity(const std::string& name)
+	Ref<Entity> Scene::CreateEntity(const std::string& name, Ref<Entity> entity)
 	{
-		return CreateEntityWithUUID(UUID(), name);
+		return CreateEntityWithUUID(UUID(), name, entity);
 	}
 
-	Entity Scene::CreateEntityWithUUID(UUID uuid, const std::string & name)
+	std::string Scene::NewName(std::map<std::string, Ref<Entity>> entityNameMap, std::string name)
 	{
-		Entity entity = { m_Registry.create(), this };
-		entity.AddComponent<TransformComponent>();
-		entity.AddComponent<IDComponent>(uuid); // 使用实参uuid，不创建新的
-		auto& tag = entity.AddComponent<TagComponent>();
-		tag.Tag = name.empty() ? "Entity" : name;
+		std::string newName = name;
+		if (entityNameMap.find(newName) != entityNameMap.end())
+		{
+			int i = 0;
+			do
+			{
+				newName = name + "(" + std::to_string(i) + ")";
+				i++;
+			} while (entityNameMap.find(newName) != entityNameMap.end());
+		}
 
-		m_EntityMap[uuid] = entity;
-
-		return entity;
+		return newName;
 	}
 
-	void Scene::DestroyEntity(Entity entity)
+	Ref<Entity> Scene::CreateEntityWithUUID(UUID uuid, const std::string& name, Ref<Entity> entity)
 	{
-		m_EntityMap.erase(entity.GetUUID());
-		m_Registry.destroy(entity);
+		Ref<Entity> entityTemp;
+
+		if (entity != nullptr)
+		{
+			entityTemp = entity->SetEntityChild(uuid, name);
+			m_EntityIDMap[entityTemp->GetUUID()] = entityTemp;
+			m_EntityEnttMap[entityTemp->GetEntityHandle()] = entityTemp;
+			return entityTemp;
+		}
+
+		std::string newName = NewName(m_EntityNameMap, name);
+
+		entityTemp = Entity::Create(*this, uuid, newName);
+		m_EntityIDMap[entityTemp->GetUUID()] = entityTemp;
+		m_EntityEnttMap[entityTemp->GetEntityHandle()] = entityTemp;
+		m_EntityNameMap[entityTemp->GetName()] = entityTemp;
+
+		return entityTemp;
+	}
+
+
+	void Scene::DestroyEntityChild(Ref<Entity> entity)
+	{
+		auto entityChildren = entity->GetEntityChildren();
+		for (auto& [name, entityChild] : entityChildren)
+		{
+			auto& entityChildrenRef = entity->GetEntityChildren();
+			entityChildrenRef.erase(entityChild->GetName());
+			DestroyEntityChild(entityChild);
+		}
+		m_EntityIDMap.erase(entity->GetUUID());
+		m_EntityEnttMap.erase(entity->GetEntityHandle());
+		entity->GetEntityParent()->GetEntityChildren().erase(entity->GetName());
+		m_Registry.destroy(*entity.get());
+	}
+	void Scene::DestroyEntity(Ref<Entity> entity)
+	{
+		auto entityChildren = entity->GetEntityChildren();
+		for (auto& [name, entityChild] : entityChildren)
+		{
+			auto& entityChildrenRef = entity->GetEntityChildren();
+			entityChildrenRef.erase(entityChild->GetName());
+			DestroyEntityChild(entityChild);
+		}
+		m_EntityIDMap.erase(entity->GetUUID());
+		m_EntityEnttMap.erase(entity->GetEntityHandle());
+		m_EntityNameMap.erase(entity->GetName());
+		m_Registry.destroy(*entity.get());
 	}
 
 	void Scene::OnRuntimeStart()
@@ -157,8 +223,8 @@ namespace Volcano {
 			auto view = m_Registry.view<ScriptComponent>();
 			for (auto e : view)
 			{
-				Entity entity = { e, this };
-				ScriptEngine::OnCreateEntity(entity);
+				//Entity entity = { e, this };
+				ScriptEngine::OnCreateEntity(*m_EntityEnttMap[e].get());
 			}
 		}
 	}
@@ -192,9 +258,9 @@ namespace Volcano {
 		auto view = m_Registry.view<Rigidbody2DComponent>();
 		for (auto e : view)
 		{
-			Entity entity = { e, this };
-			auto& transform = entity.GetComponent<TransformComponent>();
-			auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+			//Entity entity = { e, this };
+			auto& transform = m_EntityEnttMap[e]->GetComponent<TransformComponent>();
+			auto& rb2d = m_EntityEnttMap[e]->GetComponent<Rigidbody2DComponent>();
 
 			// 获取物理模拟计算后的主体
 			b2Body* body = (b2Body*)rb2d.RuntimeBody;
@@ -217,8 +283,8 @@ namespace Volcano {
 				auto view = m_Registry.view<ScriptComponent>();
 				for (auto e : view)
 				{
-					Entity entity = { e, this };
-					ScriptEngine::OnUpdateEntity(entity, ts);
+					//Entity entity = { e, this };
+					ScriptEngine::OnUpdateEntity(*m_EntityEnttMap[e].get(), ts);
 				}
 
 				m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
@@ -236,11 +302,25 @@ namespace Volcano {
 			Physics(ts);
 		}
 
-		auto view = m_Registry.view<TransformComponent, ModelRendererComponent>();
-		for (auto entity : view)
 		{
-			RendererModel::Update(ts);
+			auto view = m_Registry.view<TransformComponent>();
+			for (auto entity : view)
+			{
+				auto transform = view.get<TransformComponent>(entity);
+				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
+			}
 		}
+
+		{
+			auto view = m_Registry.view<TransformComponent, ModelRendererComponent>();
+			for (auto entity : view)
+			{
+				RendererModel::Update(ts);
+			}
+		}
+
+
+		UpdateLight();
 	}
 
 	void Scene::OnRenderRuntime(Timestep ts)
@@ -251,11 +331,11 @@ namespace Volcano {
 		glm::vec3 cameraPosition;
 		glm::vec3 cameraDirection;
 		{
-			Entity mainCameraEntity = GetPrimaryCameraEntity();
+			Ref<Entity> mainCameraEntity = GetPrimaryCameraEntity();
 			if (mainCameraEntity)
 			{
-				auto& transform = mainCameraEntity.GetComponent<TransformComponent>();
-				auto& camera = mainCameraEntity.GetComponent<CameraComponent>();
+				auto& transform = mainCameraEntity->GetComponent<TransformComponent>();
+				auto& camera = mainCameraEntity->GetComponent<CameraComponent>();
 				mainCamera = &camera.Camera;
 				cameraTransform = transform.GetTransform();
 				cameraPosition = transform.Translation;
@@ -272,6 +352,17 @@ namespace Volcano {
 	{
 		if (!m_IsPaused || m_StepFrames-- > 0)
 			Physics(ts);
+
+		{
+			auto view = m_Registry.view<TransformComponent>();
+			for (auto entity : view)
+			{
+				auto transform = view.get<TransformComponent>(entity);
+				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
+			}
+		}
+
+		UpdateLight();
 	}
 
 	void Scene::OnRenderSimulation(Timestep ts, EditorCamera& camera)
@@ -282,11 +373,24 @@ namespace Volcano {
 
 	void Scene::OnUpdateEditor(Timestep ts, EditorCamera& camera)
 	{
+
+		{
+			auto view = m_Registry.view<TransformComponent>();
+			for (auto entity : view)
+			{
+				auto transform = view.get<TransformComponent>(entity);
+				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
+			}
+		}
+
 		auto view = m_Registry.view<TransformComponent, ModelRendererComponent>();
 		for (auto entity : view)
 		{
 			RendererModel::Update(ts);
 		}
+
+
+		UpdateLight();
 	}
 
 	void Scene::OnRenderEditor(Timestep ts, EditorCamera& camera)
@@ -319,28 +423,28 @@ namespace Volcano {
 		m_StepFrames = frames;
 	}
 
-	Entity Scene::DuplicateEntity(Entity entity)
+	Ref<Entity> Scene::DuplicateEntity(Ref<Entity> entity)
 	{
 		// Copy name because we're going to modify component data structure
-		std::string name = entity.GetName();
-		Entity newEntity = CreateEntity(name);
+		std::string name = entity->GetName();
+		Ref<Entity> newEntity = CreateEntity(name);
 		CopyComponentIfExists(AllComponents{}, newEntity, entity);
 		return newEntity;
 	}
 
-	Entity Scene::GetPrimaryCameraEntity()
+	Ref<Entity> Scene::GetPrimaryCameraEntity()
 	{
 		auto view = m_Registry.view<CameraComponent>();
 		for (auto entity : view)
 		{
 			auto camera = view.get<CameraComponent>(entity);
 			if (camera.Primary)
-				return Entity{ entity, this };
+				return m_EntityEnttMap[entity];
 		}
 		return {};
 	}
 	
-	Entity Scene::GetDirectionalLightEntity()
+	Ref<Entity> Scene::GetDirectionalLightEntity()
 	{
 		// 获取光源
 		auto view = m_Registry.view<LightComponent>();
@@ -348,12 +452,12 @@ namespace Volcano {
 		{
 			auto light = view.get<LightComponent>(entity);
 			if (light.Type == LightComponent::LightType::DirectionalLight)
-				return Entity{ entity, this };
+				return m_EntityEnttMap[entity];
 		}
 		return {};
 	}
 
-	Entity Scene::GetPointLightEntity()
+	Ref<Entity> Scene::GetPointLightEntity()
 	{
 		// 获取光源
 		auto view = m_Registry.view<LightComponent>();
@@ -361,12 +465,12 @@ namespace Volcano {
 		{
 			auto light = view.get<LightComponent>(entity);
 			if (light.Type == LightComponent::LightType::PointLight)
-				return Entity{ entity, this };
+				return m_EntityEnttMap[entity];
 		}
 		return {};
 	}
 
-	Entity Scene::GetSpotLightEntity()
+	Ref<Entity> Scene::GetSpotLightEntity()
 	{
 		// 获取光源
 		auto view = m_Registry.view<LightComponent>();
@@ -374,27 +478,27 @@ namespace Volcano {
 		{
 			auto light = view.get<LightComponent>(entity);
 			if (light.Type == LightComponent::LightType::SpotLight)
-				return Entity{ entity, this };
+				return m_EntityEnttMap[entity];
 		}
 		return {};
 	}
 
-	Entity Scene::FindEntityByName(std::string_view name)
+	Ref<Entity> Scene::FindEntityByName(std::string_view name)
 	{
 		auto view = m_Registry.view<TagComponent>();
 		for (auto entity : view)
 		{
 			const TagComponent& tc = view.get<TagComponent>(entity);
 			if (tc.Tag == name)
-				return Entity{ entity, this };
+				return m_EntityEnttMap[entity];
 		}
 		return {};
 	}
 
-	Entity Scene::GetEntityByUUID(UUID uuid)
+	Ref<Entity> Scene::GetEntityByUUID(UUID uuid)
 	{
-		if (m_EntityMap.find(uuid) != m_EntityMap.end())
-			return { m_EntityMap.at(uuid), this };
+		if (m_EntityIDMap.find(uuid) != m_EntityIDMap.end())
+			return m_EntityIDMap[uuid];
 
 		return {};
 	}
@@ -409,9 +513,9 @@ namespace Volcano {
 		auto view = m_Registry.view<Rigidbody2DComponent>();
 		for (auto e : view)
 		{
-			Entity entity = { e, this };
-			auto& transform = entity.GetComponent<TransformComponent>();
-			auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+			Ref<Entity> entity = m_EntityEnttMap[e];
+			auto& transform = entity->GetComponent<TransformComponent>();
+			auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
 
 			// 主体定义用来指定动态类型和参数
 			b2BodyDef bodyDef;
@@ -426,9 +530,9 @@ namespace Volcano {
 			body->SetFixedRotation(rb2d.FixedRotation);
 			rb2d.RuntimeBody = body;
 
-			if (entity.HasComponent<BoxCollider2DComponent>())
+			if (entity->HasComponent<BoxCollider2DComponent>())
 			{
-				auto& bc2d = entity.GetComponent<BoxCollider2DComponent>();
+				auto& bc2d = entity->GetComponent<BoxCollider2DComponent>();
 				// 定义盒子包围盒
 				b2PolygonShape boxShape;
 				boxShape.SetAsBox(bc2d.Size.x * transform.Scale.x, bc2d.Size.y * transform.Scale.y);
@@ -444,9 +548,9 @@ namespace Volcano {
 				body->CreateFixture(&fixtureDef);
 			}
 
-			if (entity.HasComponent<CircleCollider2DComponent>())
+			if (entity->HasComponent<CircleCollider2DComponent>())
 			{
-				auto& cc2d = entity.GetComponent<CircleCollider2DComponent>();
+				auto& cc2d = entity->GetComponent<CircleCollider2DComponent>();
 
 				b2CircleShape circleShape;
 				circleShape.m_p.Set(cc2d.Offset.x, cc2d.Offset.y);
@@ -472,7 +576,7 @@ namespace Volcano {
 	// 摄像头渲染场景，摄像头，摄像头TRS，摄像头位置（translation），摄像头方向
 	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
 	{
-		UpdateLight();
+		UpdateCameraData(camera, transform, position);
 
 		if (m_RenderType == RenderType::SKYBOX)
 		{
@@ -523,21 +627,31 @@ namespace Volcano {
 		Renderer2D::EndScene();
 
 
-
-		// Draw cube
-		Renderer3D::BeginScene(camera, transform, position, direction);
+		//Draw Mesh
 		{
-			auto view = m_Registry.view<TransformComponent, CubeRendererComponent>();
+			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
+
 			for (auto entity : view)
 			{
-				auto [transform, cube] = view.get<TransformComponent, CubeRendererComponent>(entity);
-				Renderer3D::DrawCube(transform.GetTransform(), transform.GetNormalTransform(), cube, (int)entity);
+				auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
+				switch (mesh.meshType)
+				{
+				case MeshType::None:
+					break;
+				case MeshType::Cube:
+					mesh.mesh->BeginScene(camera, transform, position);
+					mesh.mesh->BindTextures(renderer.Textures);
+					mesh.mesh->BindShader(m_RenderType);
+					mesh.mesh->DrawMesh((int)entity);
+					mesh.mesh->EndScene();
+					break;
+				default:
+					VOL_TRACE("错误MeshType");
+					break;
+				}
 			}
 		}
-		Renderer3D::EndScene(m_RenderType);
 		
-
-
 		// Draw model
 		RendererModel::BeginScene(camera, transform, position, direction);
 		{
@@ -558,33 +672,42 @@ namespace Volcano {
 
 	}
 
+	void Scene::UpdateCameraData(Camera& camera, glm::mat4 transform, glm::vec3 position)
+	{
+		glm::mat4 viewProjection = camera.GetProjection() * glm::inverse(transform);
+		UniformBufferManager::GetUniformBuffer("CameraViewProjection")->SetData(&viewProjection, sizeof(glm::mat4));
+
+		UniformBufferManager::GetUniformBuffer("CameraPosition")->SetData(&position, sizeof(glm::vec3));
+
+	}
+
 	void Scene::UpdateLight()
 	{
-			Entity directionalLightEntity = GetDirectionalLightEntity();
+			Ref<Entity> directionalLightEntity = GetDirectionalLightEntity();
 			if (directionalLightEntity)
 			{
-				auto& transform = directionalLightEntity.GetComponent<TransformComponent>();
-				auto& light = directionalLightEntity.GetComponent<LightComponent>();
+				auto& transform = directionalLightEntity->GetComponent<TransformComponent>();
+				auto& light = directionalLightEntity->GetComponent<LightComponent>();
 				glm::vec3 direction = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
 				s_DirectionalLightBuffer.direction = direction;
 				s_DirectionalLightBuffer.ambient   = light.Ambient;
 				s_DirectionalLightBuffer.diffuse   = light.Diffuse;
 				s_DirectionalLightBuffer.specular  = light.Specular;
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
 
 				
 				glm::mat4 lightProjection, lightView;
 				glm::mat4 lightSpaceMatrix;
-				float near_plane = -1.0f, far_plane = 170.5f;
+				float near_plane = -1.0f, far_plane = 200.0f;
 				//lightProjection = glm::perspective(glm::radians(68.0f), 1.0f, 0.001f, 1000.0f);
 				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
 				lightView = glm::inverse(transform.GetTransform());
 
 				lightSpaceMatrix = lightProjection * lightView;
-				s_DirectionalLightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				UniformBufferManager::GetUniformBuffer("DirectionalLightSpaceMatrix")->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
 			}
 			else
 			{
@@ -592,13 +715,13 @@ namespace Volcano {
 				s_DirectionalLightBuffer.ambient   = { 0, 0, 0 };
 				s_DirectionalLightBuffer.diffuse   = { 0, 0, 0 };
 				s_DirectionalLightBuffer.specular  = { 0, 0, 0 };
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-				s_DirectionalLightUniformBuffer->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
 
 				glm::mat4 lightSpaceMatrix = glm::mat4(0);
-				s_DirectionalLightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				UniformBufferManager::GetUniformBuffer("DirectionalLightSpaceMatrix")->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
 				/*
 				glm::vec3 lightPos(-20.0f, 40.0f, -10.0f);
 				glm::mat4 lightProjection, lightView;
@@ -614,11 +737,11 @@ namespace Volcano {
 			}
 
 
-			Entity pointLightEntity = GetPointLightEntity();
+			Ref<Entity> pointLightEntity = GetPointLightEntity();
 			if (pointLightEntity)
 			{
-				auto& transform = pointLightEntity.GetComponent<TransformComponent>();
-				auto& light = pointLightEntity.GetComponent<LightComponent>();
+				auto& transform = pointLightEntity->GetComponent<TransformComponent>();
+				auto& light = pointLightEntity->GetComponent<LightComponent>();
 		        s_PointLightBuffer.position  = transform.Translation;
 		        s_PointLightBuffer.ambient   = light.Ambient;
 		        s_PointLightBuffer.diffuse   = light.Diffuse;
@@ -626,21 +749,21 @@ namespace Volcano {
 		        s_PointLightBuffer.constant  = light.Constant;
 		        s_PointLightBuffer.linear    = light.Linear;
 		        s_PointLightBuffer.quadratic = light.Quadratic;
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
 
 
-				glm::vec3 lightPos(0.0f, 0.0f, 0.0f);
+				glm::vec3 lightPos = s_PointLightBuffer.position;//(0.0f, 0.0f, 0.0f);
 				const uint32_t SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 				float aspect = (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT;
-				float m_Near = 1.0f;
+				float m_Near = 0.1f;//1.0f;
 				float m_Far = 25.0f;
-				glm::mat4 shadowProj = glm::perspective(90.0f, aspect, m_Near, m_Far);
+				glm::mat4 shadowProj = glm::perspective(89.535f, aspect, m_Near, m_Far);// fov理应是90，可能是float的计算误差导致立方体贴图视野错位
 				std::vector<glm::mat4> shadowTransforms;
 				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
 				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
@@ -649,8 +772,8 @@ namespace Volcano {
 				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0,  1.0), glm::vec3(0.0, -1.0,  0.0)));
 				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0, -1.0), glm::vec3(0.0, -1.0,  0.0)));
 				
-				s_PointLightSpaceMatrixUniformBuffer->SetData(&shadowTransforms[0], 6 * 4 * 4 * sizeof(float));
-				s_PointLightSpaceMatrixUniformBuffer->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&shadowTransforms[0], 6 * 4 * 4 * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
 			}
 			else
 			{
@@ -661,28 +784,28 @@ namespace Volcano {
 		        s_PointLightBuffer.constant  = 0;
 		        s_PointLightBuffer.linear    = 0;
 		        s_PointLightBuffer.quadratic = 0;
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        s_PointLightUniformBuffer->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
 
 				glm::mat4 shadowTransform = glm::mat4(0);
 				float m_Far = 0;
 				for (uint32_t i = 0; i < 6; ++i)
-					s_PointLightSpaceMatrixUniformBuffer->SetData(&shadowTransform, 4 * 4 * sizeof(float), i * 4 * 4 * sizeof(float));
-				s_PointLightSpaceMatrixUniformBuffer->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&shadowTransform, 4 * 4 * sizeof(float), i * 4 * 4 * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
 
 			}
 
 
-			Entity spotLightEntity = GetSpotLightEntity();
+			Ref<Entity> spotLightEntity = GetSpotLightEntity();
 			if (spotLightEntity)
 			{
-				auto& transform = spotLightEntity.GetComponent<TransformComponent>();
-				auto& light = spotLightEntity.GetComponent<LightComponent>();
+				auto& transform = spotLightEntity->GetComponent<TransformComponent>();
+				auto& light = spotLightEntity->GetComponent<LightComponent>();
 		        s_SpotLightBuffer.position    = transform.Translation;
 				glm::vec3 direction = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
 		        s_SpotLightBuffer.direction   = direction;
@@ -694,16 +817,16 @@ namespace Volcano {
 		        s_SpotLightBuffer.quadratic   = light.Quadratic;
 		        s_SpotLightBuffer.cutOff      = light.CutOff;//glm::cos(glm::radians(12.5f));
 		        s_SpotLightBuffer.outerCutOff = light.OuterCutOff;//glm::cos(glm::radians(17.5f));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
 
 				glm::mat4 lightProjection, lightView;
 				glm::mat4 lightSpaceMatrix;
@@ -712,8 +835,8 @@ namespace Volcano {
 				lightView = glm::inverse(transform.GetTransform());
 
 				lightSpaceMatrix = lightProjection * lightView;
-				s_SpotLightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
-				s_SpotLightSpaceMatrixUniformBuffer->SetData(&m_Far, sizeof(float), 4 * 4 * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("SpotLightSpaceMatrix")->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+				UniformBufferManager::GetUniformBuffer("SpotLightSpaceMatrix")->SetData(&m_Far, sizeof(float), 4 * 4 * sizeof(float));
 			}
 			else
 			{
@@ -727,105 +850,110 @@ namespace Volcano {
 		        s_SpotLightBuffer.quadratic   = 0;
 		        s_SpotLightBuffer.cutOff      = 0;
 		        s_SpotLightBuffer.outerCutOff = 0;
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
-		        s_SpotLightUniformBuffer->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
 
 			}
 	}
 
 	template<typename T>
-	void Scene::OnComponentAdded(Entity entity, T& component)
+	void Scene::OnComponentAdded(Entity& entity, T& component)
 	{
 		// 静态断言
 		static_assert(sizeof(T) == 0);
 	}
 
 	template<>
-	void Scene::OnComponentAdded<IDComponent>(Entity entity, IDComponent& component)
+	void Scene::OnComponentAdded<IDComponent>(Entity& entity, IDComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<TagComponent>(Entity entity, TagComponent& component)
-	{
-
-	}
-
-	template<>
-	void Scene::OnComponentAdded<TransformComponent>(Entity entity, TransformComponent& component)
+	void Scene::OnComponentAdded<TagComponent>(Entity& entity, TagComponent& component)
 	{
 
 	}
 
 	template<>
-	void Scene::OnComponentAdded<LightComponent>(Entity entity, LightComponent& component)
+	void Scene::OnComponentAdded<TransformComponent>(Entity& entity, TransformComponent& component)
+	{
+
+	}
+
+	template<>
+	void Scene::OnComponentAdded<LightComponent>(Entity& entity, LightComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<CameraComponent>(Entity entity, CameraComponent& component)
+	void Scene::OnComponentAdded<CameraComponent>(Entity& entity, CameraComponent& component)
 	{
 		if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 			component.Camera.SetViewportSize(m_ViewportWidth, m_ViewportHeight);
 	}
 
 	template<>
-	void Scene::OnComponentAdded<ScriptComponent>(Entity entity, ScriptComponent& component)
+	void Scene::OnComponentAdded<ScriptComponent>(Entity& entity, ScriptComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<CircleRendererComponent>(Entity entity, CircleRendererComponent& component)
+	void Scene::OnComponentAdded<MeshComponent>(Entity& entity, MeshComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<CubeRendererComponent>(Entity entity, CubeRendererComponent& component)
-	{
-	}
-		
-	template<>
-	void Scene::OnComponentAdded<SphereRendererComponent>(Entity entity, SphereRendererComponent& component)
+	void Scene::OnComponentAdded<MeshRendererComponent>(Entity& entity, MeshRendererComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<ModelRendererComponent>(Entity entity, ModelRendererComponent& component)
+	void Scene::OnComponentAdded<CircleRendererComponent>(Entity& entity, CircleRendererComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity entity, SpriteRendererComponent& component)
+	void Scene::OnComponentAdded<SphereRendererComponent>(Entity& entity, SphereRendererComponent& component)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<ModelRendererComponent>(Entity& entity, ModelRendererComponent& component)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<SpriteRendererComponent>(Entity& entity, SpriteRendererComponent& component)
 	{
 
 	}
 
 	template<>
-	void Scene::OnComponentAdded<NativeScriptComponent>(Entity entity, NativeScriptComponent& component)
+	void Scene::OnComponentAdded<NativeScriptComponent>(Entity& entity, NativeScriptComponent& component)
 	{
 
 	}
 
 	template<>
-	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity entity, Rigidbody2DComponent& component)
+	void Scene::OnComponentAdded<Rigidbody2DComponent>(Entity& entity, Rigidbody2DComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity entity, BoxCollider2DComponent& component)
+	void Scene::OnComponentAdded<BoxCollider2DComponent>(Entity& entity, BoxCollider2DComponent& component)
 	{
 	}
 
 	template<>
-	void Scene::OnComponentAdded<CircleCollider2DComponent>(Entity entity, CircleCollider2DComponent& component)
+	void Scene::OnComponentAdded<CircleCollider2DComponent>(Entity& entity, CircleCollider2DComponent& component)
 	{
 	}
 

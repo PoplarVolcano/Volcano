@@ -25,21 +25,18 @@ namespace Volcano {
 	};
 
 
-	struct TransformBuffer
+	struct ModelTransformBuffer
 	{
-		glm::mat4 Transform;
+		glm::mat4 PositionTransform;
 		glm::mat3 NormalTransform;
 	};
-	static TransformBuffer s_TransformBuffer;
-	static Ref<UniformBuffer> s_TransformUniformBuffer;
+	static ModelTransformBuffer s_ModelTransformBuffer;
 
 	static Ref<Model> s_Model;
 	static Ref<Animation> s_Animation;
 	static Ref<Animator> s_Animator;
 
 #define MAX_BONES = 100;
-	static Ref<UniformBuffer> s_BonesMatricesUniformBuffer;
-
 
 	void RendererModel::Init()
 	{
@@ -54,10 +51,7 @@ namespace Volcano {
 
 		Renderer::GetShaderLibrary()->Load("assets/shaders/ModelLoading.glsl");
 		
-		// 在Renderer3D中设置过的uniform全局通用，除非有变动，否则不需要重新设置
-		s_TransformUniformBuffer = UniformBuffer::Create(4 * 4 * 2 * sizeof(float), 6);
 
-		s_BonesMatricesUniformBuffer = UniformBuffer::Create(100 * 4 * 4 * sizeof(float), 15);
 	}
 
 	void RendererModel::Shutdown()
@@ -81,7 +75,7 @@ namespace Volcano {
 	void RendererModel::Flush(RenderType type)
 	{
 		auto finalBoneMatrices = s_Animator->GetFinalBoneMatrices();
-		s_BonesMatricesUniformBuffer->SetData(&finalBoneMatrices, finalBoneMatrices.size() * 4 * 4 * sizeof(float));
+		UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&finalBoneMatrices, finalBoneMatrices.size() * 4 * 4 * sizeof(float));
 
 		switch (type)
 		{
@@ -129,10 +123,10 @@ namespace Volcano {
 
 		//Ref<Model> model = s_Models.at(modelPath);
 
-		s_TransformBuffer.Transform = transform;
-		s_TransformBuffer.NormalTransform = normalTransform;
-		s_TransformUniformBuffer->SetData(&s_TransformBuffer.Transform,       sizeof(glm::mat4));
-		s_TransformUniformBuffer->SetData(&s_TransformBuffer.NormalTransform, sizeof(glm::mat4), 4 * 4 * sizeof(float));
+		s_ModelTransformBuffer.PositionTransform = transform;
+		s_ModelTransformBuffer.NormalTransform   = normalTransform;
+		UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&s_ModelTransformBuffer.PositionTransform, sizeof(glm::mat4));
+		UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&s_ModelTransformBuffer.NormalTransform,   sizeof(glm::mat4), 4 * 4 * sizeof(float));
 		Ref<Shader> shader = Renderer::GetShaderLibrary()->Get("ModelLoading");
 		std::vector<glm::mat4> finalBoneMatrices = s_Animator->GetFinalBoneMatrices();
 		s_ModelMap["nanosuit"]->Draw(*shader, transform, normalTransform, entityID, finalBoneMatrices);

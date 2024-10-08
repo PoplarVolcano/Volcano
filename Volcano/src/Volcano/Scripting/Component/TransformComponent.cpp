@@ -12,60 +12,60 @@ namespace Volcano {
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		*outTranslation = entity.GetComponent<TransformComponent>().Translation;
+		*outTranslation = entity->GetComponent<TransformComponent>().Translation;
 	}
 
 	static void TransformComponent_SetTranslation(UUID entityID, glm::vec3* translation)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		entity.GetComponent<TransformComponent>().Translation = *translation;
+		entity->GetComponent<TransformComponent>().Translation = *translation;
 	}
 
 	static void TransformComponent_GetRotation(UUID entityID, glm::vec3* outRotation)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		*outRotation = entity.GetComponent<TransformComponent>().Rotation;
+		*outRotation = entity->GetComponent<TransformComponent>().Rotation;
 	}
 
 	static void TransformComponent_SetRotation(UUID entityID, glm::vec3* rotation)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		entity.GetComponent<TransformComponent>().Rotation = *rotation;
+		entity->GetComponent<TransformComponent>().Rotation = *rotation;
 	}
 
 	static void TransformComponent_GetScale(UUID entityID, glm::vec3* outScale)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		*outScale = entity.GetComponent<TransformComponent>().Scale;
+		*outScale = entity->GetComponent<TransformComponent>().Scale;
 	}
 
 	static void TransformComponent_SetScale(UUID entityID, glm::vec3* scale)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		entity.GetComponent<TransformComponent>().Scale = *scale;
+		entity->GetComponent<TransformComponent>().Scale = *scale;
 	}
 
 	void ComponentRegister::TransformComponent_RegisterFunctions()

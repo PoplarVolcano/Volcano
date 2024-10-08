@@ -41,7 +41,6 @@
     <None Include="assets\shaders\HDR.glsl" />
     <None Include="assets\shaders\Blur.glsl" />
     <None Include="assets\shaders\LightCube.glsl" />
-    <None Include="assets\shaders\GBufferCube.glsl" />
     <None Include="assets\shaders\DeferredShading.glsl" />
     <None Include="assets\shaders\SSAO.glsl" />
     <None Include="assets\shaders\SSAOBlur.glsl" />

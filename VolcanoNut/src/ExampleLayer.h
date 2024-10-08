@@ -37,7 +37,6 @@ namespace Volcano {
 		void OpenScene(const std::filesystem::path& path);
 		void SaveScene();
 		void SaveSceneAs();
-		void RenderScene(Timestep ts);
 
 		void SerializeScene(Ref<Scene> scene, const std::filesystem::path& path);
 
@@ -55,24 +54,10 @@ namespace Volcano {
 		Ref<Texture2D> m_Texture, m_AlterTexture;
 		Ref<Texture2D> m_SpriteSheet;
 		Ref<SubTexture2D> m_TextureStairs, m_TextureTree;
+
 		Ref<Framebuffer> m_Framebuffer;
-		Ref<Framebuffer> m_DirectionalDepthMapFramebuffer;
-		Ref<Framebuffer> m_PointDepthMapFramebuffer;
-		Ref<Framebuffer> m_SpotDepthMapFramebuffer;
-		Ref<Framebuffer> m_BlurFramebuffer[2];
-		Ref<Framebuffer> m_HDRFramebuffer;
-		Ref<Framebuffer> m_GBufferFramebuffer;
-		Ref<Framebuffer> m_DeferredShadingFramebuffer;
-		Ref<Framebuffer> m_SSAOFramebuffer;
-		Ref<Framebuffer> m_SSAOBlurFramebuffer;
-		Ref<Texture2D>   m_NoiseTexture;
-		Ref<Framebuffer> m_PBRFramebuffer;
-		Ref<Texture2D> m_EquirectangularMap;
-		Ref<TextureCube> m_EnvCubemap;
-		Ref<TextureCube> m_IrradianceMap;
-		Ref<VertexArray> va;
-		Ref<TextureCube> m_PrefilterMap;
-		Ref<Texture2D> m_BRDFLUT;
+
+		int m_ViewportTempIndex = 0;
 
 		glm::vec2 m_ViewportSize = { 0.0f, 0.0f };
 		glm::vec2 m_ViewportBounds[2];
@@ -85,12 +70,12 @@ namespace Volcano {
 		// 编辑器场景文件路径
 		std::filesystem::path m_EditorScenePath;
 
-		Entity m_SquareEntity;
-		Entity m_CameraEntity;
-		Entity m_SecondCamera;
+		Ref<Entity> m_SquareEntity;
+		Ref<Entity> m_CameraEntity;
+		Ref<Entity> m_SecondCamera;
 		EditorCamera m_EditorCamera;
 
-		Entity m_HoveredEntity;
+		Ref<Entity> m_HoveredEntity;
 
 		bool m_PrimaryCamera = true;
 
@@ -111,10 +96,6 @@ namespace Volcano {
 
 		bool m_ShowPhysicsColliders = false;
 
-		enum class SceneState
-		{
-			Edit = 0, Play = 1, Simulate = 2
-		};
 		SceneState m_SceneState = SceneState::Edit;
 		
 		// Editor resources
@@ -124,14 +105,5 @@ namespace Volcano {
 		SceneHierarchyPanel m_SceneHierarchyPanel;
 		Scope<ContentBrowserPanel> m_ContentBrowserPanel;
 
-		struct WindowVertex 
-		{
-			glm::vec3 Position;
-			glm::vec2 TextureCoords;
-		};
-		WindowVertex m_WindowVertex[4];
-		Ref<VertexArray> windowVa;
-		Ref<Shader> m_HDRShader;
-		Ref<Shader> m_WindowShader;
 	};
 }

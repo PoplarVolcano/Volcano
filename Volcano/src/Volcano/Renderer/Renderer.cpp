@@ -1,11 +1,11 @@
 #include "volpch.h"
 #include "Renderer.h"
 #include "Renderer2D.h"
-#include "Renderer3D.h"
 #include "RendererModel.h"
 #include "RendererItem/Skybox.h"
 #include "RendererItem/Shadow.h"
 #include "Volcano/Renderer/RendererItem/Sphere.h"
+#include "Volcano/Renderer/UniformBuffer.h"
 
 
 namespace Volcano {
@@ -24,8 +24,6 @@ namespace Volcano {
 
 		// 初始化2D Shader
 		Renderer2D::Init();
-		// 初始化3D Shader
-		Renderer3D::Init();
 		RendererModel::Init();
 		Skybox::Init();
 		Shadow::Init();
@@ -40,6 +38,8 @@ namespace Volcano {
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/IrradianceConvolution.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Prefilter.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/BRDF.glsl");
+
+		UniformBufferManager::Init();
 	}
 
 	void Renderer::Shutdown()

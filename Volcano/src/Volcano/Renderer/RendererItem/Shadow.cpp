@@ -2,9 +2,7 @@
 #include "Shadow.h"
 #include "Volcano/Renderer/Texture.h"
 #include "Volcano/Renderer/Renderer.h"
-#include "Volcano/Renderer/Renderer3D.h"
 #include <glm/gtc/matrix_transform.hpp>
-//#include <glad/glad.h>
 
 namespace Volcano {
     //LightSpaceMatrix

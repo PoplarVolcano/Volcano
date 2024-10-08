@@ -32,15 +32,15 @@ struct VertexOutput
 
 layout (location = 0) in VertexOutput Input;
 
-layout (binding = 0)  uniform sampler2D g_Position;
-layout (binding = 1)  uniform sampler2D g_Normal;
-layout (binding = 2)  uniform sampler2D g_Diffuse;
-layout (binding = 3)  uniform sampler2D g_Specular;
-layout (binding = 4)  uniform sampler2D ssao;
+layout (binding = 0) uniform sampler2D g_Position;
+layout (binding = 1) uniform sampler2D g_Normal;
+layout (binding = 2) uniform sampler2D g_Albedo;
+layout (binding = 3) uniform isampler2D g_EntityID;
+layout (binding = 4) uniform sampler2D ssao;
 
-layout (binding = 30) uniform sampler2D u_SpotDepthMap;
-layout (binding = 31) uniform sampler2D u_DirectionalDepthMap;
-layout (binding = 0)  uniform samplerCube u_PointDepthMap;
+layout (binding = 5) uniform sampler2D u_DirectionalDepthMap;
+layout (binding = 6) uniform samplerCube u_PointDepthMap;
+layout (binding = 7) uniform sampler2D u_SpotDepthMap;
 
 layout(std140, binding = 1) uniform CameraPosition
 {
@@ -109,18 +109,18 @@ void main()
 	vec3 Diffuse  = vec3(0.0, 0.0, 0.0);
 	vec3 Specular = vec3(0.0, 0.0, 0.0);
 	
-	vec3 fragPosition      = texture(g_Position, Input.TexCoords).rgb;
+	vec3  fragPosition     = texture(g_Position, Input.TexCoords).rgb;
 	float depth            = texture(g_Position, Input.TexCoords).a;
-	vec4 materialNormal    = texture(g_Normal,   Input.TexCoords);
-	vec4 materialDiffuse   = texture(g_Diffuse,  Input.TexCoords);
-	vec4 materialSpecular  = texture(g_Specular, Input.TexCoords);
+	vec3  materialNormal   = texture(g_Normal,   Input.TexCoords).rgb;
+	vec3  materialDiffuse  = texture(g_Albedo,   Input.TexCoords).rgb;
+	float materialSpecular = texture(g_Albedo,   Input.TexCoords).a;
 	float AmbientOcclusion = texture(ssao,       Input.TexCoords).r;
 
-	if(materialDiffuse.a + materialNormal.a + materialSpecular.a == 0.0)
+	if(fragPosition == vec3(0.0))
 	    discard;
 
 	vec3 viewDirection = normalize(u_CameraPosition - fragPosition);
-	vec3 normal = materialNormal.rgb;
+	vec3 normal = materialNormal * 2.0 - 1.0;
 
 	// DirectionalLight
 	if (u_DirectionalLightDirection != vec3(0.0))
@@ -172,17 +172,16 @@ void main()
 		diffuse  *= attenuation;
 		specular *= attenuation;
 	
-	    /*
-	    // TODO：点光源的立方体贴图读取无法顺利进行，还需要优化
+	    
 	    vec3 fragToLight = fragPosition - u_PointLightPosition;
         float currentDepth = length(fragToLight);
         float closestDepth = texture(u_PointDepthMap, fragToLight).r;
         closestDepth *= u_PointFarPlane;
         float bias = 0.05;
         float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
-		*/
+		
 
-		float shadow = 0;
+		//float shadow = 0;
 
 		Ambient  += ambient;
 		Diffuse  += (1.0 - shadow) * diffuse;
@@ -230,18 +229,17 @@ void main()
 
 	}
 	
-	Ambient  *= materialDiffuse.rgb;
-	Diffuse  *= materialDiffuse.rgb;  
-	Specular *= materialSpecular.rgb;
+	Ambient  *= materialDiffuse;
+	Diffuse  *= materialDiffuse;  
+	Specular *= materialSpecular;
 
 	Ambient *= AmbientOcclusion;
 
 	vec3 lighting = Ambient + Diffuse + Specular;
 
-    FragColor = vec4(lighting, materialDiffuse.a);
-	//FragColor = vec4(AmbientOcclusion,AmbientOcclusion,AmbientOcclusion,1.0);
-	
-	o_EntityID = int(materialNormal.a);
+    FragColor = vec4(lighting, 1.0);
+
+	o_EntityID = texture(g_EntityID, Input.TexCoords).r;
 
 	 // Check whether fragment output is higher than threshold, if so output as brightness color
     float brightness = dot(FragColor.rgb, vec3(0.2126, 0.7152, 0.0722));//转换为灰度来计算片段的亮度

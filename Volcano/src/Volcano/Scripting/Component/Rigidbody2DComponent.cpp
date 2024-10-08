@@ -14,10 +14,10 @@ namespace Volcano {
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+		auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
 		b2Body* body = (b2Body*)rb2d.RuntimeBody;
 		body->ApplyLinearImpulse(b2Vec2(impulse->x, impulse->y), b2Vec2(point->x, point->y), wake);
 	}
@@ -26,10 +26,10 @@ namespace Volcano {
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+		auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
 		b2Body* body = (b2Body*)rb2d.RuntimeBody;
 		body->ApplyLinearImpulseToCenter(b2Vec2(impulse->x, impulse->y), wake);
 	}
@@ -39,10 +39,10 @@ namespace Volcano {
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+		auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
 		b2Body* body = (b2Body*)rb2d.RuntimeBody;
 		const b2Vec2& linearVelocity = body->GetLinearVelocity();
 		*outLinearVelocity = glm::vec2(linearVelocity.x, linearVelocity.y);
@@ -52,10 +52,10 @@ namespace Volcano {
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+		auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
 		b2Body* body = (b2Body*)rb2d.RuntimeBody;
 		return Utils::Rigidbody2DTypeFromBox2DBody(body->GetType());
 	}
@@ -64,10 +64,10 @@ namespace Volcano {
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
-		auto& rb2d = entity.GetComponent<Rigidbody2DComponent>();
+		auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
 		b2Body* body = (b2Body*)rb2d.RuntimeBody;
 		body->SetType(Utils::Rigidbody2DTypeToBox2DBody(bodyType));
 	}

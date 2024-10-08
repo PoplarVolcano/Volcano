@@ -4,16 +4,12 @@
 
 namespace Volcano {
 
-    struct SkyboxData
-    {
-        Ref<VertexArray> VertexArray;
-        Ref<Shader> Shader;
-        Ref<TextureCube> Texture;
-    };
-    static SkyboxData s_SkyboxData;
+    Ref<SkyboxData> Skybox::m_SkyboxData;
 
 	void Skybox::Init()
 	{
+        m_SkyboxData = std::make_shared<SkyboxData>();
+
         float skyboxVertices[] = {
             // positions          
             -1.0f,  1.0f, -1.0f,
@@ -61,18 +57,18 @@ namespace Volcano {
         uint32_t indices[36];
         for (uint32_t i = 0; i < 36; i++)
             indices[i] = i;
-        s_SkyboxData.VertexArray = VertexArray::Create();
+        m_SkyboxData->VertexArray = VertexArray::Create();
         Ref<VertexBuffer> vb = VertexBuffer::Create(skyboxVertices, sizeof(skyboxVertices));
         vb->SetLayout({
             { ShaderDataType::Float3, "a_Position"}
             });
-        s_SkyboxData.VertexArray->AddVertexBuffer(vb);
+        m_SkyboxData->VertexArray->AddVertexBuffer(vb);
 
         Ref<IndexBuffer> ib = IndexBuffer::Create(indices, 36);
-        s_SkyboxData.VertexArray->SetIndexBuffer(ib);
+        m_SkyboxData->VertexArray->SetIndexBuffer(ib);
         Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Skybox.glsl");
-        s_SkyboxData.Shader = Renderer::GetShaderLibrary()->Get("Skybox");
-        //s_SkyboxData.Texture = TextureCube::Create("SandBoxProject/Assets/Textures/skybox_texture.jpg");
+        m_SkyboxData->Shader = Renderer::GetShaderLibrary()->Get("Skybox");
+        //m_SkyboxData->Texture = TextureCube::Create("SandBoxProject/Assets/Textures/skybox_texture.jpg");
         std::vector<std::string> faces
         {
             std::string("SandBoxProject/Assets/Textures/skybox/right.jpg"),
@@ -82,9 +78,8 @@ namespace Volcano {
             std::string("SandBoxProject/Assets/Textures/skybox/front.jpg"),
             std::string("SandBoxProject/Assets/Textures/skybox/back.jpg"),
         };
-        s_SkyboxData.Texture = TextureCube::Create(faces);
+        m_SkyboxData->Texture = TextureCube::Create(faces);
 
-        s_CameraDataUniformBuffer = UniformBuffer::Create(4 * 4 * 2 * sizeof(float), 7);
 	}
 
     void Skybox::Shutdown()
@@ -94,10 +89,9 @@ namespace Volcano {
     void Skybox::BeginScene(const Camera& camera, const glm::mat4& transform)
     {
         s_CameraDataBuffer.View = glm::inverse(transform);
-        s_CameraDataBuffer.View = glm::mat4(glm::mat3(s_CameraDataBuffer.View));
         s_CameraDataBuffer.Projection = camera.GetProjection();
-        s_CameraDataUniformBuffer->SetData(&s_CameraDataBuffer.View,       sizeof(glm::mat4));
-        s_CameraDataUniformBuffer->SetData(&s_CameraDataBuffer.Projection, sizeof(glm::mat4), (4 * 4) * sizeof(float));
+        UniformBufferManager::GetUniformBuffer("CameraData")->SetData(&s_CameraDataBuffer.View, sizeof(glm::mat4));
+        UniformBufferManager::GetUniformBuffer("CameraData")->SetData(&s_CameraDataBuffer.Projection, sizeof(glm::mat4), (4 * 4) * sizeof(float));
     }
 
     void Skybox::EndScene()
@@ -106,15 +100,19 @@ namespace Volcano {
 
     void Skybox::DrawSkybox()
     {
-        s_SkyboxData.Texture->Bind();
-        s_SkyboxData.Shader->Bind();
-        Renderer::DrawIndexed(s_SkyboxData.VertexArray, s_SkyboxData.VertexArray->GetIndexBuffer()->GetCount());
+        m_SkyboxData->Texture->Bind();
+        m_SkyboxData->Shader->Bind();
+        DrawIndexed();
+    }
 
+    void Skybox::DrawIndexed()
+    {
+        Renderer::DrawIndexed(m_SkyboxData->VertexArray, m_SkyboxData->VertexArray->GetIndexBuffer()->GetCount());
     }
 
     void Skybox::SetTexture(Ref<TextureCube> texture)
     {
-        s_SkyboxData.Texture = texture;
+        m_SkyboxData->Texture = texture;
     }
 
 }

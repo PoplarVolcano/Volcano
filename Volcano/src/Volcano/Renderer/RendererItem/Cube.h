@@ -1,35 +1,63 @@
 #pragma once
 
-#include <glm/glm.hpp>
-
-#include "Volcano/Renderer/Camera.h"
-#include "Volcano/Scene/Components.h"
+#include "glm/glm.hpp"
+#include "Volcano/Renderer/VertexArray.h"
+#include "Volcano/Renderer/Buffer.h"
+#include "Volcano/Renderer/Shader.h"
+#include "Volcano/Renderer/Texture.h"
 
 namespace Volcano {
+
+	struct CubeVertex
+	{
+		glm::vec3 Position;
+		glm::vec3 Normal;
+		glm::vec2 TexCoords;
+		glm::vec3 Tangent;
+		glm::vec3 Bitangent;
+
+		// Editor-only
+		int EntityID;
+	};
+
+	struct CubeData
+	{
+		static const uint32_t VertexSize = 36;
+		static const uint32_t IndexSize = 36;
+		static const uint32_t MaxCubes = 20000;
+		static const uint32_t MaxVertices = MaxCubes * VertexSize;
+		static const uint32_t MaxIndices = MaxCubes * IndexSize;
+		static const uint32_t MaxTextureSlots = 32;// RenderCaps
+
+		Ref<VertexArray>  vertexArray;
+		Ref<VertexBuffer> vertexBuffer;
+		Ref<Shader>       shader;
+		Ref<Texture2D>    whiteTexture;
+		Ref<Texture2D>    shadowMap;
+
+		uint32_t indexCount = 0;
+		CubeVertex* vertexBufferBase = nullptr;
+		CubeVertex* vertexBufferPtr = nullptr;
+
+		std::array<Ref<Texture2D>, MaxTextureSlots> textureSlots;
+		uint32_t textureSlotIndex = 1;// 0 = white texture
+
+		glm::vec3 vertexPosition[36];
+		glm::vec2 texCoords[36];
+		glm::vec3 normal[36];
+		glm::vec3 tangent[36];
+		glm::vec3 bitangent[36];
+	};
 
 	class Cube
 	{
 	public:
 		static void Init();
-		static void Shutdown();
-
-		static void BeginScene(const Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
-		static void EndScene();
-		static void Flush();
-
-		static void DrawCube(const glm::vec2& position, const glm::vec2& size, const glm::vec4& color);
-		static void DrawCube(const glm::vec3& position, const glm::vec2& size, const glm::vec4& color);
-
-
-		static void DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const glm::vec4& color, int entityID = -1);
-		static void DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, const Ref<Texture2D>& diffuse, const Ref<Texture2D>& specular, const glm::vec4& color = glm::vec4(1.0f), int entityID = -1);
-
-		static void DrawCube(const glm::mat4& transform, const glm::mat3& normalTransform, CubeRendererComponent& crc, int entityID);
-
+		static Ref<CubeData> GetCubeData() { return m_CubeData; }
+		static void DrawIndexed();
 	private:
-		static void StartBatch();
-		static void NextBatch();
-
+		Cube();
+		static Ref<CubeData> m_CubeData;
 
 	};
 }

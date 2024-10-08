@@ -1,10 +1,17 @@
 #pragma once
-#include "Volcano/Renderer/VertexArray.h"
 #include "Volcano/Renderer/Camera.h"
+#include "Volcano/Renderer/VertexArray.h"
 #include "Volcano/Renderer/Texture.h"
+#include "Volcano/Renderer/Shader.h"
 
 namespace Volcano {
 
+	struct SkyboxData
+	{
+		Ref<VertexArray> VertexArray;
+		Ref<Shader> Shader;
+		Ref<TextureCube> Texture;
+	};
 
 	class Skybox
 	{
@@ -16,7 +23,10 @@ namespace Volcano {
 		static void EndScene();
 
 		static void DrawSkybox();
+		static void DrawIndexed();
 
 		static void SetTexture(Ref<TextureCube> texture);
+	private:
+		static Ref<SkyboxData> m_SkyboxData;
 	};
 }

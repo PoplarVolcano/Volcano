@@ -6,22 +6,13 @@
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/UniformBuffer.h"
 
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Volcano {
 
-	struct QuadVertex
-	{
-		glm::vec3 Position;
-		glm::vec4 Color;
-		glm::vec2 TexCoords;
-		float TextureIndex;
-		float TilingFactor;
-
-		// Editor-only
-		int EntityID;
-	};
+	Ref<QuadData> Renderer2D::m_QuadData;
 
 	struct CircleVertex
 	{
@@ -51,9 +42,6 @@ namespace Volcano {
 		static const uint32_t MaxIndices = MaxQuads * 6;
 		static const uint32_t MaxTextureSlots = 32;// RenderCaps
 
-		Ref<VertexArray> QuadVertexArray;
-		Ref<VertexBuffer> QuadVertexBuffer;
-		Ref<Shader> QuadShader;
 		Ref<Texture2D> WhiteTexture;
 
 		Ref<VertexArray> CircleVertexArray;
@@ -63,10 +51,6 @@ namespace Volcano {
 		Ref<VertexArray> LineVertexArray;
 		Ref<VertexBuffer> LineVertexBuffer;
 		Ref<Shader> LineShader;
-
-		uint32_t QuadIndexCount = 0;
-		QuadVertex* QuadVertexBufferBase = nullptr;
-		QuadVertex* QuadVertexBufferPtr = nullptr;
 
 		uint32_t CircleIndexCount = 0;
 		CircleVertex* CircleVertexBufferBase = nullptr;
@@ -89,19 +73,22 @@ namespace Volcano {
 
 	void Renderer2D::Init()
 	{
-		// Quad
-		s_Renderer2DData.QuadVertexArray = VertexArray::Create();
-		s_Renderer2DData.QuadVertexBuffer = VertexBuffer::Create(s_Renderer2DData.MaxVertices * sizeof(QuadVertex));
-		s_Renderer2DData.QuadVertexBuffer->SetLayout({
-			{ ShaderDataType::Float3, "a_Position"     },
-			{ ShaderDataType::Float4, "a_Color"        },
-			{ ShaderDataType::Float2, "a_TexCoords"     },
-			{ ShaderDataType::Float,  "a_TextureIndex" },
-			{ ShaderDataType::Float,  "a_TilingFactor" },
-			{ ShaderDataType::Int,    "a_EntityID"     }
+		Quad::Init();
+		m_QuadData = Quad::GetQuadData();
+
+		// Circles
+		s_Renderer2DData.CircleVertexArray = VertexArray::Create();
+		s_Renderer2DData.CircleVertexBuffer = VertexBuffer::Create(s_Renderer2DData.MaxVertices * sizeof(CircleVertex));
+		s_Renderer2DData.CircleVertexBuffer->SetLayout({
+			{ ShaderDataType::Float3, "a_WorldPosition" },
+			{ ShaderDataType::Float3, "a_LocalPosition" },
+			{ ShaderDataType::Float4, "a_Color"         },
+			{ ShaderDataType::Float,  "a_Thickness"     },
+			{ ShaderDataType::Float,  "a_Fade"          },
+			{ ShaderDataType::Int,    "a_EntityID"      }
 			});
-		s_Renderer2DData.QuadVertexArray->AddVertexBuffer(s_Renderer2DData.QuadVertexBuffer);
-		s_Renderer2DData.QuadVertexBufferBase = new QuadVertex[s_Renderer2DData.MaxVertices];
+		s_Renderer2DData.CircleVertexArray->AddVertexBuffer(s_Renderer2DData.CircleVertexBuffer);
+
 		uint32_t* quadIndices = new uint32_t[s_Renderer2DData.MaxIndices];
 		uint32_t offset = 0;
 		for (uint32_t i = 0; i < s_Renderer2DData.MaxIndices; i += 6)
@@ -117,21 +104,7 @@ namespace Volcano {
 			offset += 4;
 		}
 		Ref<IndexBuffer> quadIndexBuffer = IndexBuffer::Create(quadIndices, s_Renderer2DData.MaxIndices);;
-		s_Renderer2DData.QuadVertexArray->SetIndexBuffer(quadIndexBuffer);
-		delete[] quadIndices;	// cpu上传到gpu上了可以删除cpu的索引数据块了
 
-		// Circles
-		s_Renderer2DData.CircleVertexArray = VertexArray::Create();
-		s_Renderer2DData.CircleVertexBuffer = VertexBuffer::Create(s_Renderer2DData.MaxVertices * sizeof(CircleVertex));
-		s_Renderer2DData.CircleVertexBuffer->SetLayout({
-			{ ShaderDataType::Float3, "a_WorldPosition" },
-			{ ShaderDataType::Float3, "a_LocalPosition" },
-			{ ShaderDataType::Float4, "a_Color"         },
-			{ ShaderDataType::Float,  "a_Thickness"     },
-			{ ShaderDataType::Float,  "a_Fade"          },
-			{ ShaderDataType::Int,    "a_EntityID"      }
-			});
-		s_Renderer2DData.CircleVertexArray->AddVertexBuffer(s_Renderer2DData.CircleVertexBuffer);
 		s_Renderer2DData.CircleVertexArray->SetIndexBuffer(quadIndexBuffer); // Use quad IB
 		s_Renderer2DData.CircleVertexBufferBase = new CircleVertex[s_Renderer2DData.MaxVertices];
 
@@ -154,44 +127,37 @@ namespace Volcano {
 		for (uint32_t i = 0; i < s_Renderer2DData.MaxTextureSlots; i++)
 			samplers[i] = i;
 
-		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Quad.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Circle.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Line.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/HDR.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Blur.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/window.glsl");
-		s_Renderer2DData.QuadShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Quad");
 		s_Renderer2DData.CircleShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Circle");
 		s_Renderer2DData.LineShader = Renderer::GetShaderLibrary()->Get("Renderer2D_Line");
 
 		s_Renderer2DData.TextureSlots[0] = s_Renderer2DData.WhiteTexture;
 
-		s_Renderer2DData.QuadVertexPosition[0] = { -0.5, -0.5, 0.0f, 1.0f };
-		s_Renderer2DData.QuadVertexPosition[1] = { 0.5, -0.5, 0.0f, 1.0f };
-		s_Renderer2DData.QuadVertexPosition[2] = { 0.5,  0.5, 0.0f, 1.0f };
-		s_Renderer2DData.QuadVertexPosition[3] = { -0.5,  0.5, 0.0f, 1.0f };
 
-		s_CameraUniformBuffer = UniformBuffer::Create(sizeof(CameraData), 0);
 
 	}
 
 	void Renderer2D::Shutdown()
 	{
-		delete[] s_Renderer2DData.QuadVertexBufferBase;
+		delete[] m_QuadData->vertexBufferBase;
 	}
 
 	void Renderer2D::BeginScene(const EditorCamera& camera)
 	{
-		s_CameraBuffer.viewProjection = camera.GetViewProjection();
-		s_CameraUniformBuffer->SetData(&s_CameraBuffer, sizeof(CameraData));
+		glm::mat4 viewProjection = camera.GetViewProjection();
+		UniformBufferManager::GetUniformBuffer("CameraViewProjection")->SetData(&viewProjection, 4 * 4 * sizeof(float));
 
 		StartBatch();
 	}
 
 	void Renderer2D::BeginScene(const Camera& camera, const glm::mat4& transform)
 	{
-		s_CameraBuffer.viewProjection = camera.GetProjection() * glm::inverse(transform);
-		s_CameraUniformBuffer->SetData(&s_CameraBuffer, sizeof(CameraData));
+		glm::mat4 viewProjection = camera.GetProjection() * glm::inverse(transform);
+		UniformBufferManager::GetUniformBuffer("CameraViewProjection")->SetData(&viewProjection, 4 * 4 * sizeof(float));
 
 		StartBatch();
 	}
@@ -204,18 +170,18 @@ namespace Volcano {
 
 	void Renderer2D::Flush()
 	{
-		if (s_Renderer2DData.QuadIndexCount)
+		if (m_QuadData->indexCount)
 		{
 			// 不加uint8_t转化会得到元素数量, 加uint8_t返回以char为单位占用多少元素
-			uint32_t dataSize = (uint32_t)((uint8_t*)s_Renderer2DData.QuadVertexBufferPtr - (uint8_t*)s_Renderer2DData.QuadVertexBufferBase);
-			s_Renderer2DData.QuadVertexBuffer->SetData(s_Renderer2DData.QuadVertexBufferBase, dataSize);
+			uint32_t dataSize = (uint32_t)((uint8_t*)m_QuadData->vertexBufferPtr - (uint8_t*)m_QuadData->vertexBufferBase);
+			m_QuadData->vertexBuffer->SetData(m_QuadData->vertexBufferBase, dataSize);
 
 			// Bind textures
 			for (uint32_t i = 0; i < s_Renderer2DData.TextureSlotIndex; i++)
-				s_Renderer2DData.TextureSlots[i]->Bind(i);
+				m_QuadData->textureSlots[i]->Bind(i);
 
-			s_Renderer2DData.QuadShader->Bind();
-			Renderer::DrawIndexed(s_Renderer2DData.QuadVertexArray, s_Renderer2DData.QuadIndexCount);
+			m_QuadData->shader->Bind();
+			Renderer::DrawIndexed(m_QuadData->vertexArray, m_QuadData->indexCount);
 			s_Renderer2DData.Stats.DrawCalls++;
 		}
 
@@ -244,8 +210,8 @@ namespace Volcano {
 	void Renderer2D::StartBatch()
 	{
 
-		s_Renderer2DData.QuadIndexCount = 0;
-		s_Renderer2DData.QuadVertexBufferPtr = s_Renderer2DData.QuadVertexBufferBase;
+		m_QuadData->indexCount = 0;
+		m_QuadData->vertexBufferPtr = m_QuadData->vertexBufferBase;
 
 		s_Renderer2DData.CircleIndexCount = 0;
 		s_Renderer2DData.CircleVertexBufferPtr = s_Renderer2DData.CircleVertexBufferBase;
@@ -339,7 +305,7 @@ namespace Volcano {
 	*/
 	void Renderer2D::DrawQuad(const glm::mat4& transform, const glm::vec4& color, int entityID)
 	{
-		if (s_Renderer2DData.QuadIndexCount >= Renderer2DData::MaxIndices)
+		if (m_QuadData->indexCount >= Renderer2DData::MaxIndices)
 			NextBatch();
 
 		const float textureIndex = 0.0f; // White Texture
@@ -349,23 +315,23 @@ namespace Volcano {
 		// 逆时针注入顶点数据
 		// 设置顶点的地址指向注入的地址
 		for (uint32_t i = 0; i < 4; i++) {
-			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
-			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
-			s_Renderer2DData.QuadVertexBufferPtr->TexCoords = textureCoords[i];
-			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Renderer2DData.QuadVertexBufferPtr->EntityID = entityID;
-			s_Renderer2DData.QuadVertexBufferPtr++;
+			m_QuadData->vertexBufferPtr->Position = transform * m_QuadData->vertexPosition[i];
+			m_QuadData->vertexBufferPtr->Color = color;
+			m_QuadData->vertexBufferPtr->TexCoords = textureCoords[i];
+			m_QuadData->vertexBufferPtr->TextureIndex = textureIndex;
+			m_QuadData->vertexBufferPtr->TilingFactor = tilingFactor;
+			m_QuadData->vertexBufferPtr->EntityID = entityID;
+			m_QuadData->vertexBufferPtr++;
 		}
 
-		s_Renderer2DData.QuadIndexCount += 6;
+		m_QuadData->indexCount += 6;
 
 		s_Renderer2DData.Stats.QuadCount++;
 	}
 
 	void Renderer2D::DrawQuad(const glm::mat4& transform, const Ref<Texture2D>& texture, float tilingFactor, const glm::vec4& color, int entityID)
 	{
-		if (s_Renderer2DData.QuadIndexCount >= Renderer2DData::MaxIndices)
+		if (m_QuadData->indexCount >= Renderer2DData::MaxIndices)
 			NextBatch();
 
 		float textureIndex = 0.0f;
@@ -392,16 +358,16 @@ namespace Volcano {
 		}
 
 		for (uint32_t i = 0; i < 4; i++) {
-			s_Renderer2DData.QuadVertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
-			s_Renderer2DData.QuadVertexBufferPtr->Color = color;
-			s_Renderer2DData.QuadVertexBufferPtr->TexCoords = textureCoords[i];
-			s_Renderer2DData.QuadVertexBufferPtr->TextureIndex = textureIndex;
-			s_Renderer2DData.QuadVertexBufferPtr->TilingFactor = tilingFactor;
-			s_Renderer2DData.QuadVertexBufferPtr->EntityID = entityID;
-			s_Renderer2DData.QuadVertexBufferPtr++;
+			m_QuadData->vertexBufferPtr->Position = transform * s_Renderer2DData.QuadVertexPosition[i];
+			m_QuadData->vertexBufferPtr->Color = color;
+			m_QuadData->vertexBufferPtr->TexCoords = textureCoords[i];
+			m_QuadData->vertexBufferPtr->TextureIndex = textureIndex;
+			m_QuadData->vertexBufferPtr->TilingFactor = tilingFactor;
+			m_QuadData->vertexBufferPtr->EntityID = entityID;
+			m_QuadData->vertexBufferPtr++;
 		}
 
-		s_Renderer2DData.QuadIndexCount += 6;
+		m_QuadData->indexCount += 6;
 
 		s_Renderer2DData.Stats.QuadCount++;
 	}

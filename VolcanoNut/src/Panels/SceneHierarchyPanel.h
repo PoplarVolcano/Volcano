@@ -15,16 +15,16 @@ namespace Volcano {
 		void SetContext(const Ref<Scene>& scene);
 
 		void OnImGuiRender();
-		Entity GetSelectedEntity() const { return m_SelectionContext; }
-		void SetSelectedEntity(Entity entity);
+		Ref<Entity> GetSelectedEntity() const { return m_SelectionContext; }
+		void SetSelectedEntity(Ref<Entity> entity);
 	private:
 		template<typename T>
 		void DisplayAddComponentEntry(const std::string& entryName);
 
-		void DrawEntityNode(Entity entity);
-		void DrawComponents(Entity entity);
+		void DrawEntityNode(Ref<Entity> entity);
+		void DrawComponents(Ref<Entity> entity);
 	private:
 		Ref<Scene> m_Context;
-		Entity m_SelectionContext;
+		Ref<Entity> m_SelectionContext;
 	};
 }

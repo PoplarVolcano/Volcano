@@ -235,17 +235,8 @@ namespace Volcano {
 		if (s_SphereData.SphereIndexCount >= SphereData::MaxIndices)
 			NextBatch();
 
-		/*
-		float diffuseIndex = 0.0f;
-		float specularIndex = 0.0f;
-		float normalIndex = 0.0f;
-		float parallaxIndex = 0.0f;
-		*/
-		// 逆时针注入顶点数据
-		// 设置顶点的地址指向注入的地址
 		for (uint32_t i = 0; i < s_SphereData.VertexCount; i++) {
 			s_SphereData.SphereVertexBufferPtr->Position = transform * glm::vec4(s_SphereData.Positions[i], 1.0f);
-			// 模型矩阵左上角3x3部分的逆矩阵的转置矩阵，用于解决不等比缩放导致的法向量不垂直于平面
 			s_SphereData.SphereVertexBufferPtr->TexCoords = s_SphereData.UV[i];
 			s_SphereData.SphereVertexBufferPtr->Normal = normalTransform * s_SphereData.Normals[i];
 			s_SphereData.SphereVertexBufferPtr->EntityID = entityID;

@@ -16,10 +16,6 @@ namespace Volcano {
 		glm::vec2 TexCoords;
 		glm::vec3 Tangent;	// ÇÐÏß
 		glm::vec3 Bitangent;// Ë«ÇÐÏß
-		float DiffuseIndex;
-		float SpecularIndex;
-		float NormalIndex;
-		float ParallaxIndex;
 
 		int EntityID;
 		//bone indexes which will influence this vertex

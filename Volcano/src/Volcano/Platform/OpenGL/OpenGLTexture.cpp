@@ -135,6 +135,13 @@ namespace Volcano {
 	{
 		glBindTextureUnit(slot, m_RendererID);
 	}
+
+	void Texture::ClearTextureSlot(uint32_t i)
+	{
+		glActiveTexture(GL_TEXTURE0 + i);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
 	void OpenGLTexture2D::SetData(void* data, uint32_t size)
 	{
 		uint32_t bpc = m_DataFormat == GL_RGBA ? 4 : 3;

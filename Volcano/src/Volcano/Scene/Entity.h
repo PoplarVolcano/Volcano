@@ -2,8 +2,7 @@
 
 #include "Scene.h"
 #include "Volcano/Core/UUID.h"
-#include "Components.h"
-#include "Volcano/Renderer/RendererItem/Mesh.h"
+#include "Volcano/Scene/Components.h"
 
 #include "entt.hpp"
 
@@ -12,6 +11,8 @@ namespace  Volcano {
 	class Entity
 	{
 	public:
+		static Ref<Entity> Create(Scene& scene, UUID uuid, const std::string& name);
+
 		Entity() = default;
 		Entity(entt::entity handle, Scene* scene);
 		Entity(const Entity& other) = default;
@@ -56,11 +57,14 @@ namespace  Volcano {
 
 		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
 		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
+		const entt::entity& GetEntityHandle() { return m_EntityHandle; }
 
-		void SetMesh(const Ref<Mesh>& mesh) { m_Mesh = mesh; }
-		Ref<Mesh> GetMesh() { return m_Mesh; }
-		const glm::mat4& GetTransform() const { return m_Transform; }
-		glm::mat4& Transform() { return m_Transform; }
+		std::map<std::string, Ref<Entity>>& GetEntityChildren() { return m_Children; }
+		Scene* GetScene() { return m_Scene; }
+		Entity* GetEntityParent() { return m_Parent; }
+
+		Ref<Entity> SetEntityChild(UUID uuid, const std::string& name);
+		void SetEntityParent(Entity* entity);
 
 		operator bool() const { return m_EntityHandle != entt::null; }
 		operator entt::entity() const { return m_EntityHandle; }
@@ -74,10 +78,17 @@ namespace  Volcano {
 		{
 			return !(*this == other);
 		}
+
+		glm::mat4 GetTransform() { return m_Transform; }
+		void SetTransform(glm::mat4 transform) { m_Transform = transform; }
+
 	private:
+		Entity* m_Parent = nullptr;
+		std::map<std::string, Ref<Entity>> m_Children;
 		entt::entity m_EntityHandle{ entt::null };
 		Scene* m_Scene = nullptr;
-		Ref<Mesh> m_Mesh;
+
 		glm::mat4 m_Transform;
+
 	};
 }

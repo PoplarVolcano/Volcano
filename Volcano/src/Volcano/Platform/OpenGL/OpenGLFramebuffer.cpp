@@ -359,10 +359,11 @@ namespace Volcano {
 	int OpenGLFramebuffer::ReadPixel(uint32_t attachmentIndex, int x, int y)
 	{
 		VOL_CORE_ASSERT(attachmentIndex < m_ColorAttachments.size());
-		// 读取第二个缓冲区
+		Bind();
 		glReadBuffer(GL_COLOR_ATTACHMENT0 + attachmentIndex);
 		int pixelData;
 		glReadPixels(x, y, 1, 1, GL_RED_INTEGER, GL_INT, &pixelData);
+		Unbind();
 		return pixelData;
 	}
 
@@ -376,12 +377,20 @@ namespace Volcano {
 		return pixelData;
 	}
 
-	void OpenGLFramebuffer::ClearAttachment(uint32_t attachmentIndex, int value)
+	void OpenGLFramebuffer::ClearAttachmentInt(uint32_t attachmentIndex, int value)
 	{
 		VOL_CORE_ASSERT(attachmentIndex < m_ColorAttachments.size());
 
 		auto& spec = m_ColorAttachmentSpecifications[attachmentIndex];
 		glClearTexImage(m_ColorAttachments[attachmentIndex], 0, Utils::VolcanoFBTextureFormatToGL(spec.TextureFormat), GL_INT, &value);
+	}
+
+	void OpenGLFramebuffer::ClearAttachmentFloat(uint32_t attachmentIndex, float value)
+	{
+		VOL_CORE_ASSERT(attachmentIndex < m_ColorAttachments.size());
+
+		auto& spec = m_ColorAttachmentSpecifications[attachmentIndex];
+		glClearTexImage(m_ColorAttachments[attachmentIndex], 0, Utils::VolcanoFBTextureFormatToGL(spec.TextureFormat), GL_FLOAT, &value);
 	}
 
 	void OpenGLFramebuffer::SetDrawBuffer(FramebufferBufferFormat format)

@@ -36,12 +36,12 @@ namespace Volcano {
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->GetEntityByUUID(entityID);
+		Ref<Entity> entity = scene->GetEntityByUUID(entityID);
 		VOL_CORE_ASSERT(entity);
 
 		MonoType* managedType = mono_reflection_type_get_type(componentType);
 		VOL_CORE_ASSERT(s_EntityHasComponentFuncs.find(managedType) != s_EntityHasComponentFuncs.end());
-		return s_EntityHasComponentFuncs.at(managedType)(entity);
+		return s_EntityHasComponentFuncs.at(managedType)(*entity.get());
 	}
 
 	static uint64_t Entity_FindEntityByName(MonoString* name)
@@ -50,13 +50,13 @@ namespace Volcano {
 
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Entity entity = scene->FindEntityByName(nameCStr);
+		Ref<Entity> entity = scene->FindEntityByName(nameCStr);
 		mono_free(nameCStr);
 
 		if (!entity)
 			return 0;
 
-		return entity.GetUUID();
+		return entity->GetUUID();
 	}
 
 	// =======================================MouseBuffer================================================
