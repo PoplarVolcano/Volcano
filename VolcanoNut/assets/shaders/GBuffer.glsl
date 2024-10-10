@@ -73,6 +73,7 @@ layout(std140, binding = 1) uniform CameraPosition
 
 void main()
 {    
+    
 	// 计算深度贴图
 	vec3 viewDirection = normalize(u_CameraPosition - Input.Position);
 	vec2 texCoords = Input.TexCoords;
@@ -117,6 +118,14 @@ void main()
             discard;
 	}
 
+	
+	vec3 materialNormal = texture(u_Normal, texCoords).rgb;
+	vec4 materialDiffuse = texture(u_Diffuse, texCoords);
+	float materialSpecular = texture(u_Specular, texCoords).r;
+
+	if(materialNormal == vec3(0.0) && materialDiffuse.a == 0.0 && materialSpecular == 0.0)
+	    discard;
+
 	const float near = 0.1; // 投影矩阵的近平面
     const float far = 1000.0; // 投影矩阵的远平面
 	// Note that gl_FragCoord.z ranges from [0,1] instead of up to 'far plane distance' since we divide by 'far'
@@ -126,7 +135,6 @@ void main()
 
     // 同样存储对每个逐片段法线到G缓冲中
 	vec3 normal = vec3(0.0);
-	vec3 materialNormal = texture(u_Normal, texCoords).rgb;
 	if(materialNormal == vec3(0.0))
 	    normal = Input.Normal;
     else
@@ -137,7 +145,7 @@ void main()
 		normal = (normal + 1.0) / 2.0;
 	}
     g_Normal = vec4(normal, 1.0);
-    g_Albedo = vec4(texture(u_Diffuse, texCoords).rgb, texture(u_Specular, texCoords).r);
+    g_Albedo = vec4(materialDiffuse.rgb, materialSpecular);
     g_EntityID = v_EntityID;
 
 }  

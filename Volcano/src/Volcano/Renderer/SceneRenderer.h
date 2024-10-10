@@ -23,6 +23,7 @@ namespace Volcano {
 		static void HDR();
 
 
+		static Ref<Framebuffer> GetLightShadingFramebuffer(int i) { return m_LightShadingFramebuffer[i]; }
 		static Ref<Framebuffer> GetDirectionalDepthMapFramebuffer() { return m_DirectionalDepthMapFramebuffer; }
 		static Ref<Framebuffer> GetPointDepthMapFramebuffer() { return m_PointDepthMapFramebuffer; }
 		static Ref<Framebuffer> GetSpotDepthMapFramebuffer() { return m_SpotDepthMapFramebuffer; }
@@ -47,6 +48,7 @@ namespace Volcano {
 		static Ref<Framebuffer> m_PointDepthMapFramebuffer;
 		static Ref<Framebuffer> m_SpotDepthMapFramebuffer;
 		static Ref<Framebuffer> m_GBufferFramebuffer;
+		static Ref<Framebuffer> m_LightShadingFramebuffer[2];
 		static Ref<Framebuffer> m_DeferredShadingFramebuffer;
 		static Ref<Framebuffer> m_SSAOFramebuffer;
 		static Ref<Framebuffer> m_SSAOBlurFramebuffer;

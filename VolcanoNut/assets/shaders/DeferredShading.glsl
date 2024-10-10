@@ -38,76 +38,16 @@ layout (binding = 2) uniform sampler2D g_Albedo;
 layout (binding = 3) uniform isampler2D g_EntityID;
 layout (binding = 4) uniform sampler2D ssao;
 
-layout (binding = 5) uniform sampler2D u_DirectionalDepthMap;
-layout (binding = 6) uniform samplerCube u_PointDepthMap;
-layout (binding = 7) uniform sampler2D u_SpotDepthMap;
+layout (binding = 5) uniform sampler2D u_Ambient;
+layout (binding = 6) uniform sampler2D u_Diffuse;
+layout (binding = 7) uniform sampler2D u_Specular;
 
-layout(std140, binding = 1) uniform CameraPosition
-{
-	vec3 u_CameraPosition;
-};
-
-layout (std140, binding = 2) uniform DirectionalLight
-{
-	vec3 u_DirectionalLightDirection;
-	vec3 u_DirectionalLightAmbient;
-	vec3 u_DirectionalLightDiffuse;
-	vec3 u_DirectionalLightSpecular;
-};
-
-layout (std140, binding = 3) uniform PointLight
-{
-	vec3 u_PointLightPosition;
-	vec3 u_PointLightAmbient;
-	vec3 u_PointLightDiffuse;
-	vec3 u_PointLightSpecular;
-	float u_PointLightConstant;
-    float u_PointLightLinear;
-    float u_PointLightQuadratic;
-};
-
-
-layout (std140, binding = 4) uniform SpotLight
-{
-	vec3 u_SpotLightPosition;
-	vec3 u_SpotLightDirection;
-	vec3 u_SpotLightAmbient;
-	vec3 u_SpotLightDiffuse;
-	vec3 u_SpotLightSpecular;
-	float u_SpotLightConstant;
-    float u_SpotLightLinear;
-    float u_SpotLightQuadratic;
-	float u_SpotLightCutOff;
-	float u_SpotLightOuterCutOff;
-};
-
-layout (std140, binding = 5) uniform Material
-{
-	float u_MaterialShininess;
-};
-
-layout(std140, binding = 8) uniform DirectionalLightShadow
-{
-	mat4 u_DirectionalLightSpace;
-};
-
-layout(std140, binding = 9) uniform PointLightShadow
-{
-    mat4 u_ShadowMatrices[6];
-    float u_PointFarPlane;
-};
-
-layout(std140, binding = 10) uniform SpotLightShadow
-{
-    mat4 u_SpotLightSpace;
-    float u_SpotFarPlane;
-};
 
 void main()
 {
-	vec3 Ambient  = vec3(0.0, 0.0, 0.0);
-	vec3 Diffuse  = vec3(0.0, 0.0, 0.0);
-	vec3 Specular = vec3(0.0, 0.0, 0.0);
+	vec3 Ambient  = texture(u_Ambient,  Input.TexCoords).rgb;
+	vec3 Diffuse  = texture(u_Diffuse,  Input.TexCoords).rgb;
+	vec3 Specular = texture(u_Specular, Input.TexCoords).rgb;
 	
 	vec3  fragPosition     = texture(g_Position, Input.TexCoords).rgb;
 	float depth            = texture(g_Position, Input.TexCoords).a;
@@ -119,116 +59,6 @@ void main()
 	if(fragPosition == vec3(0.0))
 	    discard;
 
-	vec3 viewDirection = normalize(u_CameraPosition - fragPosition);
-	vec3 normal = materialNormal * 2.0 - 1.0;
-
-	// DirectionalLight
-	if (u_DirectionalLightDirection != vec3(0.0))
-	{
-		vec3 lightDirection = normalize(-u_DirectionalLightDirection);
-		float diff = max(dot(normal, lightDirection), 0.0);
-		
-		//vec3 reflectDirection = reflect(-lightDirection, normal);
-		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
-		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
-		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
-		
-		vec3 ambient  = u_DirectionalLightAmbient;
-		vec3 diffuse  = u_DirectionalLightDiffuse  * diff;
-		vec3 specular = u_DirectionalLightSpecular * spec;
-		
-	    vec4 lightSpacePosition = u_DirectionalLightSpace * vec4(fragPosition, 1.0);
-        vec3 projCoords = lightSpacePosition.xyz / lightSpacePosition.w;
-        projCoords = projCoords * 0.5 + 0.5;
-        float closestDepth = texture(u_DirectionalDepthMap, projCoords.xy).r; 
-        float currentDepth = projCoords.z;
-	    float bias = max(0.005 * (1.0 - dot(normal, -u_DirectionalLightDirection)), 0.0005);
-        float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
-	    if(projCoords.z > 1.0)
-            shadow = 0.0;
-		
-		Ambient  += ambient;
-		Diffuse  += (1.0 - shadow) * diffuse;
-		Specular += (1.0 - shadow) * specular;
-	}
-
-	// PointLight
-	if (u_PointLightPosition != vec3(0.0))
-	{
-		vec3 lightDirection = normalize(u_PointLightPosition - fragPosition);
-		float diff = max(dot(normal, lightDirection), 0.0);
-		
-		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
-		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
-		
-		float distance = length(u_PointLightPosition - fragPosition);
-		float attenuation = 1.0 / (u_PointLightConstant + u_PointLightLinear * distance +  u_PointLightQuadratic * (distance * distance));
-		
-	    vec3 ambient  = u_PointLightAmbient;
-		vec3 diffuse  = u_PointLightDiffuse  * diff;
-		vec3 specular = u_PointLightSpecular * spec;
-	
-	    ambient  *= attenuation;
-		diffuse  *= attenuation;
-		specular *= attenuation;
-	
-	    
-	    vec3 fragToLight = fragPosition - u_PointLightPosition;
-        float currentDepth = length(fragToLight);
-        float closestDepth = texture(u_PointDepthMap, fragToLight).r;
-        closestDepth *= u_PointFarPlane;
-        float bias = 0.05;
-        float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
-		
-
-		//float shadow = 0;
-
-		Ambient  += ambient;
-		Diffuse  += (1.0 - shadow) * diffuse;
-		Specular += (1.0 - shadow) * specular;
-	}
-
-	// SpotLight
-	if (u_SpotLightDirection != vec3(0.0))
-	{
-		vec3 lightDirection = normalize(u_SpotLightPosition - fragPosition);
-		float diff = max(dot(normal, lightDirection), 0.0);
-		
-		//vec3 reflectDirection = reflect(-lightDirection, normal);
-		//float spec = pow(max(dot(normal, reflectDirection), 0.0), u_MaterialShininess);
-		vec3 halfwayDirection = normalize(lightDirection + viewDirection);
-		float spec = pow(max(dot(normal, halfwayDirection), 0.0), u_MaterialShininess);
-		
-		float distance    = length(u_SpotLightPosition - fragPosition);
-		float attenuation = 1.0 / (u_SpotLightConstant + u_SpotLightLinear * distance + u_SpotLightQuadratic * (distance * distance));    
-		
-		// spotlight (soft edges)
-		float theta = dot(-lightDirection, normalize(u_SpotLightDirection)); 
-        float epsilon = (u_SpotLightCutOff - u_SpotLightOuterCutOff);
-        float intensity = clamp((theta - u_SpotLightOuterCutOff) / epsilon, 0.0, 1.0);
-		
-		vec3 ambient  = u_SpotLightAmbient;
-		vec3 diffuse  = u_SpotLightDiffuse  * diff;  
-		vec3 specular = u_SpotLightSpecular * spec;
-
-		ambient  *= intensity * attenuation;
-        diffuse  *= intensity * attenuation;
-        specular *= intensity * attenuation;
-		
-	    vec4 spotLightSpacePosition = u_SpotLightSpace * vec4(fragPosition, 1.0);
-        vec3 projCoords = spotLightSpacePosition.xyz / spotLightSpacePosition.w;
-        projCoords = projCoords * 0.5 + 0.5;
-        float closestDepth = texture(u_SpotDepthMap, projCoords.xy).r; 
-        float currentDepth = projCoords.z;
-	    float bias = max(0.005 * (1.0 - dot(normal, -u_SpotLightDirection)), 0.0005);
-        float shadow = currentDepth - bias > closestDepth ? 1.0 : 0.0;
-
-		Ambient  += ambient;
-		Diffuse  += (1.0 - shadow) * diffuse;
-		Specular += (1.0 - shadow) * specular;
-
-	}
-	
 	Ambient  *= materialDiffuse;
 	Diffuse  *= materialDiffuse;  
 	Specular *= materialSpecular;

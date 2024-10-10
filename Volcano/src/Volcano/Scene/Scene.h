@@ -21,6 +21,7 @@ namespace Volcano {
 		SHADOW_POINTLIGHT,
 		SHADOW_SPOTLIGHT,
 		G_BUFFER,
+		LIGHT_SHADING,
 		DEFERRED_SHADING,
 		SKYBOX
 	};
@@ -66,8 +67,8 @@ namespace Volcano {
 
 		Ref<Entity> GetPrimaryCameraEntity();
 		Ref<Entity> GetDirectionalLightEntity();
-		Ref<Entity> GetPointLightEntity();
-		Ref<Entity> GetSpotLightEntity();
+		std::vector<Ref<Entity>> GetPointLightEntities();
+		std::vector<Ref<Entity>> GetSpotLightEntities();
 
 		bool IsRunning() const { return m_IsRunning; }
 		bool IsPaused() const { return m_IsPaused; }
@@ -91,6 +92,7 @@ namespace Volcano {
 		std::map<std::string, Ref<Entity>>& GetEntityNameMap() { return m_EntityNameMap; }
 		
 
+		void UpdateLight(uint32_t i = 0);
 	private:
 		template<typename T>
 		void OnComponentAdded(Entity& entity, T& component);
@@ -100,7 +102,6 @@ namespace Volcano {
 
 		void UpdateCameraData(Camera& camera, glm::mat4 transform, glm::vec3 position);
 		void RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
-		void UpdateLight();
 
 	private:
 		entt::registry m_Registry;                                     // ×¢²á±í£¬´æËùÓÐentt::entity

@@ -144,9 +144,6 @@ namespace Volcano{
 
         //============================================SceneRender=============================================
         SceneRenderer::BeginScene(m_ActiveScene, ts, m_SceneState, m_EditorCamera);
-        SceneRenderer::DirectionalShadow();
-        SceneRenderer::PointShadow();
-        SceneRenderer::SpotShadow();
         SceneRenderer::GBuffer();
         SceneRenderer::SSAO();
         SceneRenderer::DeferredShading();
@@ -318,7 +315,7 @@ namespace Volcano{
         ImGui::Begin("ViewportTemp");
         {
             uint32_t textureID = 0;
-            const char* frameBuffers[] = { "None", "DirectionalShadow", "PointShadow", "SpotShadow", "GBuffer1", "GBuffer2", "GBuffer3", "SSAO", "SSAOBlur", "DefferedShading", "HDR" };
+            const char* frameBuffers[] = { "None", "DirectionalShadow", "PointShadow", "SpotShadow", "GBuffer1", "GBuffer2", "GBuffer3", "SSAO", "SSAOBlur", "DefferedShading", "HDR", "LightShading1", "LightShading2" , "LightShading3" };
             ImGui::Combo("FrameBuffer", &m_ViewportTempIndex, frameBuffers, IM_ARRAYSIZE(frameBuffers));
             switch (m_ViewportTempIndex)
             {
@@ -354,6 +351,15 @@ namespace Volcano{
                 break;
             case 10:
                 textureID = SceneRenderer::GetHDRFramebuffer()->GetColorAttachmentRendererID();
+                break;
+            case 11:
+                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
+                break;
+            case 12:
+                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(1);
+                break;
+            case 13:
+                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(2);
                 break;
             default:
                 textureID = 0;

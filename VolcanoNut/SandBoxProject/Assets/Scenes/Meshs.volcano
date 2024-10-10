@@ -105,7 +105,24 @@ Entities:
       Scale: [1, 1, 1]
     LightComponent:
       Type: 1
-      Ambient: [1, 1, 1]
+      Ambient: [0.100000001, 0.100000001, 0.100000001]
+      Diffuse: [0.5, 0.5, 0.5]
+      Specular: [0.5, 0.5, 0.5]
+      Constant: 1
+      Linear: 0.0900000036
+      Quadratic: 0.0320000015
+      CutOff: 0.976296008
+      OuterCutOff: 0.953716934
+  - EntityID: 17285447751864938089
+    TagComponent:
+      Tag: PointLight2
+    TransformComponent:
+      Translation: [0, 2, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 1
+      Ambient: [0.100000001, 0.100000001, 0.100000001]
       Diffuse: [0.5, 0.5, 0.5]
       Specular: [0.5, 0.5, 0.5]
       Constant: 1
@@ -117,14 +134,14 @@ Entities:
     TagComponent:
       Tag: SpotLight
     TransformComponent:
-      Translation: [0, 1, 5]
-      Rotation: [0, 0, 0]
+      Translation: [3, 7, 5]
+      Rotation: [-0.87266463, 0, -0.34906584]
       Scale: [1, 1, 1]
     LightComponent:
       Type: 2
       Ambient: [0.100000001, 0.100000001, 0.100000001]
-      Diffuse: [0.5, 0.5, 0.5]
-      Specular: [0.5, 0.5, 0.5]
+      Diffuse: [1, 1, 1]
+      Specular: [1, 1, 1]
       Constant: 1
       Linear: 0.0900000036
       Quadratic: 0.0320000015
@@ -132,19 +149,23 @@ Entities:
       OuterCutOff: 0.953716934
     ScriptComponent:
       ClassName: Sandbox.FlashLight
-  - EntityID: 6463769621340483953
+  - EntityID: 2763038643549960871
     TagComponent:
-      Tag: Top
+      Tag: SpotLight2
     TransformComponent:
-      Translation: [0, 10.5, 0]
-      Rotation: [0, 0, 0]
-      Scale: [10, 1, 10]
-    MeshComponent:
-      MeshType: 4
-    MeshRendererComponent:
-      Textures:
-        - ImageType: 0
-          Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\wood.png
+      Translation: [-3, 7, 5]
+      Rotation: [-0.87266463, 0, 0.34906584]
+      Scale: [1, 1, 1]
+    LightComponent:
+      Type: 2
+      Ambient: [0.100000001, 0.100000001, 0.100000001]
+      Diffuse: [1, 1, 1]
+      Specular: [1, 1, 1]
+      Constant: 1
+      Linear: 0.0900000036
+      Quadratic: 0.0320000015
+      CutOff: 0.976296008
+      OuterCutOff: 0.953716934
   - EntityID: 5428786464709564724
     TagComponent:
       Tag: Wall
@@ -190,16 +211,3 @@ Entities:
           Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box.png
         - ImageType: 1
           Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Box_specular.png
-  - EntityID: 617624060235705927
-    TagComponent:
-      Tag: Wall4
-    TransformComponent:
-      Translation: [0, 5, 5.5]
-      Rotation: [0, 0, 0]
-      Scale: [10, 10, 1]
-    MeshComponent:
-      MeshType: 4
-    MeshRendererComponent:
-      Textures:
-        - ImageType: 0
-          Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\Triangle_old.png

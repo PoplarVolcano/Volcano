@@ -320,7 +320,7 @@ namespace Volcano {
 		}
 
 
-		UpdateLight();
+		//UpdateLight();
 	}
 
 	void Scene::OnRenderRuntime(Timestep ts)
@@ -362,7 +362,7 @@ namespace Volcano {
 			}
 		}
 
-		UpdateLight();
+		//UpdateLight();
 	}
 
 	void Scene::OnRenderSimulation(Timestep ts, EditorCamera& camera)
@@ -390,7 +390,7 @@ namespace Volcano {
 		}
 
 
-		UpdateLight();
+		//UpdateLight();
 	}
 
 	void Scene::OnRenderEditor(Timestep ts, EditorCamera& camera)
@@ -457,30 +457,30 @@ namespace Volcano {
 		return {};
 	}
 
-	Ref<Entity> Scene::GetPointLightEntity()
+	std::vector<Ref<Entity>> Scene::GetPointLightEntities()
 	{
-		// 获取光源
+		std::vector<Ref<Entity>> pointLights;
 		auto view = m_Registry.view<LightComponent>();
 		for (auto entity : view)
 		{
 			auto light = view.get<LightComponent>(entity);
 			if (light.Type == LightComponent::LightType::PointLight)
-				return m_EntityEnttMap[entity];
+				pointLights.push_back(m_EntityEnttMap[entity]);// entt是从后往前遍历，得到的vector是倒序的
 		}
-		return {};
-	}
+		return pointLights;
 
-	Ref<Entity> Scene::GetSpotLightEntity()
+	}
+	std::vector<Ref<Entity>> Scene::GetSpotLightEntities()
 	{
-		// 获取光源
+		std::vector<Ref<Entity>> spotLights;
 		auto view = m_Registry.view<LightComponent>();
 		for (auto entity : view)
 		{
 			auto light = view.get<LightComponent>(entity);
 			if (light.Type == LightComponent::LightType::SpotLight)
-				return m_EntityEnttMap[entity];
+				spotLights.push_back(m_EntityEnttMap[entity]);
 		}
-		return {};
+		return spotLights;
 	}
 
 	Ref<Entity> Scene::FindEntityByName(std::string_view name)
@@ -681,10 +681,10 @@ namespace Volcano {
 
 	}
 
-	void Scene::UpdateLight()
+	void Scene::UpdateLight(uint32_t index)
 	{
 			Ref<Entity> directionalLightEntity = GetDirectionalLightEntity();
-			if (directionalLightEntity)
+			if (directionalLightEntity && index < 1)
 			{
 				auto& transform = directionalLightEntity->GetComponent<TransformComponent>();
 				auto& light = directionalLightEntity->GetComponent<LightComponent>();
@@ -711,155 +711,115 @@ namespace Volcano {
 			}
 			else
 			{
-				s_DirectionalLightBuffer.direction = { 0, 0, 0 };
-				s_DirectionalLightBuffer.ambient   = { 0, 0, 0 };
-				s_DirectionalLightBuffer.diffuse   = { 0, 0, 0 };
-				s_DirectionalLightBuffer.specular  = { 0, 0, 0 };
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+				float zero[16] = { 0.0f };
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&zero, sizeof(zero));
 
-				glm::mat4 lightSpaceMatrix = glm::mat4(0);
-				UniformBufferManager::GetUniformBuffer("DirectionalLightSpaceMatrix")->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
-				/*
-				glm::vec3 lightPos(-20.0f, 40.0f, -10.0f);
-				glm::mat4 lightProjection, lightView;
-				glm::mat4 lightSpaceMatrix;
-				float near_plane = -1.0f, far_plane = 70.5f;
-				lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-				glm::mat4 rotation = glm::toMat4(glm::quat(glm::vec3(glm::radians(-60.0f), glm::radians(-120.0f), 0.0f)));
-				lightView = glm::inverse(glm::translate(glm::mat4(1.0f), lightPos) * rotation * glm::scale(glm::mat4(1.0f), glm::vec3(1.0f)));
-
-				lightSpaceMatrix = lightProjection * lightView;
-				s_LightSpaceMatrixUniformBuffer->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
-				*/
+				UniformBufferManager::GetUniformBuffer("DirectionalLightSpaceMatrix")->SetData(&zero, sizeof(zero));
+				
 			}
 
 
-			Ref<Entity> pointLightEntity = GetPointLightEntity();
-			if (pointLightEntity)
+			std::vector<Ref<Entity>> pointLightEntities = GetPointLightEntities();
+			if (pointLightEntities.size() > index)
 			{
-				auto& transform = pointLightEntity->GetComponent<TransformComponent>();
-				auto& light = pointLightEntity->GetComponent<LightComponent>();
-		        s_PointLightBuffer.position  = transform.Translation;
-		        s_PointLightBuffer.ambient   = light.Ambient;
-		        s_PointLightBuffer.diffuse   = light.Diffuse;
-		        s_PointLightBuffer.specular  = light.Specular;
-		        s_PointLightBuffer.constant  = light.Constant;
-		        s_PointLightBuffer.linear    = light.Linear;
-		        s_PointLightBuffer.quadratic = light.Quadratic;
-				UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
-
-
-				glm::vec3 lightPos = s_PointLightBuffer.position;//(0.0f, 0.0f, 0.0f);
 				const uint32_t SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 				float aspect = (float)SHADOW_WIDTH / (float)SHADOW_HEIGHT;
 				float m_Near = 0.1f;//1.0f;
 				float m_Far = 25.0f;
 				glm::mat4 shadowProj = glm::perspective(89.535f, aspect, m_Near, m_Far);// fov理应是90，可能是float的计算误差导致立方体贴图视野错位
 				std::vector<glm::mat4> shadowTransforms;
-				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
-				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
-				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  1.0,  0.0), glm::vec3(0.0,  0.0,  1.0)));
-				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, -1.0,  0.0), glm::vec3(0.0,  0.0, -1.0)));
-				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0,  1.0), glm::vec3(0.0, -1.0,  0.0)));
-				shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0, -1.0), glm::vec3(0.0, -1.0,  0.0)));
-				
+
+				auto pointLightEntity = pointLightEntities[index];
+				{
+					auto& transform = pointLightEntity->GetComponent<TransformComponent>();
+					auto& light = pointLightEntity->GetComponent<LightComponent>();
+					s_PointLightBuffer.position  = transform.Translation;
+					s_PointLightBuffer.ambient   = light.Ambient;
+					s_PointLightBuffer.diffuse   = light.Diffuse;
+					s_PointLightBuffer.specular  = light.Specular;
+					s_PointLightBuffer.constant  = light.Constant;
+					s_PointLightBuffer.linear    = light.Linear;
+					s_PointLightBuffer.quadratic = light.Quadratic;
+					UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
+					UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+					
+				    glm::vec3 lightPos = s_PointLightBuffer.position;
+				    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
+				    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3(-1.0,  0.0,  0.0), glm::vec3(0.0, -1.0,  0.0)));
+				    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  1.0,  0.0), glm::vec3(0.0,  0.0,  1.0)));
+				    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0, -1.0,  0.0), glm::vec3(0.0,  0.0, -1.0)));
+				    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0,  1.0), glm::vec3(0.0, -1.0,  0.0)));
+				    shadowTransforms.push_back(shadowProj * glm::lookAt(lightPos, lightPos + glm::vec3( 0.0,  0.0, -1.0), glm::vec3(0.0, -1.0,  0.0)));
+
+				}
+
 				UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&shadowTransforms[0], 6 * 4 * 4 * sizeof(float));
 				UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
 			}
 			else
 			{
-		        s_PointLightBuffer.position  = { 0, 0, 0 };
-		        s_PointLightBuffer.ambient   = { 0, 0, 0 };
-		        s_PointLightBuffer.diffuse   = { 0, 0, 0 };
-		        s_PointLightBuffer.specular  = { 0, 0, 0 };
-		        s_PointLightBuffer.constant  = 0;
-		        s_PointLightBuffer.linear    = 0;
-		        s_PointLightBuffer.quadratic = 0;
-				UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.position,  sizeof(glm::vec3));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.constant,  sizeof(float),     (4 + 4 + 4 + 3) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.linear,    sizeof(float),     (4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&s_PointLightBuffer.quadratic, sizeof(float),     (4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+				float zero[20] = { 0.0f };
+				UniformBufferManager::GetUniformBuffer("PointLight")->SetData(&zero,  sizeof(zero));
 
-				glm::mat4 shadowTransform = glm::mat4(0);
-				float m_Far = 0;
-				for (uint32_t i = 0; i < 6; ++i)
-					UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&shadowTransform, 4 * 4 * sizeof(float), i * 4 * 4 * sizeof(float));
-				UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&m_Far, sizeof(float), 6 * 4 * 4 * sizeof(float));
+				float zero1[97] = { 0.0f };
+				UniformBufferManager::GetUniformBuffer("PointLightSpaceMatrix")->SetData(&zero1, sizeof(zero1));
 
 			}
 
 
-			Ref<Entity> spotLightEntity = GetSpotLightEntity();
-			if (spotLightEntity)
+			std::vector<Ref<Entity>> spotLightEntities = GetSpotLightEntities();
+			if (spotLightEntities.size() > index)
 			{
-				auto& transform = spotLightEntity->GetComponent<TransformComponent>();
-				auto& light = spotLightEntity->GetComponent<LightComponent>();
-		        s_SpotLightBuffer.position    = transform.Translation;
-				glm::vec3 direction = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
-		        s_SpotLightBuffer.direction   = direction;
-		        s_SpotLightBuffer.ambient     = light.Ambient;
-		        s_SpotLightBuffer.diffuse     = light.Diffuse;
-		        s_SpotLightBuffer.specular    = light.Specular;
-		        s_SpotLightBuffer.constant    = light.Constant;
-		        s_SpotLightBuffer.linear      = light.Linear;
-		        s_SpotLightBuffer.quadratic   = light.Quadratic;
-		        s_SpotLightBuffer.cutOff      = light.CutOff;//glm::cos(glm::radians(12.5f));
-		        s_SpotLightBuffer.outerCutOff = light.OuterCutOff;//glm::cos(glm::radians(17.5f));
-				UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
-
 				glm::mat4 lightProjection, lightView;
 				glm::mat4 lightSpaceMatrix;
 				float m_Near = 0.1f, m_Far = 100.0f;
 				lightProjection = glm::perspective(glm::radians(90.0f), 1.0f, m_Near, m_Far);
-				lightView = glm::inverse(transform.GetTransform());
 
-				lightSpaceMatrix = lightProjection * lightView;
-				UniformBufferManager::GetUniformBuffer("SpotLightSpaceMatrix")->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
-				UniformBufferManager::GetUniformBuffer("SpotLightSpaceMatrix")->SetData(&m_Far, sizeof(float), 4 * 4 * sizeof(float));
+				auto spotLightEntity = spotLightEntities[index];
+				{
+					auto& transform = spotLightEntity->GetComponent<TransformComponent>();
+					auto& light = spotLightEntity->GetComponent<LightComponent>();
+					s_SpotLightBuffer.position = transform.Translation;
+					glm::vec3 direction = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
+					s_SpotLightBuffer.direction   = direction;
+					s_SpotLightBuffer.ambient     = light.Ambient;
+					s_SpotLightBuffer.diffuse     = light.Diffuse;
+					s_SpotLightBuffer.specular    = light.Specular;
+					s_SpotLightBuffer.constant    = light.Constant;
+					s_SpotLightBuffer.linear      = light.Linear;
+					s_SpotLightBuffer.quadratic   = light.Quadratic;
+					s_SpotLightBuffer.cutOff      = light.CutOff;//glm::cos(glm::radians(12.5f));
+					s_SpotLightBuffer.outerCutOff = light.OuterCutOff;//glm::cos(glm::radians(17.5f));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
+					UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
+
+					lightView = glm::inverse(transform.GetTransform());
+					lightSpaceMatrix = lightProjection * lightView;
+					UniformBufferManager::GetUniformBuffer("SpotLightSpaceMatrix")->SetData(&lightSpaceMatrix, sizeof(glm::mat4));
+					UniformBufferManager::GetUniformBuffer("SpotLightSpaceMatrix")->SetData(&m_Far, sizeof(float), 4 * 4 * sizeof(float));
+				}
+
 			}
 			else
 			{
-		        s_SpotLightBuffer.position    = { 0, 0, 0 };
-		        s_SpotLightBuffer.direction   = { 0, 0, 0 };
-		        s_SpotLightBuffer.ambient     = { 0, 0, 0 };
-		        s_SpotLightBuffer.diffuse     = { 0, 0, 0 };
-		        s_SpotLightBuffer.specular    = { 0, 0, 0 };
-		        s_SpotLightBuffer.constant    = 0;
-		        s_SpotLightBuffer.linear      = 0;
-		        s_SpotLightBuffer.quadratic   = 0;
-		        s_SpotLightBuffer.cutOff      = 0;
-		        s_SpotLightBuffer.outerCutOff = 0;
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.position,    sizeof(glm::vec3));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.direction,   sizeof(glm::vec3), 4 * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.ambient,     sizeof(glm::vec3), (4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.diffuse,     sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.specular,    sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.constant,    sizeof(float),     (4 + 4 + 4 + 4 + 3) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.linear,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.quadratic,   sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.cutOff,      sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float));
-		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&s_SpotLightBuffer.outerCutOff, sizeof(float),     (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1) * sizeof(float));
+				float zero[24] = { 0.0f };
+		        UniformBufferManager::GetUniformBuffer("SpotLight")->SetData(&zero, sizeof(zero));
+
+				float zero1[17] = { 0.0f };
+				UniformBufferManager::GetUniformBuffer("SpotLightSpaceMatrix")->SetData(&zero1, sizeof(zero1));
 
 			}
 	}

@@ -25,8 +25,8 @@ namespace Volcano {
 		UniformBufferManager::m_UniformBuffers["CameraPosition"]       = UniformBuffer::Create(4 * sizeof(float), 1);
 		
 		UniformBufferManager::m_UniformBuffers["DirectionalLight"]            = UniformBuffer::Create((4 + 4 + 4 + 4) * sizeof(float), 2);
-		UniformBufferManager::m_UniformBuffers["PointLight"]                  = UniformBuffer::Create((4 + 4 + 4 + 3 + 1 + 1 + 1) * sizeof(float), 3);
-		UniformBufferManager::m_UniformBuffers["SpotLight"]                   = UniformBuffer::Create((4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
+		UniformBufferManager::m_UniformBuffers["PointLight"]                  = UniformBuffer::Create(4 * (4 + 4 + 4 + 3 + 1 + 1 + 1 + 2/* 2用于填充std140的空位*/) * sizeof(float), 3); // 最多4个点光源
+		UniformBufferManager::m_UniformBuffers["SpotLight"]                   = UniformBuffer::Create(4 * (4 + 4 + 4 + 4 + 3 + 1 + 1 + 1 + 1 + 1) * sizeof(float), 4);
 
 		UniformBufferManager::m_UniformBuffers["Material"]                    = UniformBuffer::Create(sizeof(float), 5);
 

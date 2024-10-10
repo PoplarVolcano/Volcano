@@ -149,6 +149,9 @@ namespace Volcano {
         case RenderType::G_BUFFER:
             Renderer::GetShaderLibrary()->Get("GBuffer")->Bind();
             break;
+        case RenderType::LIGHT_SHADING:
+            Renderer::GetShaderLibrary()->Get("LightShading")->Bind();
+            break;
         case RenderType::DEFERRED_SHADING:
             Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
             break;
