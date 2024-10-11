@@ -101,6 +101,7 @@ namespace Volcano {
 		void OnPhysics2DStop();
 
 		void UpdateCameraData(Camera& camera, glm::mat4 transform, glm::vec3 position);
+		void UpdateScene();
 		void RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
 
 	private:

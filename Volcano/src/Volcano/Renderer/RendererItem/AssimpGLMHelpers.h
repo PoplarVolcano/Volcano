@@ -44,5 +44,14 @@ namespace Volcano{
         {
             return glm::quat(pOrientation.w, pOrientation.x, pOrientation.y, pOrientation.z);
         }
+
+        static inline glm::mat4 GetGLMMat4(const aiMatrix4x4& mat)
+        {
+            glm::mat4 mat4 = glm::mat4(0.0f);
+            for (uint32_t i = 0; i < 4; i++)
+                for (uint32_t j = 0; j < 4; j++)
+                    mat4[i][j] = mat[i][j];
+            return mat4;
+        }
     };
 }

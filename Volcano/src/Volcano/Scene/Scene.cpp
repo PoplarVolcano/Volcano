@@ -133,7 +133,7 @@ namespace Volcano {
 		for (auto entity : view)
 		{
 			auto& mc = dstSceneRegistry.get<MeshComponent>(entity);
-			mc.SetMeshType(mc.meshType, entityEnttMap[entity].get());
+			mc.SetMesh(mc.meshType, entityEnttMap[entity].get(), mc.mesh);
 		}
 
 		return newScene;
@@ -301,26 +301,7 @@ namespace Volcano {
 			// Script - Physic - RenderË³Ðò
 			Physics(ts);
 		}
-
-		{
-			auto view = m_Registry.view<TransformComponent>();
-			for (auto entity : view)
-			{
-				auto transform = view.get<TransformComponent>(entity);
-				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
-			}
-		}
-
-		{
-			auto view = m_Registry.view<TransformComponent, ModelRendererComponent>();
-			for (auto entity : view)
-			{
-				RendererModel::Update(ts);
-			}
-		}
-
-
-		//UpdateLight();
+		UpdateScene();
 	}
 
 	void Scene::OnRenderRuntime(Timestep ts)
@@ -352,17 +333,7 @@ namespace Volcano {
 	{
 		if (!m_IsPaused || m_StepFrames-- > 0)
 			Physics(ts);
-
-		{
-			auto view = m_Registry.view<TransformComponent>();
-			for (auto entity : view)
-			{
-				auto transform = view.get<TransformComponent>(entity);
-				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
-			}
-		}
-
-		//UpdateLight();
+		UpdateScene();
 	}
 
 	void Scene::OnRenderSimulation(Timestep ts, EditorCamera& camera)
@@ -382,15 +353,7 @@ namespace Volcano {
 				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
 			}
 		}
-
-		auto view = m_Registry.view<TransformComponent, ModelRendererComponent>();
-		for (auto entity : view)
-		{
-			RendererModel::Update(ts);
-		}
-
-
-		//UpdateLight();
+		UpdateScene();
 	}
 
 	void Scene::OnRenderEditor(Timestep ts, EditorCamera& camera)
@@ -573,6 +536,46 @@ namespace Volcano {
 		m_PhysicsWorld = nullptr;
 	}
 
+
+	void Scene::UpdateScene()
+	{
+		// Update Transform
+		{
+			auto view = m_Registry.view<TransformComponent>();
+			for (auto entity : view)
+			{
+				auto transform = view.get<TransformComponent>(entity);
+				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
+			}
+		}
+
+		//Draw Mesh
+		{
+			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
+
+			for (auto entity : view)
+			{
+				auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
+				switch (mesh.meshType)
+				{
+				case MeshType::None:
+					break;
+				case MeshType::Cube:
+					mesh.mesh->StartBatch();
+					mesh.mesh->DrawMesh((int)entity);
+					break;
+				case MeshType::Model:
+					mesh.mesh->StartBatch();
+					mesh.mesh->DrawMesh((int)entity);
+					break;
+				default:
+					VOL_TRACE("´íÎóMeshType");
+					break;
+				}
+			}
+		}
+	}
+
 	// ÉãÏñÍ·äÖÈ¾³¡¾°£¬ÉãÏñÍ·£¬ÉãÏñÍ·TRS£¬ÉãÏñÍ·Î»ÖÃ£¨translation£©£¬ÉãÏñÍ··½Ïò
 	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
 	{
@@ -642,7 +645,12 @@ namespace Volcano {
 					mesh.mesh->BeginScene(camera, transform, position);
 					mesh.mesh->BindTextures(renderer.Textures);
 					mesh.mesh->BindShader(m_RenderType);
-					mesh.mesh->DrawMesh((int)entity);
+					mesh.mesh->EndScene();
+					break;
+				case MeshType::Model:
+					mesh.mesh->BeginScene(camera, transform, position);
+					mesh.mesh->BindTextures(renderer.Textures);
+					mesh.mesh->BindShader(m_RenderType);
 					mesh.mesh->EndScene();
 					break;
 				default:
@@ -671,6 +679,7 @@ namespace Volcano {
 		
 
 	}
+
 
 	void Scene::UpdateCameraData(Camera& camera, glm::mat4 transform, glm::vec3 position)
 	{

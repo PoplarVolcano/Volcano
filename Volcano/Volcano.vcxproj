@@ -192,6 +192,7 @@
     <ClInclude Include="src\Volcano\Renderer\Renderer.h" />
     <ClInclude Include="src\Volcano\Renderer\Renderer2D.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\ModelTemp.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Quad.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Shadow.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Skybox.h" />
@@ -681,6 +682,7 @@
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Model.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\ModelTemp.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Quad.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Shadow.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Skybox.cpp" />

@@ -3,6 +3,9 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/UI/UI.h"
 
+#include "Volcano/Renderer/RendererItem/ModelTemp.h"
+#include "Volcano/Math/Math.h"
+
 #include "imgui/imgui.h"
 #include <imgui/imgui_internal.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -238,6 +241,29 @@ namespace Volcano {
 
 	}
 
+	void ModelLoading(Ref<MeshData> mesh, Ref<Entity> entity)
+	{
+		auto entityNew = entity->GetScene()->CreateEntity(mesh->name, entity);
+		auto transform = entityNew->GetComponent<TransformComponent>();
+		Math::DecomposeTransform(mesh->transform, transform.Translation, transform.Rotation, transform.Scale);
+		if (mesh->mesh != nullptr)
+		{
+			auto& mc = entityNew->AddComponent<MeshComponent>();
+			mc.SetMesh(MeshType::Model, entityNew.get(), std::make_shared<MeshTemp>(*mesh->mesh.get()));
+		}
+		if (!mesh->textures.empty())
+		{
+			auto& mrc = entityNew->AddComponent<MeshRendererComponent>();
+			for (auto& [type, texture] : mesh->textures)
+				mrc.AddTexture(type, texture);
+		}
+		if (!mesh->children.empty())
+		{
+			for(auto& meshChild : mesh->children)
+			ModelLoading(meshChild, entityNew);
+		}
+	}
+
 	void SceneHierarchyPanel::DrawComponents(Ref<Entity> entity)
 	{
 		if (entity->HasComponent<TagComponent>())
@@ -274,29 +300,6 @@ namespace Volcano {
 			}
 		}
 
-		ImGui::SameLine();
-		ImGui::PushItemWidth(-1);
-		if (ImGui::Button("Add Component"))
-			ImGui::OpenPopup("AddComponent");
-
-		if (ImGui::BeginPopup("AddComponent"))
-		{
-			DisplayAddComponentEntry<LightComponent>("Light");
-			DisplayAddComponentEntry<CameraComponent>("Camera");
-			DisplayAddComponentEntry<ScriptComponent>("Script");
-			DisplayAddComponentEntry<SpriteRendererComponent>("Sprite Renderer");
-			DisplayAddComponentEntry<MeshComponent>("Mesh");
-			DisplayAddComponentEntry<MeshRendererComponent>("Mesh Renderer");
-			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
-			DisplayAddComponentEntry<SphereRendererComponent>("Sphere Renderer");
-			DisplayAddComponentEntry<ModelRendererComponent>("Model Renderer");
-			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
-			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
-			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");
-
-			ImGui::EndPopup();
-		}
-		ImGui::PopItemWidth();
 
 		DrawComponent<TransformComponent>("Transform", entity, [](auto& component)
 			{
@@ -531,11 +534,11 @@ namespace Volcano {
 
 		DrawComponent<MeshComponent>("Mesh", entity, [entity](MeshComponent& component)
 			{
-				const char* items[] = { "None", "Quad", "Circle", "Line", "Cube", "Sphere" };
+				const char* items[] = { "None", "Quad", "Circle", "Line", "Cube", "Sphere", "Model"};
 				int meshType = (int)component.meshType;
 				if (ImGui::Combo("MeshType", &meshType, items, IM_ARRAYSIZE(items)))
 				{
-					component.SetMeshType((MeshType)meshType, entity.get());
+					component.SetMesh((MeshType)meshType, entity.get());
 				}
 			});
 
@@ -555,15 +558,25 @@ namespace Volcano {
 
 					//ImGui::SameLine();
 
-					if (ImGui::Button(items[(int)textures[i].first], ImVec2(100.0f, 50.0f)))
-						textures[i].second = nullptr;
+					auto& texture = textures[i].second;
+					if (texture != nullptr)
+					{
+						float aspect = texture->GetWidth() / texture->GetHeight();
+						if (ImGui::ImageButton((void*)(intptr_t)texture->GetRendererID(), ImVec2(100.0f * aspect, 100.0f)))
+							texture = nullptr;
+					}
+					else
+					{
+						if (ImGui::Button(items[(int)textures[i].first]))
+							texture = nullptr;
+					}
 					if (ImGui::BeginDragDropTarget())
 					{
 						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
 						{
 							const wchar_t* path = (const wchar_t*)payload->Data;
 							std::filesystem::path filePath = path;
-							textures[i].second = Texture2D::Create(filePath.string());
+							texture = Texture2D::Create(filePath.string());
 						}
 						ImGui::EndDragDropTarget();
 					}
@@ -731,6 +744,46 @@ namespace Volcano {
 				ImGui::DragFloat("Restitution", &component.Restitution, 0.01f, 0.0f, 1.0f);
 				ImGui::DragFloat("Restitution Threshold", &component.RestitutionThreshold, 0.01f, 0.0f);
 			});
+
+
+		ImGui::PushItemWidth(-1);
+		if (ImGui::Button("Add Component"))
+			ImGui::OpenPopup("AddComponent");
+
+		if (ImGui::BeginPopup("AddComponent"))
+		{
+			DisplayAddComponentEntry<LightComponent>("Light");
+			DisplayAddComponentEntry<CameraComponent>("Camera");
+			DisplayAddComponentEntry<ScriptComponent>("Script");
+			DisplayAddComponentEntry<SpriteRendererComponent>("Sprite Renderer");
+			DisplayAddComponentEntry<MeshComponent>("Mesh");
+			DisplayAddComponentEntry<MeshRendererComponent>("Mesh Renderer");
+			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
+			DisplayAddComponentEntry<SphereRendererComponent>("Sphere Renderer");
+			DisplayAddComponentEntry<ModelRendererComponent>("Model Renderer");
+			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
+			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
+			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");
+
+			ImGui::EndPopup();
+		}
+		ImGui::PopItemWidth();
+
+
+		ImGui::Button("LoadModel");
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+			{
+				const wchar_t* path = (const wchar_t*)payload->Data;
+				std::filesystem::path modelPath = path;
+				if(!ModelTemp::GetModelLibrary()->Exists(modelPath.string()))
+				    ModelTemp::GetModelLibrary()->Load(modelPath.string());
+				auto model = ModelTemp::GetModelLibrary()->Get(modelPath.string());
+				ModelLoading(model->GetMeshRoot(), entity);
+			}
+			ImGui::EndDragDropTarget();
+		}
 	}
 
 	template<typename T>

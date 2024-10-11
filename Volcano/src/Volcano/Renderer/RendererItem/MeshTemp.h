@@ -25,7 +25,8 @@ namespace Volcano {
 		Circle,
 		Line,
 		Cube,
-		Sphere
+		Sphere,
+		Model
 	};
 
 	struct MeshTempVertex
@@ -42,7 +43,7 @@ namespace Volcano {
 	class MeshTemp
 	{
 	public:
-
+		MeshTemp() = default;
 		MeshTemp(std::vector<MeshTempVertex> vertices, std::vector<uint32_t> indices);
 		
 		void Shutdown();
@@ -57,13 +58,13 @@ namespace Volcano {
 		void BindTextures(std::vector<std::pair<ImageType, Ref<Texture>>> textures);
 		void BindShader(RenderType type = RenderType::NORMAL);
 
+		void ResetVertexBufferBase();
 		void SetEntity(Entity* entity) { m_Entity = entity; }
 
 	protected:
 		virtual void SetupMesh();
 
 	protected:
-		MeshTemp() {};
 
 		Ref<VertexArray> m_VertexArray;
 		Ref<VertexBuffer> m_VertexBuffer;
@@ -71,14 +72,14 @@ namespace Volcano {
 		std::vector<MeshTempVertex> m_Vertices;
 		std::vector<uint32_t> m_Indices;
 
-		MeshTempVertex* vertexBufferBase = nullptr;
-		MeshTempVertex* vertexBufferPtr = nullptr;
-
 		uint32_t m_IndexCount = 0;
 		uint32_t m_IndexSize;
 		uint32_t MaxMeshes;
 		uint32_t MaxVertices;
 		uint32_t MaxIndices;
+
+		MeshTempVertex* vertexBufferBase = nullptr;
+		MeshTempVertex* vertexBufferPtr = nullptr;
 
 		Entity* m_Entity = nullptr;
 	};

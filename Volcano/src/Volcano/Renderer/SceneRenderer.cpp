@@ -398,9 +398,11 @@ namespace Volcano {
             Renderer::Clear();
             m_GBufferFramebuffer->ClearAttachmentInt(3, -1); // °ÑEntityIDÊý¾ÝÖÃ-1
 
+			RendererAPI::SetCullFace(false);
             m_ActiveScene->SetRenderType(RenderType::G_BUFFER);
             RenderScene();
             m_ActiveScene->SetRenderType(RenderType::NORMAL);
+			RendererAPI::SetCullFace(true);
 
             m_GBufferFramebuffer->Unbind();
 

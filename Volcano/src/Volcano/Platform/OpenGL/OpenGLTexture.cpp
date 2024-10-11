@@ -63,8 +63,7 @@ namespace Volcano {
 		: m_FilePath(path)
 	{
 		int width, height, channels;
-		if(filp)
-			stbi_set_flip_vertically_on_load(1);//翻转
+		stbi_set_flip_vertically_on_load(filp);//翻转
 		// 输出参数:x,y图像的尺寸, channels_in_file文件中的通道数, desired_channels把图像转换为所需格式
 		stbi_uc* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
 		VOL_CORE_ASSERT(data, "图片加载错误");

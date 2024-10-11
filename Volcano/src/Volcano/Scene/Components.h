@@ -77,7 +77,7 @@ namespace Volcano {
 		Ref<MeshTemp> mesh;
 		MeshComponent() = default;
 		MeshComponent(const MeshComponent&) = default;
-		void SetMeshType(MeshType type, Entity* entity) {
+		void SetMesh(MeshType type, Entity* entity, Ref<MeshTemp> modelMesh = nullptr) {
 			meshType = type;
 			switch (type)
 			{
@@ -87,6 +87,16 @@ namespace Volcano {
 			case MeshType::Cube:
 				mesh = std::make_shared<CubeMesh>();
 				mesh->SetEntity(entity);
+				break;
+			case MeshType::Model:
+				if (modelMesh != nullptr)
+				{
+					mesh = std::make_shared<MeshTemp>(*modelMesh.get());
+					mesh->ResetVertexBufferBase();
+					mesh->SetEntity(entity);
+				}
+				else
+					mesh = nullptr;
 				break;
 			default:
 				VOL_TRACE("MeshComponent: ÎÞÐ§MeshType");
@@ -101,8 +111,9 @@ namespace Volcano {
 		std::vector<std::pair<ImageType, Ref<Texture>>> Textures;
 		MeshRendererComponent() = default;
 		MeshRendererComponent(const MeshRendererComponent&) = default;
-		void SetTexture(ImageType type, Ref<Texture> texture) { Textures.push_back({ type, texture }); }
+		void SetTexture(ImageType type, Ref<Texture> texture, uint32_t index) { Textures[index] = { type, texture }; }
 		void DeleteTexture(uint32_t index) { Textures.erase(Textures.begin() + index); }
+		void AddTexture(ImageType type, Ref<Texture> texture) { Textures.push_back({ type, texture }); }
 		void AddTexture()
 		{
 			Ref<Texture2D> whiteTexture = Texture2D::Create(1, 1);

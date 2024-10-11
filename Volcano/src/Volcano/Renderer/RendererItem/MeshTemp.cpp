@@ -26,7 +26,7 @@ namespace Volcano {
         float Shininess = 32.0f;
         UniformBufferManager::GetUniformBuffer("Material")->SetData(&Shininess, sizeof(float));
 
-        StartBatch();
+        //StartBatch();
     }
 
     void MeshTemp::EndScene()
@@ -160,6 +160,11 @@ namespace Volcano {
         default:
             VOL_CORE_ASSERT(0);
         }
+    }
+
+    void MeshTemp::ResetVertexBufferBase()
+    {
+        vertexBufferBase = new MeshTempVertex[MaxVertices];
     }
 
     void MeshTemp::SetupMesh()

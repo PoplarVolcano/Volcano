@@ -667,7 +667,7 @@ namespace Volcano {
 		{
 			auto& mc = deserializedEntity->AddComponent<MeshComponent>();
 			mc.meshType = (MeshType)meshComponent["MeshType"].as<int>();
-			mc.SetMeshType(mc.meshType, deserializedEntity.get());
+			mc.SetMesh(mc.meshType, deserializedEntity.get());
 		}
 
 		auto meshRendererComponent = entity["MeshRendererComponent"];
@@ -682,7 +682,7 @@ namespace Volcano {
 					ImageType type = (ImageType)texture["ImageType"].as<int>();
 					std::string path = texture["Path"].as<std::string>();
 					auto filePath = Project::GetAssetFileSystemPath(path);
-					mrc.SetTexture(type, Texture2D::Create(filePath.string()));
+					mrc.AddTexture(type, Texture2D::Create(filePath.string()));
 				}
 			}
 		}
