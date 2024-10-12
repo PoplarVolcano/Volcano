@@ -49,6 +49,27 @@ Entities:
               Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_normal.jpg
             - ImageType: 3
               Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_disp.jpg
+      - EntityID: 1424097445793952411
+        TagComponent:
+          Tag: Rusted_Iron
+        TransformComponent:
+          Translation: [1.5, 0.5, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+        MeshComponent:
+          MeshType: 4
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\albedo.png
+            - ImageType: 1
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\metallic.png
+            - ImageType: 2
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\normal.png
+            - ImageType: 4
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\roughness.png
+            - ImageType: 5
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\ao.png
       - EntityID: 16698534985914648420
         TagComponent:
           Tag: Toybox
@@ -89,7 +110,7 @@ Entities:
     TransformComponent:
       Translation: [0, -0.5, 0]
       Rotation: [0, 0, 0]
-      Scale: [100, 1, 100]
+      Scale: [50, 1, 50]
     MeshComponent:
       MeshType: 4
     MeshRendererComponent:
@@ -130,6 +151,27 @@ Entities:
       Quadratic: 0.0320000015
       CutOff: 0.976296008
       OuterCutOff: 0.953716934
+  - EntityID: 8748345705484106332
+    TagComponent:
+      Tag: Sphere
+    TransformComponent:
+      Translation: [2, 2, 1]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    MeshComponent:
+      MeshType: 5
+    MeshRendererComponent:
+      Textures:
+        - ImageType: 0
+          Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\albedo.png
+        - ImageType: 2
+          Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\normal.png
+        - ImageType: 1
+          Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\metallic.png
+        - ImageType: 4
+          Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\roughness.png
+        - ImageType: 5
+          Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\ao.png
   - EntityID: 7852233315656720555
     TagComponent:
       Tag: SpotLight

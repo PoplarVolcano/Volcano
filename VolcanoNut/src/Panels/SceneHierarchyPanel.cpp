@@ -241,7 +241,7 @@ namespace Volcano {
 
 	}
 
-	void ModelLoading(Ref<MeshData> mesh, Ref<Entity> entity)
+	void ModelLoading(Ref<MeshData> mesh, Ref<Entity> entity, std::string modelPath)
 	{
 		auto entityNew = entity->GetScene()->CreateEntity(mesh->name, entity);
 		auto transform = entityNew->GetComponent<TransformComponent>();
@@ -250,6 +250,8 @@ namespace Volcano {
 		{
 			auto& mc = entityNew->AddComponent<MeshComponent>();
 			mc.SetMesh(MeshType::Model, entityNew.get(), std::make_shared<MeshTemp>(*mesh->mesh.get()));
+			mc.modelPath = modelPath;
+			mc.modelIndex = mesh->index;
 		}
 		if (!mesh->textures.empty())
 		{
@@ -260,7 +262,7 @@ namespace Volcano {
 		if (!mesh->children.empty())
 		{
 			for(auto& meshChild : mesh->children)
-			ModelLoading(meshChild, entityNew);
+			ModelLoading(meshChild, entityNew, modelPath);
 		}
 	}
 
@@ -544,7 +546,7 @@ namespace Volcano {
 
 		DrawComponent<MeshRendererComponent>("Mesh Renderer", entity, [](MeshRendererComponent& component)
 			{
-				const char* items[] = { "Diffuse", "Specular", "Normal", "Height" };
+				const char* items[] = { "Diffuse", "Specular", "Normal", "Height", "Roughness", "AO" };
 				auto& textures = component.Textures;
 
 				for (uint32_t i = 0; i < textures.size(); i++)
@@ -580,8 +582,18 @@ namespace Volcano {
 						}
 						ImGui::EndDragDropTarget();
 					}
+
+					ImGui::SameLine();
+					if (ImGui::Button("white"))
+						component.SetTextureWhite(i);
+
+					ImGui::SameLine();
+					if (ImGui::Button("black"))
+						component.SetTextureBlack(i);
+
 					ImGui::PopID();
 				}
+
 
 				if(ImGui::Button("+"))
 					component.AddTexture();
@@ -684,21 +696,6 @@ namespace Volcano {
 				}
 			});
 
-		DrawComponent<ModelRendererComponent>("Model Renderer", entity, [](auto& component)
-			{
-				if (ImGui::Button("ModelPath", ImVec2(100.0f, 100.0f)))
-					component.ModelPath = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path modelPath = path;
-						component.ModelPath = modelPath.string();
-					}
-					ImGui::EndDragDropTarget();
-				}
-			});
 
 		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity, [](auto& component)
 			{
@@ -746,6 +743,22 @@ namespace Volcano {
 			});
 
 
+		ImGui::Button("LoadModel");
+		if (ImGui::BeginDragDropTarget())
+		{
+			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+			{
+				const wchar_t* path = (const wchar_t*)payload->Data;
+				std::filesystem::path modelPath = path;
+				if (!ModelTemp::GetModelLibrary()->Exists(modelPath.string()))
+					ModelTemp::GetModelLibrary()->Load(modelPath.string());
+				auto model = ModelTemp::GetModelLibrary()->Get(modelPath.string());
+				ModelLoading(model->GetMeshRoot(), entity, modelPath.string());
+			}
+			ImGui::EndDragDropTarget();
+		}
+
+
 		ImGui::PushItemWidth(-1);
 		if (ImGui::Button("Add Component"))
 			ImGui::OpenPopup("AddComponent");
@@ -760,7 +773,6 @@ namespace Volcano {
 			DisplayAddComponentEntry<MeshRendererComponent>("Mesh Renderer");
 			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
 			DisplayAddComponentEntry<SphereRendererComponent>("Sphere Renderer");
-			DisplayAddComponentEntry<ModelRendererComponent>("Model Renderer");
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
 			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
 			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");
@@ -769,21 +781,6 @@ namespace Volcano {
 		}
 		ImGui::PopItemWidth();
 
-
-		ImGui::Button("LoadModel");
-		if (ImGui::BeginDragDropTarget())
-		{
-			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-			{
-				const wchar_t* path = (const wchar_t*)payload->Data;
-				std::filesystem::path modelPath = path;
-				if(!ModelTemp::GetModelLibrary()->Exists(modelPath.string()))
-				    ModelTemp::GetModelLibrary()->Load(modelPath.string());
-				auto model = ModelTemp::GetModelLibrary()->Get(modelPath.string());
-				ModelLoading(model->GetMeshRoot(), entity);
-			}
-			ImGui::EndDragDropTarget();
-		}
 	}
 
 	template<typename T>

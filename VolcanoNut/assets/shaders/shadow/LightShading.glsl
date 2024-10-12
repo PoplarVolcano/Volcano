@@ -51,6 +51,7 @@ layout(std140, binding = 1) uniform CameraPosition
 
 struct DirectionalLightData
 {
+    vec3 Position;
 	vec3 Direction;
 	vec3 Ambient;
 	vec3 Diffuse;

@@ -6,9 +6,10 @@ namespace Volcano {
 
 	CubeMesh::CubeMesh()
     {
+		m_VertexSize = 36;
 		m_IndexSize = 36;
 		MaxMeshes   = 1;
-		MaxVertices = MaxMeshes * 36;
+		MaxVertices = MaxMeshes * m_VertexSize;
 		MaxIndices  = MaxMeshes * m_IndexSize;
 		
 		// ±³ Õý ×ó ÓÒ ÏÂ ÉÏ
@@ -97,7 +98,7 @@ namespace Volcano {
 			{ 0.0f,  0.0f, -1.0f}
 		};
 
-        for (uint32_t i = 0; i < 36; i++)
+        for (uint32_t i = 0; i < m_VertexSize; i++)
         {
             MeshTempVertex vertex;
             vertex.Position  = vertexPosition[i];

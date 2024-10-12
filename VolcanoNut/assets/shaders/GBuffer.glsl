@@ -48,7 +48,8 @@ void main()
 layout (location = 0) out vec4 g_PositionDepth;
 layout (location = 1) out vec4 g_Normal;
 layout (location = 2) out vec4 g_Albedo;
-layout (location = 3) out int  g_EntityID;
+layout (location = 3) out vec4 g_RoughnessAO;
+layout (location = 4) out int  g_EntityID;
 
 struct VertexOutput
 {
@@ -65,22 +66,44 @@ layout (binding = 0) uniform sampler2D u_Diffuse;
 layout (binding = 1) uniform sampler2D u_Specular;
 layout (binding = 2) uniform sampler2D u_Normal;
 layout (binding = 3) uniform sampler2D u_Parallax;
+layout (binding = 4) uniform sampler2D u_Roughness;
+layout (binding = 5) uniform sampler2D u_AO;
 
 layout(std140, binding = 1) uniform CameraPosition
 {
 	vec3 u_CameraPosition;
 };
 
+// ----------------------------------------------------------------------------
+mat3 getTBN()
+{
+    vec3 Q1  = dFdx(Input.Position);
+    vec3 Q2  = dFdy(Input.Position);
+    vec2 st1 = dFdx(Input.TexCoords);
+    vec2 st2 = dFdy(Input.TexCoords);
+
+    vec3 N  = normalize(Input.Normal);
+    vec3 T  = normalize(Q1 * st2.t - Q2 * st1.t); // st2.t => st2.y
+    vec3 B  = -normalize(cross(N, T));
+    mat3 TBN = mat3(T, B, N);
+
+    return TBN;
+}
+// ----------------------------------------------------------------------------
+
 void main()
-{    
-    
+{
+    mat3 TBN;
+    if(Input.TBN[1] == vec3(0.0))
+        TBN = getTBN();
+    else
+        TBN = Input.TBN;
 	// 计算深度贴图
 	vec3 viewDirection = normalize(u_CameraPosition - Input.Position);
 	vec2 texCoords = Input.TexCoords;
 	{
-
 	    // 将视角转换为切线空间（TBN是正交矩阵，转置等于求逆）
-	    vec3 viewDir = normalize(transpose(Input.TBN) * viewDirection);
+	    vec3 viewDir = normalize(transpose(TBN) * viewDirection);
 
 		const float minLayers = 8;
         const float maxLayers = 32;
@@ -119,9 +142,11 @@ void main()
 	}
 
 	
-	vec3 materialNormal = texture(u_Normal, texCoords).rgb;
-	vec4 materialDiffuse = texture(u_Diffuse, texCoords);
-	float materialSpecular = texture(u_Specular, texCoords).r;
+	vec3  materialNormal    = texture(u_Normal,    texCoords).rgb;
+	vec4  materialDiffuse   = texture(u_Diffuse,   texCoords);
+	float materialSpecular  = texture(u_Specular,  texCoords).r;
+    float materialRoughness = texture(u_Roughness, texCoords).r;
+    float materialAO        = texture(u_AO,        texCoords).r;
 
 	if(materialNormal == vec3(0.0) && materialDiffuse.a == 0.0 && materialSpecular == 0.0)
 	    discard;
@@ -140,12 +165,13 @@ void main()
     else
 	{
 	    // 将法线贴图从切线空间转换为世界空间
-	    normal = normalize(materialNormal * 2.0 - 1.0); // [-1,1]
-	    normal = normalize(Input.TBN * normal);
-		normal = (normal + 1.0) / 2.0;
+	    normal = normalize(materialNormal * 2.0 - 1.0); // [-1, 1]
+	    normal = normalize(TBN * normal);
 	}
+    normal = (normal + 1.0) / 2.0;// [0, 1]
     g_Normal = vec4(normal, 1.0);
     g_Albedo = vec4(materialDiffuse.rgb, materialSpecular);
+	g_RoughnessAO = vec4(materialRoughness, materialAO, 1.0, 1.0);
     g_EntityID = v_EntityID;
 
 }  

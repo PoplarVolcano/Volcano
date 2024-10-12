@@ -6,6 +6,7 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/UUID.h"
 #include "Volcano/Project/Project.h"
+#include "Volcano/Renderer/RendererItem/ModelTemp.h"
 
 #include <fstream>
 #include <yaml-cpp/yaml.h>
@@ -379,6 +380,10 @@ namespace Volcano {
 			{
 				auto& meshComponent = entity.GetComponent<MeshComponent>();
 				out << YAML::Key << "MeshType" << YAML::Value << (int)meshComponent.meshType;
+				if (!meshComponent.modelPath.empty())
+				    out << YAML::Key << "ModelPath" << YAML::Value << meshComponent.modelPath;
+				if (!meshComponent.modelIndex.empty())
+				    out << YAML::Key << "ModelIndex" << YAML::Value << meshComponent.modelIndex;
 				out << YAML::EndMap; // CircleRendererComponent
 			}
 		}
@@ -439,16 +444,6 @@ namespace Volcano {
 			if (sphereRendererComponent.AO)
 				out << YAML::Key << "AOPath" << YAML::Value << sphereRendererComponent.AO->GetPath();
 			out << YAML::EndMap;//sphereRendererComponent
-		}
-
-		if (entity.HasComponent<ModelRendererComponent>())
-		{
-			out << YAML::Key << "ModelRendererComponent";
-			out << YAML::BeginMap;//ModelRendererComponent
-			auto& modelRendererComponent = entity.GetComponent<ModelRendererComponent>();
-			if (!modelRendererComponent.ModelPath.empty())
-				out << YAML::Key << "ModelPath" << YAML::Value << modelRendererComponent.ModelPath;
-			out << YAML::EndMap;//ModelRendererComponent
 		}
 
 		if (entity.HasComponent<Rigidbody2DComponent>())
@@ -667,7 +662,21 @@ namespace Volcano {
 		{
 			auto& mc = deserializedEntity->AddComponent<MeshComponent>();
 			mc.meshType = (MeshType)meshComponent["MeshType"].as<int>();
-			mc.SetMesh(mc.meshType, deserializedEntity.get());
+			if (mc.meshType == MeshType::Model && meshComponent["ModelPath"].IsDefined() && meshComponent["ModelIndex"].IsDefined())
+			{
+				std::string modelPath = meshComponent["ModelPath"].as<std::string>();
+				std::string modelIndex = meshComponent["ModelIndex"].as<std::string>();
+				if (!ModelTemp::GetModelLibrary()->Exists(modelPath))
+					ModelTemp::GetModelLibrary()->Load(modelPath);
+				auto model = ModelTemp::GetModelLibrary()->Get(modelPath);
+				auto& meshData = model->GetMeshDataMap()[modelIndex];
+				mc.SetMesh(mc.meshType, deserializedEntity.get(), meshData->mesh);
+				mc.modelPath = modelPath;
+				mc.modelIndex = modelIndex;
+			}
+			else
+			    mc.SetMesh(mc.meshType, deserializedEntity.get());
+
 		}
 
 		auto meshRendererComponent = entity["MeshRendererComponent"];
@@ -734,14 +743,6 @@ namespace Volcano {
 				auto path = Project::GetAssetFileSystemPath(AOPath);
 				src.AO = Texture2D::Create(path.string());
 			}
-		}
-
-		auto modelRendererComponent = entity["ModelRendererComponent"];
-		if (modelRendererComponent)
-		{
-			auto& mrc = deserializedEntity->AddComponent<ModelRendererComponent>();
-			std::string specularPath = modelRendererComponent["ModelPath"].as<std::string>();
-			mrc.ModelPath = specularPath;
 		}
 
 		auto rigidbody2DComponent = entity["Rigidbody2DComponent"];

@@ -5,15 +5,39 @@
 #include "Volcano/Scene/Entity.h"
 
 namespace Volcano {
+
+    Ref<Texture2D> MeshTemp::m_WhiteTextures[2];
+    Ref<Texture2D> MeshTemp::m_BlackTextures[5];
+
     MeshTemp::MeshTemp(std::vector<MeshTempVertex> vertices, std::vector<uint32_t> indices)
     {
+        m_VertexSize = vertices.size();
         m_IndexSize = indices.size();
         MaxMeshes   = 1;
-        MaxVertices = MaxMeshes * vertices.size();
+        MaxVertices = MaxMeshes * m_VertexSize;
         MaxIndices  = MaxMeshes * m_IndexSize;
         m_Vertices  = vertices;
         m_Indices   = indices;
         SetupMesh();
+    }
+
+    void MeshTemp::Init()
+    {
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            Ref<Texture2D> whiteTexture = Texture2D::Create(1, 1);
+            uint32_t whiteTextureData = 0xffffffff;
+            whiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
+            m_WhiteTextures[i] = whiteTexture;
+        }
+
+        for (uint32_t i = 0; i < 5; i++)
+        {
+            Ref<Texture2D> m_BlackTexture = Texture2D::Create(1, 1);
+            uint32_t m_BlackTextureData = 0x00000000;
+            m_BlackTexture->SetData(&m_BlackTextureData, sizeof(uint32_t));
+            m_BlackTextures[i] = m_BlackTexture;
+        }
     }
 
     void MeshTemp::Shutdown()
@@ -42,7 +66,7 @@ namespace Volcano {
             uint32_t dataSize = (uint32_t)((uint8_t*)vertexBufferPtr - (uint8_t*)vertexBufferBase);
             m_VertexBuffer->SetData(vertexBufferBase, dataSize);
 
-            Renderer::DrawIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
+            Draw();
         }
     }
 
@@ -72,7 +96,7 @@ namespace Volcano {
         }
         glm::mat3 normalTransform = glm::mat3(transpose(inverse(transform)));
 
-        for (uint32_t i = 0; i < m_Vertices.size(); i++)
+        for (uint32_t i = 0; i < m_VertexSize; i++)
         {
             vertexBufferPtr->Position  = transform * glm::vec4(m_Vertices[i].Position, 1.0f);
             vertexBufferPtr->TexCoords = m_Vertices[i].TexCoords;
@@ -85,6 +109,11 @@ namespace Volcano {
         m_IndexCount += m_IndexSize;
 	}
 
+    void MeshTemp::Draw()
+    {
+        Renderer::DrawIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
+    }
+
     void MeshTemp::BindTextures(std::vector<std::pair<ImageType, Ref<Texture>>> textures)
     {
         std::unordered_map<ImageType, Ref<Texture>> texturesTemp;
@@ -94,42 +123,32 @@ namespace Volcano {
         if (texturesTemp[ImageType::Diffuse])
             texturesTemp[ImageType::Diffuse]->Bind(0);
         else
-        {
-            Ref<Texture2D> whiteTexture = Texture2D::Create(1, 1);
-            uint32_t whiteTextureData = 0xffffffff;
-            whiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
-            whiteTexture->Bind(0);
-        }
+            m_WhiteTextures[0]->Bind(0);
 
         if (texturesTemp[ImageType::Specular])
             texturesTemp[ImageType::Specular]->Bind(1);
         else
-        {
-            Ref<Texture2D> blackTexture = Texture2D::Create(1, 1);
-            uint32_t blackTextureData = 0x00000000;
-            blackTexture->SetData(&blackTextureData, sizeof(uint32_t));
-            blackTexture->Bind(1);
-        }
+            m_BlackTextures[0]->Bind(1);
 
         if (texturesTemp[ImageType::Normal])
             texturesTemp[ImageType::Normal]->Bind(2);
         else
-        {
-            Ref<Texture2D> blackTexture = Texture2D::Create(1, 1);
-            uint32_t blackTextureData = 0x00000000;
-            blackTexture->SetData(&blackTextureData, sizeof(uint32_t));
-            blackTexture->Bind(2);
-        }
+            m_BlackTextures[1]->Bind(2);
 
         if (texturesTemp[ImageType::Height])
             texturesTemp[ImageType::Height]->Bind(3);
         else
-        {
-            Ref<Texture2D> blackTexture = Texture2D::Create(1, 1);
-            uint32_t blackTextureData = 0x00000000;
-            blackTexture->SetData(&blackTextureData, sizeof(uint32_t));
-            blackTexture->Bind(3);
-        }
+            m_BlackTextures[2]->Bind(3);
+
+        if (texturesTemp[ImageType::Roughness])
+            texturesTemp[ImageType::Roughness]->Bind(4);
+        else
+            m_BlackTextures[3]->Bind(4);
+
+        if (texturesTemp[ImageType::AO])
+            texturesTemp[ImageType::AO]->Bind(5);
+        else
+            m_BlackTextures[4]->Bind(5);
 
     }
 
@@ -149,8 +168,14 @@ namespace Volcano {
         case RenderType::G_BUFFER:
             Renderer::GetShaderLibrary()->Get("GBuffer")->Bind();
             break;
+        case RenderType::PBRLIGHT_SHADING:
+            Renderer::GetShaderLibrary()->Get("PBRLightShading")->Bind();
+            break;
         case RenderType::LIGHT_SHADING:
             Renderer::GetShaderLibrary()->Get("LightShading")->Bind();
+            break;
+        case RenderType::PBRDEFERRED_SHADING:
+            Renderer::GetShaderLibrary()->Get("PBRDeferredShading")->Bind();
             break;
         case RenderType::DEFERRED_SHADING:
             Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
@@ -195,10 +220,6 @@ namespace Volcano {
         m_VertexArray->SetIndexBuffer(indexBuffer);
         delete[] indicesBuffer;	// cpu上传到gpu上了可以删除cpu的索引数据块了
 
-
-        m_WhiteTexture = Texture2D::Create(1, 1);
-        uint32_t whiteTextureData = 0xffffffff;
-        m_WhiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
     }
 
 }

@@ -12,10 +12,14 @@ namespace Volcano {
 
 	enum class ImageType
 	{
-		Diffuse,
-		Specular,
+		Albedo,
+		Diffuse = Albedo,
+		Metallic,
+		Specular = Metallic,
 		Normal,
-		Height
+		Height,
+		Roughness,
+		AO
 	};
 
 	enum class MeshType
@@ -43,6 +47,7 @@ namespace Volcano {
 	class MeshTemp
 	{
 	public:
+		static void Init();
 		MeshTemp() = default;
 		MeshTemp(std::vector<MeshTempVertex> vertices, std::vector<uint32_t> indices);
 		
@@ -52,6 +57,7 @@ namespace Volcano {
 		void Flush();
 		void StartBatch();
 		void NextBatch();
+		virtual void Draw();
 
 		virtual void DrawMesh(int entityID);
 
@@ -68,11 +74,11 @@ namespace Volcano {
 
 		Ref<VertexArray> m_VertexArray;
 		Ref<VertexBuffer> m_VertexBuffer;
-		Ref<Texture2D> m_WhiteTexture;
 		std::vector<MeshTempVertex> m_Vertices;
 		std::vector<uint32_t> m_Indices;
 
 		uint32_t m_IndexCount = 0;
+		uint32_t m_VertexSize;
 		uint32_t m_IndexSize;
 		uint32_t MaxMeshes;
 		uint32_t MaxVertices;
@@ -82,6 +88,9 @@ namespace Volcano {
 		MeshTempVertex* vertexBufferPtr = nullptr;
 
 		Entity* m_Entity = nullptr;
+
+		static Ref<Texture2D> m_WhiteTextures[2];
+		static Ref<Texture2D> m_BlackTextures[5];
 	};
 
 }

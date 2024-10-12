@@ -146,7 +146,10 @@ namespace Volcano{
         SceneRenderer::BeginScene(m_ActiveScene, ts, m_SceneState, m_EditorCamera);
         SceneRenderer::GBuffer();
         SceneRenderer::SSAO();
-        SceneRenderer::DeferredShading();
+        if(*SceneRenderer::GetPBR())
+            SceneRenderer::PBRDeferredShading();
+        else
+            SceneRenderer::DeferredShading();
 
 
         auto [mx, my] = ImGui::GetMousePos();
@@ -315,7 +318,10 @@ namespace Volcano{
         ImGui::Begin("ViewportTemp");
         {
             uint32_t textureID = 0;
-            const char* frameBuffers[] = { "None", "DirectionalShadow", "PointShadow", "SpotShadow", "GBuffer1", "GBuffer2", "GBuffer3", "SSAO", "SSAOBlur", "DefferedShading", "HDR", "LightShading1", "LightShading2" , "LightShading3" };
+            const char* frameBuffers[] = 
+            { "None", "DirectionalShadow", "PointShadow", "SpotShadow", "GBuffer1", "GBuffer2", "GBuffer3", 
+                "GBuffer4", "SSAO", "SSAOBlur", "DefferedShading", "HDR", "LightShading1", "LightShading2" , 
+                "LightShading3", "PBRLightShading"};
             ImGui::Combo("FrameBuffer", &m_ViewportTempIndex, frameBuffers, IM_ARRAYSIZE(frameBuffers));
             switch (m_ViewportTempIndex)
             {
@@ -341,25 +347,31 @@ namespace Volcano{
                 textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(2);
                 break;
             case 7:
-                textureID = SceneRenderer::GetSSAOFramebuffer()->GetColorAttachmentRendererID(0);
+                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(3);
                 break;
             case 8:
-                textureID = SceneRenderer::GetSSAOBlurFramebuffer()->GetColorAttachmentRendererID(0);
+                textureID = SceneRenderer::GetSSAOFramebuffer()->GetColorAttachmentRendererID(0);
                 break;
             case 9:
-                textureID = SceneRenderer::GetDeferredShadingFramebuffer()->GetColorAttachmentRendererID();
+                textureID = SceneRenderer::GetSSAOBlurFramebuffer()->GetColorAttachmentRendererID(0);
                 break;
             case 10:
-                textureID = SceneRenderer::GetHDRFramebuffer()->GetColorAttachmentRendererID();
+                textureID = SceneRenderer::GetDeferredShadingFramebuffer()->GetColorAttachmentRendererID();
                 break;
             case 11:
-                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
+                textureID = SceneRenderer::GetHDRFramebuffer()->GetColorAttachmentRendererID();
                 break;
             case 12:
-                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(1);
+                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
                 break;
             case 13:
+                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(1);
+                break;
+            case 14:
                 textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(2);
+                break;
+            case 15:
+                textureID = SceneRenderer::GetPBRLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
                 break;
             default:
                 textureID = 0;
@@ -479,6 +491,7 @@ namespace Volcano{
         // =====================================================Settings=====================================================
         ImGui::Begin("Stats");
 
+        ImGui::Checkbox("PBR", SceneRenderer::GetPBR());
         // Stats
         ImGui::DragFloat("Exposure", SceneRenderer::GetExposure(), 0.01f);
         ImGui::Checkbox("Bloom", SceneRenderer::GetBloom());

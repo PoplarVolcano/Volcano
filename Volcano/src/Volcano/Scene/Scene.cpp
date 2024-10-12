@@ -564,6 +564,10 @@ namespace Volcano {
 					mesh.mesh->StartBatch();
 					mesh.mesh->DrawMesh((int)entity);
 					break;
+				case MeshType::Sphere:
+					mesh.mesh->StartBatch();
+					mesh.mesh->DrawMesh((int)entity);
+					break;
 				case MeshType::Model:
 					mesh.mesh->StartBatch();
 					mesh.mesh->DrawMesh((int)entity);
@@ -647,6 +651,12 @@ namespace Volcano {
 					mesh.mesh->BindShader(m_RenderType);
 					mesh.mesh->EndScene();
 					break;
+				case MeshType::Sphere:
+					mesh.mesh->BeginScene(camera, transform, position);
+					mesh.mesh->BindTextures(renderer.Textures);
+					mesh.mesh->BindShader(m_RenderType);
+					mesh.mesh->EndScene();
+					break;
 				case MeshType::Model:
 					mesh.mesh->BeginScene(camera, transform, position);
 					mesh.mesh->BindTextures(renderer.Textures);
@@ -660,20 +670,6 @@ namespace Volcano {
 			}
 		}
 		
-		// Draw model
-		RendererModel::BeginScene(camera, transform, position, direction);
-		{
-			auto view = m_Registry.view<TransformComponent,ModelRendererComponent>();
-			for (auto entity : view)
-			{
-				auto [transform, model] = view.get<TransformComponent, ModelRendererComponent>(entity);
-				if(m_RenderType == RenderType::SHADOW_DIRECTIONALLIGHT)
-					RendererModel::DrawModel(transform.GetTransform(), transform.GetNormalTransform(), model.ModelPath, (int)entity);
-			}
-		}
-		RendererModel::EndScene(m_RenderType);
-
-
 
 		// draw skybox as last
 		
@@ -693,19 +689,21 @@ namespace Volcano {
 	void Scene::UpdateLight(uint32_t index)
 	{
 			Ref<Entity> directionalLightEntity = GetDirectionalLightEntity();
-			if (directionalLightEntity && index < 1)
+			if (directionalLightEntity != nullptr && index < 1)
 			{
 				auto& transform = directionalLightEntity->GetComponent<TransformComponent>();
 				auto& light = directionalLightEntity->GetComponent<LightComponent>();
 				glm::vec3 direction = glm::rotate(glm::quat(transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
+				s_DirectionalLightBuffer.position  = transform.Translation;
 				s_DirectionalLightBuffer.direction = direction;
 				s_DirectionalLightBuffer.ambient   = light.Ambient;
 				s_DirectionalLightBuffer.diffuse   = light.Diffuse;
 				s_DirectionalLightBuffer.specular  = light.Specular;
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3));
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), 4 * sizeof(float));
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
-				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.position,  sizeof(glm::vec3));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.direction, sizeof(glm::vec3), 4 * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.ambient,   sizeof(glm::vec3), (4 + 4) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.diffuse,   sizeof(glm::vec3), (4 + 4 + 4) * sizeof(float));
+				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&s_DirectionalLightBuffer.specular,  sizeof(glm::vec3), (4 + 4 + 4 + 4) * sizeof(float));
 
 				
 				glm::mat4 lightProjection, lightView;
@@ -720,10 +718,11 @@ namespace Volcano {
 			}
 			else
 			{
-				float zero[16] = { 0.0f };
+				float zero[20] = { 0.0f };
 				UniformBufferManager::GetUniformBuffer("DirectionalLight")->SetData(&zero, sizeof(zero));
 
-				UniformBufferManager::GetUniformBuffer("DirectionalLightSpaceMatrix")->SetData(&zero, sizeof(zero));
+				float zero1[16] = { 0.0f };
+				UniformBufferManager::GetUniformBuffer("DirectionalLightSpaceMatrix")->SetData(&zero1, sizeof(zero1));
 				
 			}
 
@@ -891,11 +890,6 @@ namespace Volcano {
 
 	template<>
 	void Scene::OnComponentAdded<SphereRendererComponent>(Entity& entity, SphereRendererComponent& component)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<ModelRendererComponent>(Entity& entity, ModelRendererComponent& component)
 	{
 	}
 

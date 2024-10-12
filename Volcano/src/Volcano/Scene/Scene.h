@@ -21,7 +21,9 @@ namespace Volcano {
 		SHADOW_POINTLIGHT,
 		SHADOW_SPOTLIGHT,
 		G_BUFFER,
+		PBRLIGHT_SHADING,
 		LIGHT_SHADING,
+		PBRDEFERRED_SHADING,
 		DEFERRED_SHADING,
 		SKYBOX
 	};
@@ -91,7 +93,6 @@ namespace Volcano {
 		std::unordered_map<entt::entity, Ref<Entity>>& GetEntityEnttMap() { return m_EntityEnttMap; }
 		std::map<std::string, Ref<Entity>>& GetEntityNameMap() { return m_EntityNameMap; }
 		
-
 		void UpdateLight(uint32_t i = 0);
 	private:
 		template<typename T>

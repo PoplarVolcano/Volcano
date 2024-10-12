@@ -11,6 +11,7 @@ namespace Volcano {
     struct MeshData
     {
         std::string name;
+        std::string index;
         glm::mat4 transform;
         Ref<MeshTemp> mesh;
         std::vector<std::pair<ImageType, Ref<Texture>>> textures;
@@ -38,12 +39,14 @@ namespace Volcano {
         ModelTemp(const char* path, bool gamma = false);
         std::string& GetPath() { return m_Path; }
         Ref<MeshData>& GetMeshRoot() { return m_MeshRoot; }
+        std::unordered_map<std::string, Ref<MeshData>>& GetMeshDataMap() { return m_MeshDataMap; }
     private:
         std::string m_Path;
 
         bool gammaCorrection;
 
         Ref<MeshData> m_MeshRoot;
+        std::unordered_map<std::string, Ref<MeshData>> m_MeshDataMap;
 
         Ref<Texture2D> m_BlackTexture;
 
@@ -53,7 +56,8 @@ namespace Volcano {
         void processNode(aiNode* node, const aiScene* scene, Ref<MeshData>& meshData);
         Ref<MeshData> processMesh(aiMesh* mesh, const aiScene* scene);
         std::vector<std::pair<ImageType, Ref<Texture>>> loadMaterialTextures(aiMaterial* mat, aiTextureType type, ImageType imageType);
-        
+
+        void UpdateMeshDataMap(std::string parentName, Ref<MeshData> meshData);
         static std::once_flag init_flag;
         static Scope<ModelLibrary> m_ModelLibrary;
 

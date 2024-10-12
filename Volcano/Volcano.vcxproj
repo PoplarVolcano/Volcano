@@ -201,6 +201,7 @@
     <ClInclude Include="src\Volcano\Renderer\RenderPass.h" />
     <ClInclude Include="src\Volcano\Renderer\SceneRenderer.h" />
     <ClInclude Include="src\Volcano\Renderer\Shader.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\SphereMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\SubTexture2D.h" />
     <ClInclude Include="src\Volcano\Renderer\Texture.h" />
     <ClInclude Include="src\Volcano\Renderer\UniformBuffer.h" />
@@ -691,6 +692,7 @@
     <ClCompile Include="src\Volcano\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Volcano\Renderer\SceneRenderer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Shader.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\SphereMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\SubTexture2D.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Texture.cpp" />
     <ClCompile Include="src\Volcano\Renderer\UniformBuffer.cpp" />

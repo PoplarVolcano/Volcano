@@ -20,6 +20,7 @@
 #include "Volcano/Renderer/VertexArray.h"
 #include "Volcano/Renderer/Texture.h"
 #include "Volcano/Renderer/SubTexture2D.h"
+#include "Volcano/Renderer/RendererItem/MeshTemp.h"
 
 #include "Volcano/Scene/Scene.h"
 #include "Volcano/Scene/Entity.h"

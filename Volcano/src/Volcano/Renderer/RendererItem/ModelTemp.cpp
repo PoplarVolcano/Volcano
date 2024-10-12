@@ -28,6 +28,15 @@ namespace Volcano {
         m_Path = path;
     }
 
+    void ModelTemp::UpdateMeshDataMap(std::string parentName, Ref<MeshData> meshData)
+    {
+        std::string name = parentName + "." + meshData->name;
+        meshData->index = name;
+        m_MeshDataMap[name] = meshData;
+        for (auto& meshChild : meshData->children)
+            UpdateMeshDataMap(name, meshChild);
+    }
+
     // 从文件加载具有支持ASSIMP扩展名的模型，并将生成的网格mesh存储在网格向量meshes中。
     void ModelTemp::loadModel(std::string path)
     {
@@ -45,6 +54,11 @@ namespace Volcano {
         m_MeshRoot = std::make_shared<MeshData>();
         // 递归处理ASSIMP的根节点
         processNode(scene->mRootNode, scene, m_MeshRoot);
+
+        m_MeshDataMap[m_MeshRoot->name] = m_MeshRoot;
+        m_MeshRoot->index = m_MeshRoot->name;
+        for (auto& meshChild : m_MeshRoot->children)
+            UpdateMeshDataMap(m_MeshRoot->name, meshChild);
     }
 
     // 以递归方式处理节点。处理位于节点处的每个单独网格，并在其子节点（如果有的话）上重复此过程。

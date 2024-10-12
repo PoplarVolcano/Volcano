@@ -32,22 +32,18 @@ struct VertexOutput
 
 layout (location = 0) in VertexOutput Input;
 
-layout (binding = 0) uniform sampler2D g_Position;
-layout (binding = 1) uniform sampler2D g_Normal;
-layout (binding = 2) uniform sampler2D g_Albedo;
-layout (binding = 3) uniform isampler2D g_EntityID;
-layout (binding = 4) uniform sampler2D ssao;
-
-layout (binding = 5) uniform sampler2D u_Ambient;
-layout (binding = 6) uniform sampler2D u_Diffuse;
-layout (binding = 7) uniform sampler2D u_Specular;
-
+layout (binding = 0)  uniform sampler2D  g_Position;
+layout (binding = 1)  uniform sampler2D  g_Normal;
+layout (binding = 2)  uniform sampler2D  g_Albedo;
+layout (binding = 3)  uniform isampler2D g_EntityID;
+layout (binding = 4)  uniform sampler2D  ssao;
+					  
+layout (binding = 5)  uniform sampler2D u_Ambient;
+layout (binding = 6)  uniform sampler2D u_Diffuse;
+layout (binding = 7)  uniform sampler2D u_Specular;
 
 void main()
 {
-	vec3 Ambient  = texture(u_Ambient,  Input.TexCoords).rgb;
-	vec3 Diffuse  = texture(u_Diffuse,  Input.TexCoords).rgb;
-	vec3 Specular = texture(u_Specular, Input.TexCoords).rgb;
 	
 	vec3  fragPosition     = texture(g_Position, Input.TexCoords).rgb;
 	float depth            = texture(g_Position, Input.TexCoords).a;
@@ -55,6 +51,10 @@ void main()
 	vec3  materialDiffuse  = texture(g_Albedo,   Input.TexCoords).rgb;
 	float materialSpecular = texture(g_Albedo,   Input.TexCoords).a;
 	float AmbientOcclusion = texture(ssao,       Input.TexCoords).r;
+
+	vec3 Ambient  = texture(u_Ambient,  Input.TexCoords).rgb;
+	vec3 Diffuse  = texture(u_Diffuse,  Input.TexCoords).rgb;
+	vec3 Specular = texture(u_Specular, Input.TexCoords).rgb;
 
 	if(fragPosition == vec3(0.0))
 	    discard;

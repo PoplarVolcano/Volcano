@@ -15,6 +15,8 @@ namespace Volcano {
 	Ref<Framebuffer> SceneRenderer::m_SpotDepthMapFramebuffer;
 	Ref<Framebuffer> SceneRenderer::m_GBufferFramebuffer;
 	Ref<Framebuffer> SceneRenderer::m_LightShadingFramebuffer[2];
+	Ref<Framebuffer> SceneRenderer::m_PBRLightShadingFramebuffer[2];
+	bool SceneRenderer::m_PBR;
 	Ref<Framebuffer> SceneRenderer::m_DeferredShadingFramebuffer;
 	Ref<Framebuffer> SceneRenderer::m_SSAOFramebuffer;
 	Ref<Framebuffer> SceneRenderer::m_SSAOBlurFramebuffer;
@@ -80,6 +82,7 @@ namespace Volcano {
             FramebufferTextureFormat::RGBA16F,     // 位置+深度缓冲，深度范围0.1到50.0
 			FramebufferTextureFormat::RGBA8,       // 法线缓冲
             FramebufferTextureFormat::RGBA8,       // 颜色+镜面缓冲Albedo
+			FramebufferTextureFormat::RGBA8,       // 粗糙度+AO缓冲
             FramebufferTextureFormat::RED_INTEGER, // EntityID缓冲
             FramebufferTextureFormat::Depth
         };
@@ -103,6 +106,17 @@ namespace Volcano {
 		fbSpec.DepthType = TextureType::TEXTURE_2D;
 		m_LightShadingFramebuffer[0] = Framebuffer::Create(fbSpec);
 		m_LightShadingFramebuffer[1] = Framebuffer::Create(fbSpec);
+
+		fbSpec.Attachments = {
+			FramebufferTextureFormat::RGBA16F,
+		};
+		fbSpec.Width = 1280;
+		fbSpec.Height = 720;
+		fbSpec.Samples = 1;
+		fbSpec.ColorType = TextureType::TEXTURE_2D;
+		fbSpec.DepthType = TextureType::TEXTURE_2D;
+		m_PBRLightShadingFramebuffer[0] = Framebuffer::Create(fbSpec);
+		m_PBRLightShadingFramebuffer[1] = Framebuffer::Create(fbSpec);
 
 		fbSpec.Attachments = {
 			FramebufferTextureFormat::RGBA16F,
@@ -396,7 +410,7 @@ namespace Volcano {
         m_GBufferFramebuffer->Bind();
         {
             Renderer::Clear();
-            m_GBufferFramebuffer->ClearAttachmentInt(3, -1); // 把EntityID数据置-1
+            m_GBufferFramebuffer->ClearAttachmentInt(4, -1); // 把EntityID数据置-1
 
 			RendererAPI::SetCullFace(false);
             m_ActiveScene->SetRenderType(RenderType::G_BUFFER);
@@ -442,6 +456,130 @@ namespace Volcano {
 
 	}
 
+	void SceneRenderer::PBRDeferredShading()
+	{
+		m_DeferredShadingFramebuffer->BlitDepthFramebuffer(
+			m_GBufferFramebuffer->GetRendererID(), m_DeferredShadingFramebuffer->GetRendererID(),
+			0, 0, m_GBufferFramebuffer->GetSpecification().Width, m_GBufferFramebuffer->GetSpecification().Height,
+			0, 0, m_DeferredShadingFramebuffer->GetSpecification().Width, m_DeferredShadingFramebuffer->GetSpecification().Height
+		);
+
+		if (!m_SSAOSwitch)
+		{
+			m_SSAOBlurFramebuffer->Bind();
+			m_SSAOBlurFramebuffer->ClearAttachmentFloat(0, 1.0f);
+			m_SSAOBlurFramebuffer->Unbind();
+		}
+
+		bool flag = false;
+		uint32_t directionalLightSize = m_ActiveScene->GetDirectionalLightEntity() == nullptr ? 0 : 1;
+		uint32_t pointLightSize = m_ActiveScene->GetPointLightEntities().size();
+		uint32_t spotLightSize = m_ActiveScene->GetSpotLightEntities().size();
+
+		m_PBRLightShadingFramebuffer[!flag]->Bind();
+		{
+			Renderer::Clear(0.0f, 0.0f, 0.0f, 0.0f);
+			m_PBRLightShadingFramebuffer[!flag]->Unbind();
+		}
+		if (glm::max(directionalLightSize, pointLightSize, spotLightSize) > 0)
+		{
+			for (uint32_t i = 0; i < glm::max(directionalLightSize, pointLightSize, spotLightSize); i++)
+			{
+				m_ActiveScene->UpdateLight(i);
+				if(directionalLightSize > 0)
+				    DirectionalShadow();
+				if (pointLightSize > i)
+				    PointShadow();
+				if (spotLightSize > i)
+				    SpotShadow();
+				m_PBRLightShadingFramebuffer[flag]->Bind();
+				{
+					Renderer::Clear();
+					m_ActiveScene->SetRenderType(RenderType::PBRLIGHT_SHADING);
+
+					uint32_t positionTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
+					uint32_t normalTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
+					uint32_t albedoTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
+					uint32_t roughnessAOTextureID = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
+					uint32_t LoTextureID          = m_PBRLightShadingFramebuffer[!flag]->GetColorAttachmentRendererID(0);
+					uint32_t directionalShadowTextureID = m_DirectionalDepthMapFramebuffer->GetDepthAttachmentRendererID();
+					uint32_t pointShadowTextureID = m_PointDepthMapFramebuffer->GetDepthAttachmentRendererID();
+					uint32_t spotShadowTextureID  = m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID();
+					Texture::Bind(positionTextureID, 0);
+					Texture::Bind(normalTextureID, 1);
+					Texture::Bind(albedoTextureID, 2);
+					Texture::Bind(roughnessAOTextureID, 3);
+					Texture::Bind(LoTextureID, 4);
+					Texture::Bind(directionalShadowTextureID, 5);
+					Texture::Bind(pointShadowTextureID, 6);
+					Texture::Bind(spotShadowTextureID, 7);
+
+					Renderer::GetShaderLibrary()->Get("PBRLightShading")->Bind();
+
+					FullQuad::DrawIndexed();
+
+					m_ActiveScene->SetRenderType(RenderType::NORMAL);
+					flag = !flag;
+					m_PBRLightShadingFramebuffer[flag]->Unbind();
+				}
+			}
+		}
+		else
+		{
+			m_PBRLightShadingFramebuffer[flag]->Bind();
+			{
+				Renderer::Clear(0.0f, 0.0f, 0.0f, 0.0f);
+				m_PBRLightShadingFramebuffer[flag]->Unbind();
+			}
+		}
+		
+		m_DeferredShadingFramebuffer->Bind();
+		{
+			Renderer::Clear();
+
+			// Clear entity ID attachment to -1
+			m_DeferredShadingFramebuffer->ClearAttachmentInt(1, -1);// 把EntityID数据置-1
+
+			m_ActiveScene->SetRenderType(RenderType::PBRDEFERRED_SHADING);
+
+			Renderer::GetShaderLibrary()->Get("PBRDeferredShading")->Bind();
+			uint32_t positionTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
+			uint32_t normalTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
+			uint32_t albedoTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
+			uint32_t roughnessAOTextureID = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
+			uint32_t entityIDTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(4);
+			uint32_t ssaoColorBufferBlur  = m_SSAOBlurFramebuffer->GetColorAttachmentRendererID(0);
+			uint32_t LoTextureID          = m_PBRLightShadingFramebuffer[!flag]->GetColorAttachmentRendererID(0);
+
+			Texture::Bind(positionTextureID, 0);
+			Texture::Bind(normalTextureID, 1);
+			Texture::Bind(albedoTextureID, 2);
+			Texture::Bind(roughnessAOTextureID, 3);
+			Texture::Bind(entityIDTextureID, 4);
+			Texture::Bind(ssaoColorBufferBlur, 5);
+			Texture::Bind(LoTextureID, 6);
+			Texture::Bind(m_IrradianceMap->GetRendererID(), 7);
+			Texture::Bind(m_PrefilterMap->GetRendererID(), 8);
+			Texture::Bind(m_BRDFLUT->GetRendererID(), 9);
+
+			//Renderer::SetDepthTest(false);
+			FullQuad::DrawIndexed();
+			//Renderer::SetDepthTest(true);
+
+
+			m_ActiveScene->SetRenderType(RenderType::NORMAL);
+			//RenderScene();
+			m_ActiveScene->SetRenderType(RenderType::SKYBOX);
+			RenderScene();
+			m_ActiveScene->SetRenderType(RenderType::NORMAL);
+
+			// 覆盖层
+			//OnOverlayRender();
+
+			m_DeferredShadingFramebuffer->Unbind();
+		}
+	}
+
 	void SceneRenderer::DeferredShading()
 	{
 		m_DeferredShadingFramebuffer->BlitDepthFramebuffer(
@@ -461,6 +599,7 @@ namespace Volcano {
 		uint32_t directionalLightSize = m_ActiveScene->GetDirectionalLightEntity() == nullptr ? 0 : 1;
 		uint32_t pointLightSize = m_ActiveScene->GetPointLightEntities().size();
 		uint32_t spotLightSize = m_ActiveScene->GetSpotLightEntities().size();
+		
 		m_LightShadingFramebuffer[!flag]->Bind();
 		{
 			Renderer::Clear(0.0f, 0.0f, 0.0f, 0.0f);
@@ -529,7 +668,7 @@ namespace Volcano {
 			uint32_t positionTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
 			uint32_t normalTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
 			uint32_t albedoTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
-			uint32_t entityIDTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
+			uint32_t entityIDTextureID = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
 			uint32_t ssaoColorBufferBlur  = m_SSAOBlurFramebuffer->GetColorAttachmentRendererID(0);
 
 			uint32_t ambientTextureID   = m_LightShadingFramebuffer[!flag]->GetColorAttachmentRendererID(0);

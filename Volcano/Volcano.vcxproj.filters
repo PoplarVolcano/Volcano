@@ -1546,6 +1546,7 @@
     <ClInclude Include="src\Volcano\Renderer\RendererItem\MeshTemp.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\CubeMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\ModelTemp.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\SphereMesh.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1720,5 +1721,6 @@
     <ClCompile Include="src\Volcano\Renderer\RendererItem\MeshTemp.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\CubeMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\ModelTemp.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\SphereMesh.cpp" />
   </ItemGroup>
 </Project>

@@ -20,9 +20,11 @@ namespace Volcano {
 		static void GBuffer();
 		static void SSAO();
 		static void DeferredShading();
+		static void PBRDeferredShading();
 		static void HDR();
 
 
+		static Ref<Framebuffer> GetPBRLightShadingFramebuffer(int i) { return m_PBRLightShadingFramebuffer[i]; }
 		static Ref<Framebuffer> GetLightShadingFramebuffer(int i) { return m_LightShadingFramebuffer[i]; }
 		static Ref<Framebuffer> GetDirectionalDepthMapFramebuffer() { return m_DirectionalDepthMapFramebuffer; }
 		static Ref<Framebuffer> GetPointDepthMapFramebuffer() { return m_PointDepthMapFramebuffer; }
@@ -32,6 +34,7 @@ namespace Volcano {
 		static Ref<Framebuffer> GetSSAOBlurFramebuffer() { return m_SSAOBlurFramebuffer; }
 		static Ref<Framebuffer> GetDeferredShadingFramebuffer() { return m_DeferredShadingFramebuffer; }
 		static Ref<Framebuffer> GetHDRFramebuffer() { return m_HDRFramebuffer; }
+		static bool* GetPBR() { return &m_PBR; }
 		static int* GetKernelSize() { return &m_KernelSize; }
 		static float* GetRadius() { return &m_Radius; }
 		static float* GetBias() { return &m_Bias; }
@@ -49,6 +52,8 @@ namespace Volcano {
 		static Ref<Framebuffer> m_SpotDepthMapFramebuffer;
 		static Ref<Framebuffer> m_GBufferFramebuffer;
 		static Ref<Framebuffer> m_LightShadingFramebuffer[2];
+		static Ref<Framebuffer> m_PBRLightShadingFramebuffer[2];
+		static bool m_PBR;
 		static Ref<Framebuffer> m_DeferredShadingFramebuffer;
 		static Ref<Framebuffer> m_SSAOFramebuffer;
 		static Ref<Framebuffer> m_SSAOBlurFramebuffer;

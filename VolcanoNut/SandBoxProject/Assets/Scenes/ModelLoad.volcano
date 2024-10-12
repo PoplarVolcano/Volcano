@@ -1,0 +1,155 @@
+Scene: Untitled
+Entities:
+  - EntityID: 15673170194805530268
+    TagComponent:
+      Tag: Model
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    Entities:
+      - EntityID: 17405421047413846748
+        TagComponent:
+          Tag: nanosuit.obj
+        TransformComponent:
+          Translation: [0, 0, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+        Entities:
+          - EntityID: 3251346903662471540
+            TagComponent:
+              Tag: Body
+            TransformComponent:
+              Translation: [0, 0, 0]
+              Rotation: [0, 0, 0]
+              Scale: [1, 1, 1]
+            Entities:
+              - EntityID: 10707692803610279350
+                TagComponent:
+                  Tag: Arms
+                TransformComponent:
+                  Translation: [0, 0, 0]
+                  Rotation: [0, 0, 0]
+                  Scale: [1, 1, 1]
+                MeshComponent:
+                  MeshType: 6
+                  ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+                  ModelIndex: nanosuit.obj.Body.Arms
+                MeshRendererComponent:
+                  Textures:
+                    - ImageType: 0
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/arm_dif.png
+                    - ImageType: 1
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/arm_showroom_spec.png
+                    - ImageType: 2
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/arm_showroom_ddn.png
+              - EntityID: 8011459209435196172
+                TagComponent:
+                  Tag: Body
+                TransformComponent:
+                  Translation: [0, 0, 0]
+                  Rotation: [0, 0, 0]
+                  Scale: [1, 1, 1]
+                MeshComponent:
+                  MeshType: 6
+                  ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+                  ModelIndex: nanosuit.obj.Body.Body
+                MeshRendererComponent:
+                  Textures:
+                    - ImageType: 0
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/body_dif.png
+                    - ImageType: 1
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/body_showroom_spec.png
+                    - ImageType: 2
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/body_showroom_ddn.png
+              - EntityID: 12934031093017672896
+                TagComponent:
+                  Tag: Helmet
+                TransformComponent:
+                  Translation: [0, 0, 0]
+                  Rotation: [0, 0, 0]
+                  Scale: [1, 1, 1]
+                MeshComponent:
+                  MeshType: 6
+                  ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+                  ModelIndex: nanosuit.obj.Body.Helmet
+                MeshRendererComponent:
+                  Textures:
+                    - ImageType: 0
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/helmet_diff.png
+                    - ImageType: 1
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/helmet_showroom_spec.png
+                    - ImageType: 2
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/helmet_showroom_ddn.png
+              - EntityID: 3851029904839803090
+                TagComponent:
+                  Tag: Legs
+                TransformComponent:
+                  Translation: [0, 0, 0]
+                  Rotation: [0, 0, 0]
+                  Scale: [1, 1, 1]
+                MeshComponent:
+                  MeshType: 6
+                  ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+                  ModelIndex: nanosuit.obj.Body.Legs
+                MeshRendererComponent:
+                  Textures:
+                    - ImageType: 0
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/leg_dif.png
+                    - ImageType: 1
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/leg_showroom_spec.png
+                    - ImageType: 2
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/leg_showroom_ddn.png
+              - EntityID: 5128708666156656940
+                TagComponent:
+                  Tag: Lights
+                TransformComponent:
+                  Translation: [0, 0, 0]
+                  Rotation: [0, 0, 0]
+                  Scale: [1, 1, 1]
+                MeshComponent:
+                  MeshType: 6
+                  ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+                  ModelIndex: nanosuit.obj.Body.Lights
+                MeshRendererComponent:
+                  Textures:
+                    - ImageType: 0
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/glass_dif.png
+                    - ImageType: 2
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/glass_ddn.png
+              - EntityID: 3547635188799977155
+                TagComponent:
+                  Tag: Visor
+                TransformComponent:
+                  Translation: [0, 0, 0]
+                  Rotation: [0, 0, 0]
+                  Scale: [1, 1, 1]
+                MeshComponent:
+                  MeshType: 6
+                  ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+                  ModelIndex: nanosuit.obj.Body.Visor
+                MeshRendererComponent:
+                  Textures:
+                    - ImageType: 0
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/glass_dif.png
+                    - ImageType: 2
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/glass_ddn.png
+              - EntityID: 2890594748547596094
+                TagComponent:
+                  Tag: hands
+                TransformComponent:
+                  Translation: [0, 0, 0]
+                  Rotation: [0, 0, 0]
+                  Scale: [1, 1, 1]
+                MeshComponent:
+                  MeshType: 6
+                  ModelPath: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit\nanosuit.obj
+                  ModelIndex: nanosuit.obj.Body.hands
+                MeshRendererComponent:
+                  Textures:
+                    - ImageType: 0
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/hand_dif.png
+                    - ImageType: 1
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/hand_showroom_spec.png
+                    - ImageType: 2
+                      Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Objects\nanosuit/hand_showroom_ddn.png

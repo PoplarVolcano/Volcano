@@ -53,5 +53,7 @@
     <None Include="assets\shaders\3D\Prefilter.glsl" />
     <None Include="assets\shaders\3D\BRDF.glsl" />
     <None Include="assets\shaders\shadow\LightShading.glsl" />
+    <None Include="assets\shaders\shadow\PBRLightShading.glsl" />
+    <None Include="assets\shaders\PBRDeferredShading.glsl" />
   </ItemGroup>
 </Project>

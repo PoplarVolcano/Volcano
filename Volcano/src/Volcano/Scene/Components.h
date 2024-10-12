@@ -10,6 +10,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include "Volcano/Renderer/RendererItem/MeshTemp.h"
 #include "Volcano/Renderer/RendererItem/CubeMesh.h"
+#include "Volcano/Renderer/RendererItem/SphereMesh.h"
 
 namespace Volcano {
 
@@ -73,12 +74,17 @@ namespace Volcano {
 
 	struct MeshComponent
 	{
+		// 对于model中读取的mesh，需要在序列化的时候同时保存model的路径和model中的索引以读取mesh信息
 		MeshType meshType = MeshType::None;
 		Ref<MeshTemp> mesh;
+		std::string modelPath;
+		std::string modelIndex;
 		MeshComponent() = default;
 		MeshComponent(const MeshComponent&) = default;
 		void SetMesh(MeshType type, Entity* entity, Ref<MeshTemp> modelMesh = nullptr) {
 			meshType = type;
+			modelPath = std::string();
+			modelIndex = std::string();
 			switch (type)
 			{
 			case MeshType::None:
@@ -86,6 +92,10 @@ namespace Volcano {
 				break;
 			case MeshType::Cube:
 				mesh = std::make_shared<CubeMesh>();
+				mesh->SetEntity(entity);
+				break;
+			case MeshType::Sphere:
+				mesh = std::make_shared<SphereMesh>();
 				mesh->SetEntity(entity);
 				break;
 			case MeshType::Model:
@@ -162,14 +172,6 @@ namespace Volcano {
 		SphereRendererComponent(const SphereRendererComponent&) = default;
 		SphereRendererComponent(const glm::vec4 color)
 			: Color(color) {}
-	};
-
-	struct ModelRendererComponent
-	{
-		std::string ModelPath;
-
-		ModelRendererComponent() = default;
-		ModelRendererComponent(const ModelRendererComponent&) = default;
 	};
 
 	struct LightComponent
@@ -297,7 +299,6 @@ namespace Volcano {
 		                        MeshRendererComponent,
 								CircleRendererComponent,
 								SphereRendererComponent,
-								ModelRendererComponent,
 								LightComponent,
 								CameraComponent, 
 								ScriptComponent,

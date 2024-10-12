@@ -7,6 +7,6 @@ namespace Volcano {
 	class CubeMesh : public MeshTemp
 	{
 	public:
-		CubeMesh(); // 私有构造函数
+		CubeMesh();
 	};
 }
