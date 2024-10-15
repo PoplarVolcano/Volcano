@@ -3,7 +3,6 @@
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/RendererItem/FullQuad.h"
 #include "Volcano/Renderer/RendererItem/Skybox.h"
-#include "Volcano/Renderer/RendererItem/Sphere.h"
 #include <random>
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
@@ -333,9 +332,6 @@ namespace Volcano {
         */
         m_BRDFLUT = Texture2D::Create("SandBoxProject/Assets/Textures/BRDF_LUT.tga", true, TextureFormat::RG16F);
         
-        Sphere::SetIrradianceMap(m_IrradianceMap);
-        Sphere::SetPrefilterMap(m_PrefilterMap);
-        Sphere::SetBRDFLUT(m_BRDFLUT);
         Skybox::SetTexture(m_EnvCubemap);
         
 
@@ -458,12 +454,6 @@ namespace Volcano {
 
 	void SceneRenderer::PBRDeferredShading()
 	{
-		m_DeferredShadingFramebuffer->BlitDepthFramebuffer(
-			m_GBufferFramebuffer->GetRendererID(), m_DeferredShadingFramebuffer->GetRendererID(),
-			0, 0, m_GBufferFramebuffer->GetSpecification().Width, m_GBufferFramebuffer->GetSpecification().Height,
-			0, 0, m_DeferredShadingFramebuffer->GetSpecification().Width, m_DeferredShadingFramebuffer->GetSpecification().Height
-		);
-
 		if (!m_SSAOSwitch)
 		{
 			m_SSAOBlurFramebuffer->Bind();
@@ -475,15 +465,15 @@ namespace Volcano {
 		uint32_t directionalLightSize = m_ActiveScene->GetDirectionalLightEntity() == nullptr ? 0 : 1;
 		uint32_t pointLightSize = m_ActiveScene->GetPointLightEntities().size();
 		uint32_t spotLightSize = m_ActiveScene->GetSpotLightEntities().size();
-
+		uint32_t maxLightSize = glm::max(pointLightSize, spotLightSize) | directionalLightSize;
 		m_PBRLightShadingFramebuffer[!flag]->Bind();
 		{
 			Renderer::Clear(0.0f, 0.0f, 0.0f, 0.0f);
 			m_PBRLightShadingFramebuffer[!flag]->Unbind();
 		}
-		if (glm::max(directionalLightSize, pointLightSize, spotLightSize) > 0)
+		if (maxLightSize > 0)
 		{
-			for (uint32_t i = 0; i < glm::max(directionalLightSize, pointLightSize, spotLightSize); i++)
+			for (uint32_t i = 0; i < maxLightSize; i++)
 			{
 				m_ActiveScene->UpdateLight(i);
 				if(directionalLightSize > 0)
@@ -532,11 +522,10 @@ namespace Volcano {
 				m_PBRLightShadingFramebuffer[flag]->Unbind();
 			}
 		}
-		
+
 		m_DeferredShadingFramebuffer->Bind();
 		{
 			Renderer::Clear();
-
 			// Clear entity ID attachment to -1
 			m_DeferredShadingFramebuffer->ClearAttachmentInt(1, -1);// 把EntityID数据置-1
 
@@ -566,9 +555,19 @@ namespace Volcano {
 			FullQuad::DrawIndexed();
 			//Renderer::SetDepthTest(true);
 
+			m_DeferredShadingFramebuffer->Unbind();
+		}
 
+		m_DeferredShadingFramebuffer->BlitDepthFramebuffer(
+			m_GBufferFramebuffer->GetRendererID(), m_DeferredShadingFramebuffer->GetRendererID(),
+			0, 0, m_GBufferFramebuffer->GetSpecification().Width, m_GBufferFramebuffer->GetSpecification().Height,
+			0, 0, m_DeferredShadingFramebuffer->GetSpecification().Width, m_DeferredShadingFramebuffer->GetSpecification().Height
+		);
+
+		m_DeferredShadingFramebuffer->Bind();
+		{
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);
-			//RenderScene();
+			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::SKYBOX);
 			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);
@@ -576,18 +575,11 @@ namespace Volcano {
 			// 覆盖层
 			//OnOverlayRender();
 
-			m_DeferredShadingFramebuffer->Unbind();
 		}
 	}
 
 	void SceneRenderer::DeferredShading()
 	{
-		m_DeferredShadingFramebuffer->BlitDepthFramebuffer(
-			m_GBufferFramebuffer->GetRendererID(), m_DeferredShadingFramebuffer->GetRendererID(),
-			0, 0, m_GBufferFramebuffer->GetSpecification().Width, m_GBufferFramebuffer->GetSpecification().Height,
-			0, 0, m_DeferredShadingFramebuffer->GetSpecification().Width, m_DeferredShadingFramebuffer->GetSpecification().Height
-		);
-
 		if (!m_SSAOSwitch)
 		{
 			m_SSAOBlurFramebuffer->Bind();
@@ -599,15 +591,16 @@ namespace Volcano {
 		uint32_t directionalLightSize = m_ActiveScene->GetDirectionalLightEntity() == nullptr ? 0 : 1;
 		uint32_t pointLightSize = m_ActiveScene->GetPointLightEntities().size();
 		uint32_t spotLightSize = m_ActiveScene->GetSpotLightEntities().size();
+		uint32_t maxLightSize = glm::max(pointLightSize, spotLightSize) | directionalLightSize;
 		
 		m_LightShadingFramebuffer[!flag]->Bind();
 		{
 			Renderer::Clear(0.0f, 0.0f, 0.0f, 0.0f);
 			m_LightShadingFramebuffer[!flag]->Unbind();
 		}
-		if (glm::max(directionalLightSize, pointLightSize, spotLightSize) > 0)
+		if (maxLightSize > 0)
 		{
-			for (uint32_t i = 0; i < glm::max(directionalLightSize, pointLightSize, spotLightSize); i++)
+			for (uint32_t i = 0; i < maxLightSize; i++)
 			{
 				m_ActiveScene->UpdateLight(i);
 				if(directionalLightSize > 0)
@@ -658,7 +651,6 @@ namespace Volcano {
 		m_DeferredShadingFramebuffer->Bind();
 		{
 			Renderer::Clear();
-
 			// Clear entity ID attachment to -1
 			m_DeferredShadingFramebuffer->ClearAttachmentInt(1, -1);// 把EntityID数据置-1
 
@@ -668,7 +660,7 @@ namespace Volcano {
 			uint32_t positionTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(0);
 			uint32_t normalTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(1);
 			uint32_t albedoTextureID      = m_GBufferFramebuffer->GetColorAttachmentRendererID(2);
-			uint32_t entityIDTextureID = m_GBufferFramebuffer->GetColorAttachmentRendererID(3);
+			uint32_t entityIDTextureID    = m_GBufferFramebuffer->GetColorAttachmentRendererID(4);
 			uint32_t ssaoColorBufferBlur  = m_SSAOBlurFramebuffer->GetColorAttachmentRendererID(0);
 
 			uint32_t ambientTextureID   = m_LightShadingFramebuffer[!flag]->GetColorAttachmentRendererID(0);
@@ -688,9 +680,19 @@ namespace Volcano {
 			FullQuad::DrawIndexed();
 			//Renderer::SetDepthTest(true);
 
+			m_DeferredShadingFramebuffer->Unbind();
+			}
 
+			m_DeferredShadingFramebuffer->BlitDepthFramebuffer(
+				m_GBufferFramebuffer->GetRendererID(), m_DeferredShadingFramebuffer->GetRendererID(),
+				0, 0, m_GBufferFramebuffer->GetSpecification().Width, m_GBufferFramebuffer->GetSpecification().Height,
+				0, 0, m_DeferredShadingFramebuffer->GetSpecification().Width, m_DeferredShadingFramebuffer->GetSpecification().Height
+			);
+			
+		m_DeferredShadingFramebuffer->Bind();
+		{
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);
-			//RenderScene();
+			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::SKYBOX);
 			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);

@@ -3,6 +3,16 @@
 
 namespace Volcano {
 
+    Animator::Animator()
+    {
+        m_CurrentTime = 0.0;
+
+        m_FinalBoneMatrices.reserve(100);
+
+        for (int i = 0; i < 100; i++)
+            m_FinalBoneMatrices.push_back(glm::mat4(1.0f));
+    }
+
     Animator::Animator(Animation* animation)
     {
         m_CurrentTime = 0.0;
@@ -31,6 +41,7 @@ namespace Volcano {
         m_CurrentTime = 0.0f;
     }
 
+    // 遍历Animation的骨骼结点
     void Animator::CalculateBoneTransform(const AssimpNodeData* node, glm::mat4 parentTransform)
     {
         std::string nodeName = node->name;
@@ -45,6 +56,7 @@ namespace Volcano {
             nodeTransform = Bone->GetLocalTransform();
         }
 
+        //骨骼bone存在时使用bone的transform，否则使用node的transformation
         glm::mat4 globalTransformation = parentTransform * nodeTransform; // 骨骼空间转换到父节点骨骼空间，递归直到转换到根节点骨骼空间
 
         auto boneInfoMap = m_CurrentAnimation->GetBoneIDMap();
@@ -59,8 +71,12 @@ namespace Volcano {
             CalculateBoneTransform(&node->children[i], globalTransformation);
     }
 
-    std::vector<glm::mat4> Animator::GetFinalBoneMatrices()
+    std::vector<glm::mat4>& Animator::GetFinalBoneMatrices()
     {
         return m_FinalBoneMatrices;
+    }
+    void Animator::SetAnimation(Animation* animation)
+    {
+        m_CurrentAnimation = animation;
     }
 }

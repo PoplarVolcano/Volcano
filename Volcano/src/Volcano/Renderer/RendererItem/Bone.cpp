@@ -5,6 +5,17 @@
 
 namespace Volcano
 {
+    Bone::Bone(const std::string& name, int ID)
+        : m_Name(name), m_ID(ID), m_LocalTransform(1.0f)
+    {
+        m_NumPositions = 1;
+        m_NumRotations = 1;
+        m_NumScalings  = 1;
+        m_Positions.push_back({ glm::vec3(0.0f), 0.0f });
+        m_Rotations.push_back({ glm::vec3(0.0f), 0.0f });
+        m_Scales.push_back({ glm::vec3(1.0f), 0.0f });
+
+    }
 
     // reads keyframes from aiNodeAnim
 	Bone::Bone(const std::string& name, int ID, const aiNodeAnim* channel)
@@ -62,7 +73,7 @@ namespace Volcano
             if (animationTime < m_Positions[index + 1].timeStamp)
                 return index;
         }
-        VOL_CORE_ASSERT(0);
+        return 0;
     }
 
     // 获取mKeyRotation上的当前索引，以便根据当前动画时间进行插值
@@ -73,7 +84,7 @@ namespace Volcano
             if (animationTime < m_Rotations[index + 1].timeStamp)
                 return index;
         }
-        VOL_CORE_ASSERT(0);
+        return 0;
     }
 
     // 获取mKeyScale上的当前索引，以便根据当前动画时间进行插值
@@ -84,7 +95,53 @@ namespace Volcano
             if (animationTime < m_Scales[index + 1].timeStamp)
                 return index;
         }
-        VOL_CORE_ASSERT(0);
+        return 0;
+    }
+
+
+    void Bone::AddKeyPosition(glm::vec3 position)
+    {
+        m_NumPositions++;
+        m_Positions.push_back(KeyPosition{ position, 0.0f });
+    }
+
+    void Bone::AddKeyRotation(glm::vec3 rotation)
+    {
+        m_NumRotations++;
+        m_Rotations.push_back(KeyRotation{ rotation, 0.0f });
+    }
+    
+    void Bone::AddKeyScale(glm::vec3 scale)
+    {
+        m_NumScalings++;
+        m_Scales.push_back(KeyScale{ scale, 0.0f });
+    }
+
+    void Bone::RemoveKeyPosition(int index)
+    {
+        if (index >= 0 && index < m_NumPositions)
+        {
+            m_NumPositions--;
+            m_Positions.erase(m_Positions.begin() + index);
+        }
+    }
+
+    void Bone::RemoveKeyRotation(int index)
+    {
+        if (index >= 0 && index < m_NumRotations)
+        {
+            m_NumRotations--;
+            m_Rotations.erase(m_Rotations.begin() + index);
+        }
+    }
+
+    void Bone::RemoveKeyScale(int index)
+    {
+        if (index >= 0 && index < m_NumScalings)
+        {
+            m_NumScalings--;
+            m_Scales.erase(m_Scales.begin() + index);
+        }
     }
 
     // 计算比例因子[0,1]，获取Lerp和Slerp的标准化值

@@ -63,7 +63,7 @@ namespace  Volcano {
 		Scene* GetScene() { return m_Scene; }
 		Entity* GetEntityParent() { return m_Parent; }
 
-		Ref<Entity> SetEntityChild(UUID uuid, const std::string& name);
+		Ref<Entity> AddEntityChild(UUID uuid, const std::string& name);
 		void SetEntityParent(Entity* entity);
 
 		operator bool() const { return m_EntityHandle != entt::null; }

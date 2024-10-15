@@ -3,70 +3,35 @@
 #include "glad/glad.h"
 
 #include "Volcano/Renderer/RendererItem/AssimpGLMHelpers.h"
+#include "Volcano/Renderer/RendererItem/Animation.h"
+#include "Volcano/Renderer/RendererItem/Animator.h"
 
 #include <stb_image.h>
+#include "ModelMesh.h"
 
 namespace Volcano {
 
+    std::once_flag Model::init_flag;
+    Scope<ModelLibrary> Model::m_ModelLibrary;
 
     Ref<Model> Model::Create(const char* path, bool gamma)
     {
         return std::make_shared<Model>(path, gamma);
     }
 
+    const Scope<ModelLibrary>& Model::GetModelLibrary()
+    {
+        std::call_once(init_flag, []() { m_ModelLibrary.reset(new ModelLibrary()); });
+        return m_ModelLibrary;
+    }
+
     Model::Model(const char* path, bool gamma) : gammaCorrection(gamma)
     {
-        m_BlackTexture = Texture2D::Create(1, 1);
-        uint32_t blackTextureData = 0x00000000;
-        m_BlackTexture->SetData(&blackTextureData, sizeof(uint32_t));
-
-        MeshTexture texture;
-        texture.texture = m_BlackTexture;
-        texture.type = "BlackTexture";
-        texture.path = "";
-        texture.textureIndex = 0.0f;
-        textures_loaded.push_back(texture);
-
         loadModel(path);
+
+        m_Animation = std::make_shared<Animation>(path, this);
+
         m_Path = path;
-    }
-
-    void Model::Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID, std::vector<glm::mat4>& finalBoneMatrices)
-    {
-        for (uint32_t i = 0; i < meshes.size(); i++)
-            meshes[i].Draw(shader, transform, normalTransform, entityID, finalBoneMatrices);
-    }
-
-    void Model::DrawIndexed()
-    {
-        // Bind textures
-        for (uint32_t i = 0; i < textures_loaded.size(); i++)
-            textures_loaded[i].texture->Bind(i);
-
-        for (uint32_t i = 0; i < meshes.size(); i++)
-            meshes[i].DrawIndexed();
-    }
-
-    void Model::SetVertexBoneDataToDefault(MeshVertex& vertex)
-    {
-        for (int i = 0; i < MAX_BONE_INFLUENCE; i++)
-        {
-            vertex.BoneIDs[i] = -1;
-            vertex.Weights[i] = 0.0f;
-        }
-    }
-
-    void Model::SetVertexBoneData(MeshVertex& vertex, int boneID, float weight)
-    {
-        for (int i = 0; i < MAX_BONE_INFLUENCE; ++i)
-        {
-            if (vertex.BoneIDs[i] < 0)
-            {
-                vertex.Weights[i] = weight;
-                vertex.BoneIDs[i] = boneID;
-                break;
-            }
-        }
     }
 
     void Model::ExtractBoneWeightForVertices(std::vector<MeshVertex>& vertices, aiMesh* mesh, const aiScene* scene)
@@ -97,7 +62,7 @@ namespace Volcano {
                 int vertexId = weights[weightIndex].mVertexId;
                 float weight = weights[weightIndex].mWeight;
                 VOL_CORE_ASSERT(vertexId <= vertices.size());
-                SetVertexBoneData(vertices[vertexId], boneID, weight);
+                Mesh::SetVertexBoneData(vertices[vertexId], boneID, weight);
             }
         }
     }
@@ -114,41 +79,55 @@ namespace Volcano {
             return;
         }
         // 获取obj文件路径
-        directory = path.substr(0, path.find_last_of('/'));
+        directory = path.substr(0, path.find_last_of('\\'));
 
+        m_ModelNodeRoot = std::make_shared<ModelNode>();
         // 递归处理ASSIMP的根节点
-        processNode(scene->mRootNode, scene);
+        processNode(scene->mRootNode, scene, m_ModelNodeRoot);
     }
 
     // 以递归方式处理节点。处理位于节点处的每个单独网格，并在其子节点（如果有的话）上重复此过程。
-    void Model::processNode(aiNode* node, const aiScene* scene)
+    // assimp以node分层，node和mesh为一对多关系
+    void Model::processNode(aiNode* node, const aiScene* scene, Ref<ModelNode>& modelNode)
     {
+        modelNode->name = node->mName.data;
+        modelNode->transform = AssimpGLMHelpers::ConvertMatrixToGLMFormat(node->mTransformation);
         // 处理节点所有的网格（如果有的话）
         for (uint32_t i = 0; i < node->mNumMeshes; i++)
         {
             //节点对象仅包含索引，用于对场景中的实际对象进行索引。 
             //场景包含了所有的数据，节点只是用来组织东西（比如节点之间的关系）。
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-            meshes.push_back(processMesh(mesh, scene));
+            modelNode->numMeshes++;
+            modelNode->meshes.push_back(m_Meshes.size());
+            processMesh(mesh, scene);
         }
-        // 接下来对它的子节点重复这一过程
-        for (uint32_t i = 0; i < node->mNumChildren; i++)
+
+        if (node->mNumChildren > 0)
         {
-            processNode(node->mChildren[i], scene);
+            modelNode->numChildren++;
+            Ref<ModelNode> modelNodeTemp = std::make_shared<ModelNode>();
+            modelNode->children.push_back(modelNodeTemp);
+            modelNodeTemp->parent = modelNode;
+            // 接下来对它的子节点重复这一过程
+            for (uint32_t i = 0; i < node->mNumChildren; i++)
+            {
+                processNode(node->mChildren[i], scene, modelNodeTemp);
+            }
         }
     }
 
-    Mesh Model::processMesh(aiMesh* mesh, const aiScene* scene)
+    Ref<MeshNode> Model::processMesh(aiMesh* mesh, const aiScene* scene)
     {
         std::vector<MeshVertex> vertices;
         std::vector<uint32_t> indices;
-        std::vector<MeshTexture> textures;
+        std::vector<std::pair<ImageType, Ref<Texture>>> textures;
 
         // 对每一个顶点读取位置，法线，纹理坐标
         for (uint32_t i = 0; i < mesh->mNumVertices; i++)
         {
             MeshVertex vertex;
-            SetVertexBoneDataToDefault(vertex);
+            Mesh::SetVertexBoneDataToDefault(vertex);
 
             // 处理顶点位置、法线和纹理坐标
             vertex.Position = AssimpGLMHelpers::GetGLMVec3(mesh->mVertices[i]);
@@ -156,7 +135,7 @@ namespace Volcano {
 
             if (mesh->mTextureCoords[0]) // 网格是否有纹理坐标？
             {
-                //一个顶点最多可以包含8个不同的纹理坐标。假设我们不使用顶点可以有多个纹理坐标的模型，我们总是取第一组（0）。
+                //一个顶点最多可以包含8个不同的纹理坐标。假设不使用顶点可以有多个纹理坐标的模型，总是取第一组（0）。
                 vertex.TexCoords = AssimpGLMHelpers::GetGLMVec2(mesh->mTextureCoords[0][i]);
                 if (mesh->mTangents)
                     vertex.Tangent = AssimpGLMHelpers::GetGLMVec3(mesh->mTangents[i]);
@@ -184,55 +163,77 @@ namespace Volcano {
             //我们假设着色器中的采样器名称有一个约定。每个漫反射纹理都应该命名作为'texture_diffuseN'，
             // 其中N是从1到MAX_SAMPLER_NUMBER的序列号。 
             aiMaterial* material = scene->mMaterials[mesh->mMaterialIndex];
-            std::vector<MeshTexture> diffuseMaps  = loadMaterialTextures(material, aiTextureType_DIFFUSE,  "texture_diffuse");
-            textures.insert(textures.end(), diffuseMaps.begin(),  diffuseMaps.end());
-            std::vector<MeshTexture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
+            std::vector<std::pair<ImageType, Ref<Texture>>> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, ImageType::Diffuse);
+            textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+            std::vector<std::pair<ImageType, Ref<Texture>>> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, ImageType::Specular);
             textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-            std::vector<MeshTexture> normalMaps   = loadMaterialTextures(material, aiTextureType_HEIGHT,   "texture_normal");
-            textures.insert(textures.end(), normalMaps.begin(),   normalMaps.end());
-            std::vector<MeshTexture> heightMaps   = loadMaterialTextures(material, aiTextureType_AMBIENT,  "texture_height");
+            std::vector<std::pair<ImageType, Ref<Texture>>> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, ImageType::Normal);
+            textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+            std::vector<std::pair<ImageType, Ref<Texture>>> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, ImageType::Height);
+            textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
         }
 
         ExtractBoneWeightForVertices(vertices, mesh, scene);
 
-        return Mesh(vertices, indices, textures);
+        Ref<MeshNode> meshNode = std::make_shared<MeshNode>();
+        meshNode->name = mesh->mName.data;
+        meshNode->mesh = std::make_shared<ModelMesh>(vertices, indices);
+        meshNode->textures = textures;
+        m_Meshes.push_back(meshNode);
+        return meshNode;
     }
 
     // 读取材质纹理
-    std::vector<MeshTexture> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type, std::string typeName)
+    std::vector<std::pair<ImageType, Ref<Texture>>> Model::loadMaterialTextures(aiMaterial* mat, aiTextureType type, ImageType imageType)
     {
-        std::vector<MeshTexture> textures;
+        std::vector<std::pair<ImageType, Ref<Texture>>> textures;
         for (uint32_t i = 0; i < mat->GetTextureCount(type); i++)
         {
             // 获取纹理相对obj的路径
             aiString str;
             mat->GetTexture(type, i, &str);
-            //检查之前是否加载了纹理，如果是，继续下一次迭代：跳过加载新纹理
-            bool skip = false;
-            for (uint32_t j = 0; j < textures_loaded.size(); j++)
-            {
-                // 如果已加载，将已加载的纹理注入textures
-                if (std::strcmp(textures_loaded[j].path.data(), str.C_Str()) == 0)
-                {
-                    textures.push_back(textures_loaded[j]);// push_back在vector类中作用为在vector尾部加入一个数据；
-                    skip = true;
-                    break;
-                }
-            }
-            if (!skip)
-            {
-                std::string path = str.data;
-                path = directory + '/' + path;
-                MeshTexture texture;
-                texture.texture = Texture2D::Create(path, false);
-                texture.type = typeName;
-                texture.path = str.C_Str();
-                texture.textureIndex = textures_loaded.size();
-                textures.push_back(texture);
-                textures_loaded.push_back(texture);
-            }
-
+            std::string path = str.data;
+            path = directory + '/' + path;
+            auto texture = Texture2D::Create(path, false);
+            textures.push_back({ imageType, texture });
         }
         return textures;
+    }
+
+
+    void ModelLibrary::Add(const Ref<Model> model)
+    {
+        auto& path = model->GetPath();
+        Add(path, model);
+    }
+
+    void ModelLibrary::Add(const std::string& path, const Ref<Model> Model)
+    {
+
+        VOL_CORE_ASSERT(!Exists(path), "ModelLibrary:Model已经存在了");
+        m_Models[path] = Model;
+    }
+
+    Ref<Model> ModelLibrary::Load(const std::string filepath)
+    {
+        auto Model = Model::Create(filepath.c_str());
+        Add(Model);
+        return Model;
+    }
+
+
+    Ref<Model> ModelLibrary::Get(const std::string& path)
+    {
+        if (!Exists(path))
+        {
+            VOL_CORE_TRACE("ModelLibrary:未找到Model");
+            return nullptr;
+        }
+        return m_Models[path];
+    }
+
+    bool ModelLibrary::Exists(const std::string& path)
+    {
+        return m_Models.find(path) != m_Models.end();
     }
 }

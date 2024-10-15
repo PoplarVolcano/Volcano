@@ -1,0 +1,207 @@
+Scene: Untitled
+Entities:
+  - EntityID: 12953999778076631802
+    TagComponent:
+      Tag: Camera
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    CameraComponent:
+      Camera:
+        ProjectionType: 0
+        PerspectiveFOV: 0.785398185
+        PerspectiveNear: 0.00100000005
+        PerspectiveFar: 1000
+        OrthographicSize: 10
+        OrthographicNear: -1
+        OrthographicFar: 1
+      Primary: true
+      FixedAspectRatio: true
+    ScriptComponent:
+      ClassName: SandBox.Camera3D
+      ScriptFields:
+        []
+  - EntityID: 1405355225585307902
+    TagComponent:
+      Tag: Cubes
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    Entities:
+      - EntityID: 13959634937185575862
+        TagComponent:
+          Tag: Bricks
+        TransformComponent:
+          Translation: [0, 2.9000001, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+        MeshComponent:
+          MeshType: 4
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2.jpg
+            - ImageType: 3
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_disp.jpg
+            - ImageType: 2
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\bricks2_normal.jpg
+      - EntityID: 9419433065474515044
+        TagComponent:
+          Tag: Rusted Iron
+        TransformComponent:
+          Translation: [0, 0.5, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+        MeshComponent:
+          MeshType: 4
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\albedo.png
+            - ImageType: 1
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\metallic.png
+            - ImageType: 2
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\normal.png
+            - ImageType: 4
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\roughness.png
+            - ImageType: 5
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\ao.png
+      - EntityID: 6270354257448238841
+        TagComponent:
+          Tag: Toybox
+        TransformComponent:
+          Translation: [1.70000005, 0.5, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+        MeshComponent:
+          MeshType: 4
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_diffuse.png
+            - ImageType: 2
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_normal.png
+            - ImageType: 3
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\toy_box_disp.png
+  - EntityID: 12812895389419817980
+    TagComponent:
+      Tag: Lights
+    TransformComponent:
+      Translation: [0, 1, 2]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    Entities:
+      - EntityID: 10876125784524608655
+        TagComponent:
+          Tag: DirectionalLight
+        TransformComponent:
+          Translation: [-30, 70, -20]
+          Rotation: [-1.04719758, -2.09439516, 0]
+          Scale: [1, 1, 1]
+        LightComponent:
+          Type: 0
+          Ambient: [0.100000001, 0.100000001, 0.100000001]
+          Diffuse: [0.5, 0.5, 0.5]
+          Specular: [0.5, 0.5, 0.5]
+          Constant: 1
+          Linear: 0.0900000036
+          Quadratic: 0.0320000015
+          CutOff: 0.976296008
+          OuterCutOff: 0.953716934
+      - EntityID: 2925376242596797101
+        TagComponent:
+          Tag: PointLight
+        TransformComponent:
+          Translation: [0, 1, 3]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+        LightComponent:
+          Type: 1
+          Ambient: [0.100000001, 0.100000001, 0.100000001]
+          Diffuse: [0.5, 0.5, 0.5]
+          Specular: [0.5, 0.5, 0.5]
+          Constant: 1
+          Linear: 0.0900000036
+          Quadratic: 0.0320000015
+          CutOff: 0.976296008
+          OuterCutOff: 0.953716934
+  - EntityID: 16167996632043021926
+    TagComponent:
+      Tag: Scene
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    Entities:
+      - EntityID: 11073805350339606143
+        TagComponent:
+          Tag: Brick Wall
+        TransformComponent:
+          Translation: [0, 5, -5.5]
+          Rotation: [0, 0, 0]
+          Scale: [10, 10, 1]
+        MeshComponent:
+          MeshType: 4
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall.jpg
+            - ImageType: 2
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\brickwall_normal.jpg
+      - EntityID: 12919761932638068673
+        TagComponent:
+          Tag: Floor
+        TransformComponent:
+          Translation: [0, -0.5, 0]
+          Rotation: [0, 0, 0]
+          Scale: [50, 1, 50]
+        MeshComponent:
+          MeshType: 4
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\wood.png
+      - EntityID: 13798462926633446203
+        TagComponent:
+          Tag: Wood Wall
+        TransformComponent:
+          Translation: [-5.5, 5, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 10, 10]
+        MeshComponent:
+          MeshType: 4
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\wood.png
+  - EntityID: 12505349361159310289
+    TagComponent:
+      Tag: Spheres
+    TransformComponent:
+      Translation: [0, 0, 0]
+      Rotation: [0, 0, 0]
+      Scale: [1, 1, 1]
+    Entities:
+      - EntityID: 12573510855021335493
+        TagComponent:
+          Tag: Rusted Iron
+        TransformComponent:
+          Translation: [3, 2.20000005, 0]
+          Rotation: [0, 0, 0]
+          Scale: [1, 1, 1]
+        MeshComponent:
+          MeshType: 5
+        MeshRendererComponent:
+          Textures:
+            - ImageType: 0
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\albedo.png
+            - ImageType: 1
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\metallic.png
+            - ImageType: 2
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\normal.png
+            - ImageType: 4
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\roughness.png
+            - ImageType: 5
+              Path: C:\C++Project\engine\Volcano\VolcanoNut\SandBoxProject\Assets\Textures\pbr\rusted_iron\ao.png

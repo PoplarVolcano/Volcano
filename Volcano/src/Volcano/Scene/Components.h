@@ -8,9 +8,11 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
-#include "Volcano/Renderer/RendererItem/MeshTemp.h"
+#include "Volcano/Renderer/RendererItem/Mesh.h"
 #include "Volcano/Renderer/RendererItem/CubeMesh.h"
 #include "Volcano/Renderer/RendererItem/SphereMesh.h"
+#include "Volcano/Renderer/RendererItem/ModelMesh.h"
+#include "Volcano/Renderer/RendererItem/Animator.h"
 
 namespace Volcano {
 
@@ -74,17 +76,27 @@ namespace Volcano {
 
 	struct MeshComponent
 	{
+		struct VertexBone
+		{
+			int vertexIndex1 = -1;
+			int vertexIndex2 = -1;
+			int boneIndex = -1;
+			float weight = 0;
+		};
+
 		// 对于model中读取的mesh，需要在序列化的时候同时保存model的路径和model中的索引以读取mesh信息
 		MeshType meshType = MeshType::None;
-		Ref<MeshTemp> mesh;
+		Ref<Mesh> mesh;
 		std::string modelPath;
-		std::string modelIndex;
+		int modelIndex;
+		std::vector<VertexBone> vertexBone;
+
 		MeshComponent() = default;
 		MeshComponent(const MeshComponent&) = default;
-		void SetMesh(MeshType type, Entity* entity, Ref<MeshTemp> modelMesh = nullptr) {
+		void SetMesh(MeshType type, Entity* entity, Ref<Mesh> modelMesh = nullptr) {
 			meshType = type;
 			modelPath = std::string();
-			modelIndex = std::string();
+			modelIndex = -1;
 			switch (type)
 			{
 			case MeshType::None:
@@ -101,7 +113,7 @@ namespace Volcano {
 			case MeshType::Model:
 				if (modelMesh != nullptr)
 				{
-					mesh = std::make_shared<MeshTemp>(*modelMesh.get());
+					mesh = std::make_shared<Mesh>(*modelMesh.get());
 					mesh->ResetVertexBufferBase();
 					mesh->SetEntity(entity);
 				}
@@ -158,20 +170,27 @@ namespace Volcano {
 		CircleRendererComponent(const CircleRendererComponent&) = default;
 	};
 
-
-	struct SphereRendererComponent
+	struct AnimatorComponent
 	{
-		glm::vec4 Color{ 1.0f, 1.0f, 1.0f, 1.0f };
-		Ref<Texture2D> Albedo;
-		Ref<Texture2D> Normal;
-		Ref<Texture2D> Metallic;
-		Ref<Texture2D> Roughness;
-		Ref<Texture2D> AO;
+		Ref<Animator> animator = std::make_shared<Animator>();
 
-		SphereRendererComponent() = default;
-		SphereRendererComponent(const SphereRendererComponent&) = default;
-		SphereRendererComponent(const glm::vec4 color)
-			: Color(color) {}
+		AnimatorComponent() = default;
+		AnimatorComponent(const AnimatorComponent&) = default;
+	};
+
+	struct AnimationComponent
+	{
+		std::string path;
+		Ref<Animation> animation = std::make_shared<Animation>();
+		int key;
+
+		AnimationComponent() = default;
+		AnimationComponent(const AnimationComponent&) = default;
+		void LoadAnimation(std::string path, Model* model = nullptr)
+		{
+			this->path = path;
+			animation = std::make_shared<Animation>(path, model);
+		}
 	};
 
 	struct LightComponent
@@ -298,7 +317,8 @@ namespace Volcano {
 		                        MeshComponent,
 		                        MeshRendererComponent,
 								CircleRendererComponent,
-								SphereRendererComponent,
+		                        AnimatorComponent,
+		                        AnimationComponent,
 								LightComponent,
 								CameraComponent, 
 								ScriptComponent,

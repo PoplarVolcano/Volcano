@@ -100,12 +100,13 @@ namespace Volcano {
 
         for (uint32_t i = 0; i < m_VertexSize; i++)
         {
-            MeshTempVertex vertex;
+            MeshVertex vertex;
             vertex.Position  = vertexPosition[i];
             vertex.TexCoords = texCoords[i % 6];
             vertex.Normal    = normal[i / 6];
             vertex.Tangent   = tangent[i / 6];
             vertex.Bitangent = bitangent[i / 6];
+			Mesh::SetVertexBoneDataToDefault(vertex);
             m_Vertices.push_back(vertex);
         }
 

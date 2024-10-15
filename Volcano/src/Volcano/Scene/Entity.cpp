@@ -20,7 +20,7 @@ namespace Volcano {
 		
 	}
 
-	Ref<Entity> Entity::SetEntityChild(UUID uuid, const std::string& name)
+	Ref<Entity> Entity::AddEntityChild(UUID uuid, const std::string& name)
 	{
 		std::string newName = Scene::NewName(m_Children, name);
 

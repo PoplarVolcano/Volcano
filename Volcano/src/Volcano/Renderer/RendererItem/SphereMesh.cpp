@@ -64,10 +64,11 @@ namespace Volcano {
 
 		for (uint32_t i = 0; i < m_VertexSize; i++)
 		{
-			MeshTempVertex vertex;
+			MeshVertex vertex;
 			vertex.Position = vertexPosition[i];
 			vertex.TexCoords = UV[i];
 			vertex.Normal = normal[i];
+			Mesh::SetVertexBoneDataToDefault(vertex);
 			m_Vertices.push_back(vertex);
 		}
 

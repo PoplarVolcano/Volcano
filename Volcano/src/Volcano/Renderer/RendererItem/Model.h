@@ -7,7 +7,28 @@
 #include <assimp/postprocess.h>
 
 namespace Volcano {
-    
+
+    class Animation;
+    class Animator;
+
+    struct ModelNode
+    {
+        std::string name;
+        uint32_t numMeshes;
+        std::vector<uint32_t> meshes;
+        glm::mat4 transform;
+        Ref<ModelNode> parent;
+        uint32_t numChildren;
+        std::vector<Ref<ModelNode>> children;
+    };
+
+    struct MeshNode
+    {
+        std::string name;
+        Ref<Mesh> mesh;
+        std::vector<std::pair<ImageType, Ref<Texture>>> textures;
+    };
+
     struct BoneInfo
     {
         /*finalBoneMatrices的索引*/
@@ -18,40 +39,60 @@ namespace Volcano {
 
     };
 
+    class ModelLibrary;
+
     class Model
     {
     public:
         static Ref<Model> Create(const char* path, bool gamma = false);
-        Model(const char* path, bool gamma = false);
-        void Draw(Shader& shader, const glm::mat4& transform, const glm::mat3& normalTransform, int entityID, std::vector<glm::mat4>& finalBoneMatrices);
-        void DrawIndexed();
-        std::string GetPath() { return m_Path; }
-        auto& GetBoneInfoMap() { return m_BoneInfoMap; }
-        int& GetBoneCount() { return m_BoneCounter; }
+        static const Scope<ModelLibrary>& GetModelLibrary();
 
+        Model(const char* path, bool gamma = false);
+
+        std::string& GetPath() { return m_Path; }
+        Ref<ModelNode>& GetModelNodeRoot() { return m_ModelNodeRoot; }
+        std::map<std::string, BoneInfo>& GetBoneInfoMap() { return m_BoneInfoMap; }
+        int& GetBoneCount() { return m_BoneCounter; }
+        Ref<Animation> GetAnimation() { return m_Animation; }
+        std::vector<Ref<MeshNode>>& GetMeshes() { return m_Meshes; }
+        
     private:
         std::string m_Path;
 
         bool gammaCorrection;
 
-        std::vector<Mesh> meshes;
-        std::vector<MeshTexture> textures_loaded; // 存储到目前为止加载的所有纹理，优化以确保纹理不会加载多次。
+        Ref<ModelNode> m_ModelNodeRoot;
 
-        Ref<Texture2D> m_BlackTexture;
+        std::vector<Ref<MeshNode>> m_Meshes;
 
         std::string directory;
 
         std::map<std::string, BoneInfo> m_BoneInfoMap;
         int m_BoneCounter = 0;
 
-        void SetVertexBoneDataToDefault(MeshVertex& vertex);
-        void SetVertexBoneData(MeshVertex& vertex, int boneID, float weight);
+        Ref<Animation> m_Animation;
+
         void ExtractBoneWeightForVertices(std::vector<MeshVertex>& vertices, aiMesh* mesh, const aiScene* scene);
 
         void loadModel(std::string path);
-        void processNode(aiNode* node, const aiScene* scene);
-        Mesh processMesh(aiMesh* mesh, const aiScene* scene);
-        std::vector<MeshTexture> loadMaterialTextures(aiMaterial* mat, aiTextureType type,
-            std::string typeName);
+        void processNode(aiNode* node, const aiScene* scene, Ref<ModelNode>& modelNode);
+        Ref<MeshNode> processMesh(aiMesh* mesh, const aiScene* scene);
+        std::vector<std::pair<ImageType, Ref<Texture>>> loadMaterialTextures(aiMaterial* mat, aiTextureType type, ImageType imageType);
+
+        static std::once_flag init_flag;
+        static Scope<ModelLibrary> m_ModelLibrary;
+
+    };
+
+
+    class ModelLibrary {
+    public:
+        void Add(const Ref<Model> model);
+        void Add(const std::string& path, const Ref<Model> model);
+        Ref<Model> Load(const std::string filepath);
+        Ref<Model> Get(const std::string& path);
+        bool Exists(const std::string& path);
+    private:
+        std::unordered_map<std::string, Ref<Model>> m_Models;
     };
 }

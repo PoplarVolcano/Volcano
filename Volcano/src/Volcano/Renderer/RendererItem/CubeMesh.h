@@ -1,10 +1,10 @@
 #pragma once
 
-#include "MeshTemp.h"
+#include "Mesh.h"
 
 namespace Volcano {
 
-	class CubeMesh : public MeshTemp
+	class CubeMesh : public Mesh
 	{
 	public:
 		CubeMesh();

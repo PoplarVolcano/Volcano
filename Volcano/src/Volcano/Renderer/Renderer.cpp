@@ -1,10 +1,8 @@
 #include "volpch.h"
 #include "Renderer.h"
 #include "Renderer2D.h"
-#include "RendererModel.h"
 #include "RendererItem/Skybox.h"
 #include "RendererItem/Shadow.h"
-#include "Volcano/Renderer/RendererItem/Sphere.h"
 #include "Volcano/Renderer/UniformBuffer.h"
 
 
@@ -24,11 +22,9 @@ namespace Volcano {
 
 		// ³õÊ¼»¯2D Shader
 		Renderer2D::Init();
-		RendererModel::Init();
 		Skybox::Init();
 		Shadow::Init();
-		Sphere::Init();
-		MeshTemp::Init();
+		Mesh::Init();
 
 		Renderer::GetShaderLibrary()->Load("assets/shaders/GBuffer.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/LightShading.glsl");

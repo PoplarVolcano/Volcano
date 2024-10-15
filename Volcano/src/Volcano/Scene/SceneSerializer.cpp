@@ -6,7 +6,7 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/UUID.h"
 #include "Volcano/Project/Project.h"
-#include "Volcano/Renderer/RendererItem/ModelTemp.h"
+#include "Volcano/Renderer/RendererItem/Model.h"
 
 #include <fstream>
 #include <yaml-cpp/yaml.h>
@@ -382,7 +382,7 @@ namespace Volcano {
 				out << YAML::Key << "MeshType" << YAML::Value << (int)meshComponent.meshType;
 				if (!meshComponent.modelPath.empty())
 				    out << YAML::Key << "ModelPath" << YAML::Value << meshComponent.modelPath;
-				if (!meshComponent.modelIndex.empty())
+				if (meshComponent.modelIndex != -1)
 				    out << YAML::Key << "ModelIndex" << YAML::Value << meshComponent.modelIndex;
 				out << YAML::EndMap; // CircleRendererComponent
 			}
@@ -426,24 +426,18 @@ namespace Volcano {
 			out << YAML::EndMap; // CircleRendererComponent
 		}
 
-
-		if (entity.HasComponent<SphereRendererComponent>())
+		if (entity.HasComponent<AnimatorComponent>())
 		{
-			out << YAML::Key << "SphereRendererComponent";
-			out << YAML::BeginMap;//SphereRendererComponent
-			auto& sphereRendererComponent = entity.GetComponent<SphereRendererComponent>();
-			out << YAML::Key << "Color" << YAML::Value << sphereRendererComponent.Color;
-			if (sphereRendererComponent.Albedo)
-				out << YAML::Key << "AlbedoPath"    << YAML::Value << sphereRendererComponent.Albedo->GetPath();
-			if (sphereRendererComponent.Normal)	    
-				out << YAML::Key << "NormalPath"    << YAML::Value << sphereRendererComponent.Normal->GetPath();
-			if (sphereRendererComponent.Metallic)   
-				out << YAML::Key << "MetallicPath"  << YAML::Value << sphereRendererComponent.Metallic->GetPath();
-			if (sphereRendererComponent.Roughness)
-				out << YAML::Key << "RoughnessPath" << YAML::Value << sphereRendererComponent.Roughness->GetPath();
-			if (sphereRendererComponent.AO)
-				out << YAML::Key << "AOPath" << YAML::Value << sphereRendererComponent.AO->GetPath();
-			out << YAML::EndMap;//sphereRendererComponent
+			out << YAML::Key << "AnimatorComponent";
+		}
+
+		if (entity.HasComponent<AnimationComponent>())
+		{
+			out << YAML::Key << "AnimationComponent";
+			out << YAML::BeginMap; // AnimationComponent
+			auto& animationComponent = entity.GetComponent<AnimationComponent>();
+			out << YAML::Key << "Path" << YAML::Value << animationComponent.path;
+			out << YAML::EndMap; // AnimationComponent
 		}
 
 		if (entity.HasComponent<Rigidbody2DComponent>())
@@ -665,11 +659,11 @@ namespace Volcano {
 			if (mc.meshType == MeshType::Model && meshComponent["ModelPath"].IsDefined() && meshComponent["ModelIndex"].IsDefined())
 			{
 				std::string modelPath = meshComponent["ModelPath"].as<std::string>();
-				std::string modelIndex = meshComponent["ModelIndex"].as<std::string>();
-				if (!ModelTemp::GetModelLibrary()->Exists(modelPath))
-					ModelTemp::GetModelLibrary()->Load(modelPath);
-				auto model = ModelTemp::GetModelLibrary()->Get(modelPath);
-				auto& meshData = model->GetMeshDataMap()[modelIndex];
+				int modelIndex = meshComponent["ModelIndex"].as<int>();
+				if (!Model::GetModelLibrary()->Exists(modelPath))
+					Model::GetModelLibrary()->Load(modelPath);
+				auto model = Model::GetModelLibrary()->Get(modelPath);
+				auto& meshData = model->GetMeshes()[modelIndex];
 				mc.SetMesh(mc.meshType, deserializedEntity.get(), meshData->mesh);
 				mc.modelPath = modelPath;
 				mc.modelIndex = modelIndex;
@@ -707,42 +701,24 @@ namespace Volcano {
 			crc.Fade = circleRendererComponent["Fade"].as<float>();
 		}
 
-
-		auto sphereRendererComponent = entity["SphereRendererComponent"];
-		if (sphereRendererComponent)
+		auto animatorComponent = entity["AnimatorComponent"];
+		if (animatorComponent)
 		{
-			auto& src = deserializedEntity->AddComponent<SphereRendererComponent>();
-			src.Color = sphereRendererComponent["Color"].as<glm::vec4>();
-			if (sphereRendererComponent["AlbedoPath"])
+			auto& ac = deserializedEntity->AddComponent<AnimatorComponent>();
+		}
+
+		auto animationComponent = entity["AnimationComponent"];
+		if (animationComponent)
+		{
+			auto& ac = deserializedEntity->AddComponent<AnimationComponent>();
+			std::string path = animationComponent["Path"].as<std::string>();
+			if (Model::GetModelLibrary()->Get(path) != nullptr)
 			{
-				std::string albedoPath = sphereRendererComponent["AlbedoPath"].as<std::string>();
-				auto path = Project::GetAssetFileSystemPath(albedoPath);
-				src.Albedo = Texture2D::Create(path.string());
+				ac.path = path;
+				ac.animation = Model::GetModelLibrary()->Get(path)->GetAnimation();
 			}
-			if (sphereRendererComponent["NormalPath"])
-			{
-				std::string normalPath = sphereRendererComponent["NormalPath"].as<std::string>();
-				auto path = Project::GetAssetFileSystemPath(normalPath);
-				src.Normal = Texture2D::Create(path.string());
-			}
-			if (sphereRendererComponent["MetallicPath"])
-			{
-				std::string metallicPath = sphereRendererComponent["MetallicPath"].as<std::string>();
-				auto path = Project::GetAssetFileSystemPath(metallicPath);
-				src.Metallic = Texture2D::Create(path.string());
-			}
-			if (sphereRendererComponent["RoughnessPath"])
-			{
-				std::string roughnessPath = sphereRendererComponent["RoughnessPath"].as<std::string>();
-				auto path = Project::GetAssetFileSystemPath(roughnessPath);
-				src.Roughness = Texture2D::Create(path.string());
-			}
-			if (sphereRendererComponent["AOPath"])
-			{
-				std::string AOPath = sphereRendererComponent["AOPath"].as<std::string>();
-				auto path = Project::GetAssetFileSystemPath(AOPath);
-				src.AO = Texture2D::Create(path.string());
-			}
+			else
+				ac.LoadAnimation(path);
 		}
 
 		auto rigidbody2DComponent = entity["Rigidbody2DComponent"];

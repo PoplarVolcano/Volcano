@@ -3,7 +3,7 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/UI/UI.h"
 
-#include "Volcano/Renderer/RendererItem/ModelTemp.h"
+#include "Volcano/Renderer/RendererItem/Model.h"
 #include "Volcano/Math/Math.h"
 
 #include "imgui/imgui.h"
@@ -78,10 +78,21 @@ namespace Volcano {
 	{
 		auto& tag = entity->GetComponent<TagComponent>().Tag;
 		// 若是被点击标记为选中状态|有下一级
-		ImGuiTreeNodeFlags flags = ((m_SelectionContext == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow;
+		ImGuiTreeNodeFlags flags = (m_SelectionContext == entity) ? ImGuiTreeNodeFlags_Selected : 0;
 		flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
-		// 第一个参数是唯一ID 64的，
-		bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity.get(), flags, tag.c_str());
+		bool opened = false;
+		if (entity->GetEntityChildren().empty())
+		{
+			flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+			ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity.get(), flags, tag.c_str());
+		}
+		else
+		{
+			flags |= ImGuiTreeNodeFlags_OpenOnArrow;
+			opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity.get(), flags, tag.c_str());
+		}
+		
+
 		if (ImGui::IsItemClicked())
 		{
 			m_SelectionContext = entity;
@@ -106,10 +117,6 @@ namespace Volcano {
 			for (auto& [name, entityChild] : entityChildren)
 			{
 				DrawEntityNode(entityChild);
-				//ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
-				//bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity.m_Children[i], flags, tag.c_str());
-				//if (opened)
-				//	ImGui::TreePop();
 			}
 			ImGui::TreePop();
 		}
@@ -123,6 +130,7 @@ namespace Volcano {
 			else
 				m_Context->DestroyEntity(entity);
 		}
+
 	}
 
 	static void DrawVec3Control(const std::string& label, glm::vec3& values, float resetValue = 0.0f, float columnWidth = 100.0f)
@@ -241,29 +249,193 @@ namespace Volcano {
 
 	}
 
-	void ModelLoading(Ref<MeshData> mesh, Ref<Entity> entity, std::string modelPath)
+	void ModelLoading(Ref<ModelNode> modelNode, Ref<Model> model, Ref<Entity> entity)
 	{
-		auto entityNew = entity->GetScene()->CreateEntity(mesh->name, entity);
-		auto transform = entityNew->GetComponent<TransformComponent>();
-		Math::DecomposeTransform(mesh->transform, transform.Translation, transform.Rotation, transform.Scale);
-		if (mesh->mesh != nullptr)
+		auto entityNode = entity->GetScene()->CreateEntity(modelNode->name, entity);
+		auto transform = entityNode->GetComponent<TransformComponent>();
+		Math::DecomposeTransform(modelNode->transform, transform.Translation, transform.Rotation, transform.Scale);
+		for (uint32_t i = 0; i < modelNode->numMeshes; i++)
 		{
-			auto& mc = entityNew->AddComponent<MeshComponent>();
-			mc.SetMesh(MeshType::Model, entityNew.get(), std::make_shared<MeshTemp>(*mesh->mesh.get()));
-			mc.modelPath = modelPath;
-			mc.modelIndex = mesh->index;
+		    auto entityMesh = entity->GetScene()->CreateEntity(modelNode->name, entityNode);
+		    auto& mesh = model->GetMeshes()[modelNode->meshes[i]];
+			auto& mc = entityMesh->AddComponent<MeshComponent>();
+			mc.SetMesh(MeshType::Model, entityMesh.get(), std::make_shared<Mesh>(*mesh->mesh.get()));
+			mc.modelPath = model->GetPath();
+			mc.modelIndex = modelNode->meshes[i];
+
+			if (!mesh->textures.empty())
+			{
+				auto& mrc = entityMesh->AddComponent<MeshRendererComponent>();
+				for (auto& [type, texture] : mesh->textures)
+					mrc.AddTexture(type, texture);
+			}
 		}
-		if (!mesh->textures.empty())
+
+		for(auto& modelNodeChild : modelNode->children)
+			ModelLoading(modelNodeChild, model, entityNode);
+	}
+
+	void DestroyAssimpNode(AssimpNodeData& node, std::map<std::string, BoneInfo> boneIDMap)
+	{
+		for (uint32_t i = 0; i < node.children.size(); i++)
+			DestroyAssimpNode(node.children[i], boneIDMap);
+		
+		for (uint32_t i = 0; i < node.children.size(); i++)
 		{
-			auto& mrc = entityNew->AddComponent<MeshRendererComponent>();
-			for (auto& [type, texture] : mesh->textures)
-				mrc.AddTexture(type, texture);
+			// 擦除m_Bones中的Bone会造成索引混乱
+			boneIDMap.erase(node.children.begin()->name);
+			node.children.erase(node.children.begin());
 		}
-		if (!mesh->children.empty())
+	}
+
+	void DrawAssimpNode(AssimpNodeData& node, Animation* animation)
+	{
+		const char* name = node.name.c_str();
+
+		ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+		ImGui::Separator();
+		auto& boneMap = animation->GetBoneIDMap();
+
+		bool open = ImGui::TreeNodeEx((void*)boneMap[node.name].id, treeNodeFlags, name);
+
+		bool entityDeleted = false;
+		if (ImGui::BeginPopupContextItem())
 		{
-			for(auto& meshChild : mesh->children)
-			ModelLoading(meshChild, entityNew, modelPath);
+			if (ImGui::MenuItem("Create Empty Bone"))
+			{
+				AssimpNodeData child;
+				child.transformation = glm::mat4(1.0f);
+				child.parent = &node;
+				child.name = "Empty Bone";
+				for (uint32_t i = 0; boneMap.find(child.name) != boneMap.end(); i++)
+				{
+					child.name = "Empty Bone(" + std::to_string(i) + ")";
+				}
+				auto& bones = animation->GetBones();
+
+				// 添加AssimpNodeData
+				node.childrenCount++;
+				node.children.push_back(child);
+
+				boneMap[child.name].id = bones.size();
+				boneMap[child.name].offset = glm::mat4(1.0f);
+
+				// 添加Bone
+				Bone newBone(child.name, bones.size());
+				bones.push_back(newBone);
+
+			}
+			if (ImGui::MenuItem("Delete Bone"))
+				entityDeleted = true;
+			ImGui::EndPopup();
 		}
+
+
+		if (open)
+		{
+			ImGui::PushID(boneMap[node.name].id);
+			if (ImGui::TreeNodeEx((void*)boneMap[node.name].id, treeNodeFlags, "Bone Information"))
+			{
+				char buffer[256];
+				memset(buffer, 0, sizeof(buffer));
+				strncpy_s(buffer, sizeof(buffer), node.name.c_str(), sizeof(buffer));
+
+				ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue;
+				if (ImGui::InputText("##Tag", buffer, sizeof(buffer), flags))
+				{
+					auto boneInfo = boneMap[node.name];
+					boneMap.erase(node.name);
+					std::string name = buffer;
+					node.name = name;
+					for (uint32_t i = 0; boneMap.find(node.name) != boneMap.end(); i++)
+					{
+						node.name = name + "(" + std::to_string(i) + ")";
+					}
+					boneMap[node.name] = boneInfo;
+					animation->GetBones()[boneInfo.id].SetBoneName(node.name);
+				}
+
+				ImGui::SameLine();
+
+				if (ImGui::Button("Reset Transform"))
+				{
+					boneMap[node.name].offset = glm::mat4(1.0f);
+				}
+
+				ImGui::PushID("node.transformation");
+				// 设置node.transformation
+				if (node.transformation != glm::mat4(0.0f))
+				{
+					ImGui::Text("Node.transformation");
+					glm::vec3 Translation;
+					glm::vec3 Rotation;
+					glm::vec3 Scale;
+					Math::DecomposeTransform(node.transformation, Translation, Rotation, Scale);
+					DrawVec3Control("Translation", Translation);
+
+					glm::vec3 rotation = glm::degrees(Rotation);
+					DrawVec3Control("Rotation", rotation);
+					Rotation = glm::radians(rotation);
+					//ImGui::DragFloat3("Position", glm::value_ptr(tc.Translation), 0.1f);
+					DrawVec3Control("Scale", Scale, 1.0f);
+
+					node.transformation =
+						glm::translate(glm::mat4(1.0f), Translation)
+						* glm::toMat4(glm::quat(Rotation))
+						* glm::scale(glm::mat4(1.0f), Scale);
+				}
+				ImGui::PopID();
+
+				ImGui::PushID("BoneInfo.offset");
+				if (boneMap[node.name].offset != glm::mat4(0.0f))
+				{
+					ImGui::Text("BoneInfo.offset");
+					glm::vec3 Translation;
+					glm::vec3 Rotation;
+					glm::vec3 Scale;
+					Math::DecomposeTransform(boneMap[node.name].offset, Translation, Rotation, Scale);
+					DrawVec3Control("Translation", Translation);
+
+					glm::vec3 rotation = glm::degrees(Rotation);
+					DrawVec3Control("Rotation", rotation);
+					Rotation = glm::radians(rotation);
+					//ImGui::DragFloat3("Position", glm::value_ptr(tc.Translation), 0.1f);
+					DrawVec3Control("Scale", Scale, 1.0f);
+
+					boneMap[node.name].offset =
+						glm::translate(glm::mat4(1.0f), Translation)
+						* glm::toMat4(glm::quat(Rotation))
+						* glm::scale(glm::mat4(1.0f), Scale);
+				}
+				ImGui::PopID();
+
+				ImGui::TreePop();
+			}
+			ImGui::PopID();
+
+			for (auto& child : node.children)
+			{
+				DrawAssimpNode(child, animation);
+			}
+			ImGui::TreePop();
+		}
+
+
+		if (entityDeleted)
+		{
+			DestroyAssimpNode(node, boneMap);
+			if (node.parent != nullptr)
+			{
+				for (auto itr = node.parent->children.begin(); itr != node.parent->children.end(); itr++)
+					if (itr->name == node.name)
+					{
+						node.parent->children.erase(itr);
+						break;
+					}
+			}
+		}
+
 	}
 
 	void SceneHierarchyPanel::DrawComponents(Ref<Entity> entity)
@@ -542,6 +714,92 @@ namespace Volcano {
 				{
 					component.SetMesh((MeshType)meshType, entity.get());
 				}
+
+				if (component.meshType != MeshType::None)
+				{
+					ImGui::Text(("VertexSize: " + std::to_string(component.mesh->GetVertexSize())).c_str());
+
+					auto flags = ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_EnterReturnsTrue;
+					//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(25.0f, 10.0f));
+					char buffer[32];
+					ImGui::PushItemWidth(80);
+					auto& vertexBone = component.vertexBone;
+					for (uint32_t i = 0; i < vertexBone.size(); i++)
+					{
+						ImGui::PushID(i);
+						ImGui::PushItemWidth(80);
+						memset(buffer, 0, sizeof(buffer));
+						sprintf(buffer, "%d", vertexBone[i].vertexIndex1);
+
+						if (ImGui::InputText("VI1", buffer, sizeof(buffer), flags))
+							vertexBone[i].vertexIndex1 = atoi(buffer);
+
+						ImGui::SameLine();
+
+						memset(buffer, 0, sizeof(buffer));
+						sprintf(buffer, "%d", vertexBone[i].vertexIndex2);
+
+						if (ImGui::InputText("VI2", buffer, sizeof(buffer), flags))
+							vertexBone[i].vertexIndex2 = atoi(buffer);
+
+						ImGui::SameLine();
+
+						ImGui::PushItemWidth(200);
+						Entity* entityTemp = entity.get();
+						do
+						{
+							if (entityTemp->HasComponent<AnimationComponent>())
+							{
+								auto& ac = entityTemp->GetComponent<AnimationComponent>();
+								auto& bones = ac.animation->GetBones();
+								char** boneName = new char* [bones.size()];
+								for (uint32_t i = 0; i < bones.size(); i++)
+								{
+									auto name = bones[i].GetBoneName();
+									boneName[i] = new char[name.size() + 1];
+									std::strcpy(boneName[i], name.c_str());
+								}
+								if (bones.size())
+								{
+									ImGui::Combo("BoneIndex", &vertexBone[i].boneIndex, boneName, bones.size());
+
+									ImGui::SameLine();
+									ImGui::PushItemWidth(80);
+									memset(buffer, 0, sizeof(buffer));
+									sprintf(buffer, "%.4f", vertexBone[i].weight);
+									if (ImGui::InputText("weight", buffer, sizeof(buffer), flags))
+										vertexBone[i].weight = atof(buffer);
+								}
+								else
+									ImGui::Text("No Bone");
+								break;
+							}
+							else
+								entityTemp = entityTemp->GetEntityParent();
+						} while (entityTemp != nullptr);
+						if (entityTemp == nullptr)
+						{
+							ImGui::Text("No Animation");
+						}
+
+
+						ImGui::PopID();
+					}
+					ImGui::PopItemWidth();
+					//ImGui::PopStyleVar();
+
+					if (ImGui::Button("+"))
+					{
+						MeshComponent::VertexBone vertexBone;
+						component.vertexBone.push_back(vertexBone);
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("-"))
+					{
+						if (component.vertexBone.size())
+							component.vertexBone.erase(--component.vertexBone.end());
+					}
+				}
 			});
 
 		DrawComponent<MeshRendererComponent>("Mesh Renderer", entity, [](MeshRendererComponent& component)
@@ -626,76 +884,106 @@ namespace Volcano {
 				ImGui::DragFloat("Fade", &component.Fade, 0.00025f, 0.0f, 1.0f);
 			});
 
-		DrawComponent<SphereRendererComponent>("Sphere Renderer", entity, [](auto& component)
+		DrawComponent<AnimatorComponent>("Animator", entity, [](AnimatorComponent& component) 
 			{
-				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
-
-				if (ImGui::Button("Albedo", ImVec2(100.0f, 100.0f)))
-					component.Albedo = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path albedoPath = path;
-						component.Albedo = Texture2D::Create(albedoPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				if (ImGui::Button("Normal", ImVec2(100.0f, 100.0f)))
-					component.Normal = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path normalPath = path;
-						component.Normal = Texture2D::Create(normalPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				if (ImGui::Button("Metallic", ImVec2(100.0f, 100.0f)))
-					component.Metallic = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path metallicPath = path;
-						component.Metallic = Texture2D::Create(metallicPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				if (ImGui::Button("Roughness", ImVec2(100.0f, 100.0f)))
-					component.Roughness = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path roughnesslPath = path;
-						component.Roughness = Texture2D::Create(roughnesslPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
-
-				if (ImGui::Button("AO", ImVec2(100.0f, 100.0f)))
-					component.AO = nullptr;
-				if (ImGui::BeginDragDropTarget())
-				{
-					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
-					{
-						const wchar_t* path = (const wchar_t*)payload->Data;
-						std::filesystem::path AOPath = path;
-						component.AO = Texture2D::Create(AOPath.string());
-					}
-					ImGui::EndDragDropTarget();
-				}
+			    if (ImGui::Button("Animator"))
+					component.animator = std::make_shared<Animator>();
 			});
 
+		DrawComponent<AnimationComponent>("Animation", entity, [](AnimationComponent& component)
+			{
+				if (ImGui::Button("Animation"))
+				{
+					component.path = std::string();
+					component.animation = std::make_shared<Animation>();
+				}
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path animationPath = path;
+						Ref<Model> model = Model::GetModelLibrary()->Get(animationPath.string());
+						if (model == nullptr)
+							model = Model::GetModelLibrary()->Load(animationPath.string());
+						component.LoadAnimation(animationPath.string(), model.get());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+				ImGui::DragFloat("Duration", &component.animation->GetDuration());
+				ImGui::DragFloat("TicksPerSecond", &component.animation->GetTicksPerSecond(), 1.0f);
+
+				auto& node = component.animation->GetRootNode();
+				DrawAssimpNode(node, component.animation.get());
+
+
+				//ImGui::Separator();
+				//for (auto& boneInfo : component.animation->GetBoneIDMap())
+				//	ImGui::Text(boneInfo.first.c_str());
+
+				ImGui::Separator();
+				ImGuiSliderFlags flag = ImGuiActivateFlags_None;
+
+				ImGui::SliderInt("Key", &component.key, 0, 10);
+				if (ImGui::TreeNodeEx("Bones", ImGuiTreeNodeFlags_SpanAvailWidth, "Bones: "))
+				{
+				    auto& bones = component.animation->GetBones();
+					for (uint32_t i = 0; i < bones.size(); i++)
+					{
+						ImGui::PushID(i);
+
+							if (ImGui::TreeNodeEx((void*)i, ImGuiTreeNodeFlags_SpanAvailWidth, bones[i].GetBoneName().c_str()))
+							{
+								//ImGui::Text(bones[i].GetBoneName().c_str());
+								auto& positions = bones[i].GetPositions();
+									auto& rotations = bones[i].GetRotations();
+								auto& scales = bones[i].GetScales();
+								int size = glm::min(bones[i].GetNumPosition(), bones[i].GetNumRotation());
+								size = glm::min(size, bones[i].GetNumScale());
+								if (component.key < size)
+								{
+									DrawVec3Control("Translation", positions[component.key].position);
+
+									glm::vec3 rotation = glm::eulerAngles(rotations[component.key].orientation);
+									DrawVec3Control("Rotation", rotation);
+									rotations[component.key].orientation = glm::quat(rotation);
+
+									DrawVec3Control("Scale", scales[component.key].scale, 1.0f);
+
+									float timeStamp = positions[component.key].timeStamp;
+									if (ImGui::InputFloat("TimeStamp", &timeStamp))
+									{
+										positions[component.key].timeStamp = timeStamp;
+										rotations[component.key].timeStamp = timeStamp;
+										scales[component.key].timeStamp = timeStamp;
+									}
+								}
+
+								if (ImGui::Button("+"))
+								{
+									bones[i].AddKeyPosition(glm::vec3(0.0f));
+									bones[i].AddKeyRotation(glm::vec3(0.0f));
+									bones[i].AddKeyScale(glm::vec3(1.0f));
+								}
+								ImGui::SameLine();
+								if (ImGui::Button("-"))
+								{
+									bones[i].RemoveKeyPosition(bones[i].GetNumPosition() - 1);
+									bones[i].RemoveKeyRotation(bones[i].GetNumRotation() - 1);
+									bones[i].RemoveKeyScale(bones[i].GetNumScale() - 1);
+								}
+								ImGui::SameLine();
+								ImGui::Text(("KeySize: " + std::to_string(size)).c_str());
+
+								ImGui::TreePop();
+							}
+						ImGui::PopID();
+					}
+					ImGui::TreePop();
+				}
+
+			});
 
 		DrawComponent<Rigidbody2DComponent>("Rigidbody 2D", entity, [](auto& component)
 			{
@@ -743,6 +1031,8 @@ namespace Volcano {
 			});
 
 
+		ImGui::Separator();
+
 		ImGui::Button("LoadModel");
 		if (ImGui::BeginDragDropTarget())
 		{
@@ -750,14 +1040,34 @@ namespace Volcano {
 			{
 				const wchar_t* path = (const wchar_t*)payload->Data;
 				std::filesystem::path modelPath = path;
-				if (!ModelTemp::GetModelLibrary()->Exists(modelPath.string()))
-					ModelTemp::GetModelLibrary()->Load(modelPath.string());
-				auto model = ModelTemp::GetModelLibrary()->Get(modelPath.string());
-				ModelLoading(model->GetMeshRoot(), entity, modelPath.string());
+				if (!Model::GetModelLibrary()->Exists(modelPath.string()))
+					Model::GetModelLibrary()->Load(modelPath.string());
+				auto model = Model::GetModelLibrary()->Get(modelPath.string());
+				ModelLoading(model->GetModelNodeRoot(), model, entity);
+
+				if (!entity->HasComponent<AnimatorComponent>())
+				{
+					auto& ac = entity->AddComponent<AnimatorComponent>();
+				}
+
+				if (!entity->HasComponent<AnimationComponent>())
+				{
+					auto& ac = entity->AddComponent<AnimationComponent>();
+					ac.path = modelPath.string();
+					ac.animation = model->GetAnimation();
+				}
+				else
+				{
+					auto& ac = entity->GetComponent<AnimationComponent>();
+					ac.path = modelPath.string();
+					ac.animation = model->GetAnimation();
+				}
 			}
 			ImGui::EndDragDropTarget();
 		}
 
+
+		ImGui::Separator();
 
 		ImGui::PushItemWidth(-1);
 		if (ImGui::Button("Add Component"))
@@ -772,7 +1082,8 @@ namespace Volcano {
 			DisplayAddComponentEntry<MeshComponent>("Mesh");
 			DisplayAddComponentEntry<MeshRendererComponent>("Mesh Renderer");
 			DisplayAddComponentEntry<CircleRendererComponent>("Circle Renderer");
-			DisplayAddComponentEntry<SphereRendererComponent>("Sphere Renderer");
+			DisplayAddComponentEntry<AnimatorComponent>("Animator");
+			DisplayAddComponentEntry<AnimationComponent>("Animation");
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
 			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
 			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");

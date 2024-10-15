@@ -4,16 +4,31 @@
 
 namespace Volcano {
 
+    Animation::Animation()
+    {
+        m_RootNode.name = "RootNode";
+        m_RootNode.transformation = glm::mat4(1.0f);
+        m_BoneInfoMap[m_RootNode.name] = BoneInfo(m_Bones.size(), glm::mat4(1.0f));
+        m_Bones.push_back(Bone(m_RootNode.name, m_Bones.size()));
+        m_Duration = 0;
+        m_TicksPerSecond = 0;
+    }
+
 	Animation::Animation(const std::string& animationPath, Model* model)
     {
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(animationPath, aiProcess_Triangulate);
-        VOL_CORE_ASSERT(scene && scene->mRootNode); // 如果找不到动画，该检查将引发错误
-        auto animation = scene->mAnimations[0];
-        m_Duration = animation->mDuration;
-        m_TicksPerSecond = animation->mTicksPerSecond;
-        ReadHeirarchyData(m_RootNode, scene->mRootNode);
-        ReadMissingBones(animation, *model);
+        VOL_CORE_ASSERT(scene && scene->mRootNode); // 如果找不到场景，该检查将引发错误
+        // aiScene的animation存储Bone
+        if (scene->mAnimations)
+        {
+            auto animation = scene->mAnimations[0];
+            m_Duration = animation->mDuration;
+            m_TicksPerSecond = animation->mTicksPerSecond;
+            ReadHeirarchyData(m_RootNode, scene->mRootNode);
+            if(model != nullptr)
+                ReadMissingBones(animation, *model);
+        }
     }
 
     Bone* Animation::FindBone(const std::string& name)
@@ -54,7 +69,6 @@ namespace Volcano {
         m_BoneInfoMap = boneInfoMap;
     }
 
-    // 复制Assimp的aiNode继承权并创建AssimpNodeData的继承权。
     void Animation::ReadHeirarchyData(AssimpNodeData& dest, const aiNode* src)
     {
         VOL_CORE_ASSERT(src);
@@ -66,6 +80,7 @@ namespace Volcano {
         for (int i = 0; i < src->mNumChildren; i++)
         {
             AssimpNodeData newData;
+            newData.parent = &dest;
             ReadHeirarchyData(newData, src->mChildren[i]);
             dest.children.push_back(newData);
         }

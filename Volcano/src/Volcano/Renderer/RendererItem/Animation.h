@@ -9,6 +9,7 @@ namespace Volcano {
     {
         glm::mat4 transformation;
         std::string name;
+        AssimpNodeData* parent;
         int childrenCount;
         std::vector<AssimpNodeData> children;
     };
@@ -17,16 +18,20 @@ namespace Volcano {
     class Animation
     {
     public:
-        Animation() = default;
+        Animation();
         Animation(const std::string& animationPath, Model* model);
         ~Animation(){}
 
         Bone* FindBone(const std::string& name);
 
-        inline float GetTicksPerSecond() { return m_TicksPerSecond; }
-        inline float GetDuration() { return m_Duration; }
-        inline const AssimpNodeData& GetRootNode() { return m_RootNode; }
-        inline const std::map<std::string, BoneInfo>& GetBoneIDMap() { return m_BoneInfoMap; }
+        inline float& GetTicksPerSecond() { return m_TicksPerSecond; }
+        inline float& GetDuration() { return m_Duration; }
+        inline AssimpNodeData& GetRootNode() { return m_RootNode; }
+        inline std::map<std::string, BoneInfo>& GetBoneIDMap() { return m_BoneInfoMap; }
+        std::vector<Bone>& GetBones() { return m_Bones; }
+
+        void SetDuration(float duration) { m_Duration = duration; }
+        void SetTicksPerSecond(float ticksPerSecond) { m_TicksPerSecond = ticksPerSecond; }
 
     private:
         void ReadMissingBones(const aiAnimation* animation, Model& model);
@@ -34,8 +39,8 @@ namespace Volcano {
 
         // 动画多长
         float m_Duration;
-        // 动画速度
-        int m_TicksPerSecond;
+        // 动画速度，每秒几次
+        float m_TicksPerSecond;
         AssimpNodeData m_RootNode;
         std::vector<Bone> m_Bones;
         std::map<std::string, BoneInfo> m_BoneInfoMap;

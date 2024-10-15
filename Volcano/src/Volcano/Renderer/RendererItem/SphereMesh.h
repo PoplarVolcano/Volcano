@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Volcano/Renderer/RendererItem/MeshTemp.h"
+#include "Volcano/Renderer/RendererItem/Mesh.h"
 
 namespace Volcano {
 
-	class SphereMesh : public MeshTemp
+	class SphereMesh : public Mesh
 	{
 	public:
 		SphereMesh();

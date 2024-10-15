@@ -1,5 +1,5 @@
 Project:
   Name: SandBox
-  StartScene: "Scenes/Meshs.volcano"
+  StartScene: "Scenes/Meshes.volcano"
   AssetDirectory: "Assets"
   ScriptModulePath: "Scripts/Binaries/SandBox.dll"

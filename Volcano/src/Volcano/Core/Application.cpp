@@ -6,7 +6,6 @@
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Utils/PlatformUtils.h"
-//#include "Volcano/Renderer/Model.h"
 
 namespace Volcano {
 #define BIND_EVENT_FN(x) std::bind(&Application::x, this, std::placeholders::_1)

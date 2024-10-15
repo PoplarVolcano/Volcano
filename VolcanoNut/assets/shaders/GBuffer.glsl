@@ -5,7 +5,9 @@ layout(location = 1) in vec2  a_TexCoords;
 layout(location = 2) in vec3  a_Normal;
 layout(location = 3) in vec3  a_Tangent;
 layout(location = 4) in vec3  a_Bitangent;
-layout(location = 5) in int   a_EntityID;
+layout(location = 5) in ivec4 a_BoneIds; 
+layout(location = 6) in vec4  a_Weights;
+layout(location = 7) in int   a_EntityID;
 
 layout(std140, binding = 0) uniform Camera
 {
@@ -72,6 +74,14 @@ layout (binding = 5) uniform sampler2D u_AO;
 layout(std140, binding = 1) uniform CameraPosition
 {
 	vec3 u_CameraPosition;
+};
+
+const int MAX_BONES = 100;
+const int MAX_BONE_INFLUENCE = 4;
+
+layout(std140, binding = 15) uniform BonesMatrices
+{
+    mat4 u_FinalBonesMatrices[100];
 };
 
 // ----------------------------------------------------------------------------

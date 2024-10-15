@@ -7,10 +7,9 @@
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/RendererAPI.h"
 #include "Volcano/Renderer/Renderer2D.h"
-//#include "Volcano/Renderer/Renderer3D.h"
-#include "Volcano/Renderer/RendererModel.h"
-#include "Volcano/Renderer/RendererItem/Sphere.h"
 #include "Volcano/Renderer/RendererItem/Skybox.h"
+#include "Volcano/Renderer/RendererItem/Model.h"
+#include "Volcano/Renderer/RendererItem/Animator.h"
 #include "Volcano/Physics/Physics2D.h"
 #include "Volcano/Renderer/Light.h"
 
@@ -166,7 +165,7 @@ namespace Volcano {
 
 		if (entity != nullptr)
 		{
-			entityTemp = entity->SetEntityChild(uuid, name);
+			entityTemp = entity->AddEntityChild(uuid, name);
 			m_EntityIDMap[entityTemp->GetUUID()] = entityTemp;
 			m_EntityEnttMap[entityTemp->GetEntityHandle()] = entityTemp;
 			return entityTemp;
@@ -301,7 +300,8 @@ namespace Volcano {
 			// Script - Physic - Render顺序
 			Physics(ts);
 		}
-		UpdateScene();
+
+		UpdateScene(ts);
 	}
 
 	void Scene::OnRenderRuntime(Timestep ts)
@@ -333,7 +333,8 @@ namespace Volcano {
 	{
 		if (!m_IsPaused || m_StepFrames-- > 0)
 			Physics(ts);
-		UpdateScene();
+
+		UpdateScene(ts);
 	}
 
 	void Scene::OnRenderSimulation(Timestep ts, EditorCamera& camera)
@@ -353,7 +354,8 @@ namespace Volcano {
 				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
 			}
 		}
-		UpdateScene();
+
+		UpdateScene(ts);
 	}
 
 	void Scene::OnRenderEditor(Timestep ts, EditorCamera& camera)
@@ -537,8 +539,23 @@ namespace Volcano {
 	}
 
 
-	void Scene::UpdateScene()
+	void Scene::UpdateScene(Timestep ts)
 	{
+		// Update Animator
+		{
+			auto view = m_Registry.view<AnimatorComponent, AnimationComponent>();
+			for (auto entity : view)
+			{
+				auto animator = view.get<AnimatorComponent>(entity).animator;
+				auto animation = view.get<AnimationComponent>(entity).animation;
+				if (animation != nullptr)
+				{
+					animator->SetAnimation(animation.get());
+					animator->UpdateAnimation(ts);
+				}
+			}
+		}
+
 		// Update Transform
 		{
 			auto view = m_Registry.view<TransformComponent>();
@@ -552,25 +569,68 @@ namespace Volcano {
 		//Draw Mesh
 		{
 			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
+			std::vector<glm::mat4> finalBoneMatrices;
 
 			for (auto entity : view)
 			{
 				auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
+				Entity* entityNode;
 				switch (mesh.meshType)
 				{
 				case MeshType::None:
 					break;
 				case MeshType::Cube:
+					mesh.mesh->SetVertexBoneDataToDefault();
+					for(auto& vertexBone : mesh.vertexBone)
+					    mesh.mesh->SetBoneID(vertexBone.vertexIndex1, vertexBone.vertexIndex2, vertexBone.boneIndex, vertexBone.weight);
 					mesh.mesh->StartBatch();
-					mesh.mesh->DrawMesh((int)entity);
+
+					entityNode = m_EntityEnttMap[entity].get();
+					do
+					{
+						if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
+						{
+							auto animator = entityNode->GetComponent<AnimatorComponent>().animator;
+							mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
+							break;
+						}
+						else
+							entityNode = entityNode->GetEntityParent();
+					} while (entityNode != nullptr);
+
+					if (entityNode == nullptr)
+					{
+						mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+					}
+
+					//mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
 					break;
 				case MeshType::Sphere:
+					for (auto& vertexBone : mesh.vertexBone)
+						mesh.mesh->SetBoneID(vertexBone.vertexIndex1, vertexBone.vertexIndex2, vertexBone.boneIndex, vertexBone.weight);
 					mesh.mesh->StartBatch();
-					mesh.mesh->DrawMesh((int)entity);
+					mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
 					break;
 				case MeshType::Model:
 					mesh.mesh->StartBatch();
-					mesh.mesh->DrawMesh((int)entity);
+					entityNode = m_EntityEnttMap[entity].get();
+					do
+					{
+						if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
+						{
+							auto animator = entityNode->GetComponent<AnimatorComponent>().animator;
+							mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
+							break;
+						}
+						else
+							entityNode = entityNode->GetEntityParent();
+					} while (entityNode != nullptr);
+
+					if (entityNode == nullptr)
+					{
+						mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+					}
+
 					break;
 				default:
 					VOL_TRACE("错误MeshType");
@@ -578,6 +638,36 @@ namespace Volcano {
 				}
 			}
 		}
+	}
+
+	void RenderLine(const AssimpNodeData* node, glm::mat4 parentTransform, Animation* animation)
+	{
+		std::string nodeName = node->name;
+		glm::mat4 nodeTransform = node->transformation;
+
+		//在animation的m_Bones数组中查找骨骼来检查该骨骼是否参与该动画。
+		Bone* Bone = animation->FindBone(nodeName);
+
+		if (Bone)
+		{
+			nodeTransform = Bone->GetLocalTransform();
+		}
+
+		glm::mat4 globalTransformation = parentTransform * nodeTransform; // 骨骼空间转换到父节点骨骼空间，递归直到转换到根节点骨骼空间
+
+		auto boneInfoMap = animation->GetBoneIDMap();
+		if (boneInfoMap.find(nodeName) != boneInfoMap.end())
+		{
+			//int index = boneInfoMap[nodeName].id;
+			glm::mat4 offset = boneInfoMap[nodeName].offset;
+			glm::mat4 transform = offset;//globalTransformation* offset;
+			glm::vec4 p0 = transform * glm::vec4(0.0f,  0.0f, 0.0f, 1.0f);
+			glm::vec4 p1 = transform * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+			Renderer2D::DrawLine(p0, p1, glm::vec4(1.0f), -1);
+		}
+
+		for (int i = 0; i < node->childrenCount; i++)
+			RenderLine(&node->children[i], globalTransformation, animation);
 	}
 
 	// 摄像头渲染场景，摄像头，摄像头TRS，摄像头位置（translation），摄像头方向
@@ -597,17 +687,25 @@ namespace Volcano {
 
 		if (m_RenderType == RenderType::NORMAL)
 		{
-			// DrawSphere
-			Sphere::BeginScene(camera, transform, position, direction);
+
+			// Render Animation
 			{
-				auto view = m_Registry.view<TransformComponent, SphereRendererComponent>();
+				Renderer2D::BeginScene(camera, transform);
+				auto view = m_Registry.view<TransformComponent, AnimationComponent>();
 				for (auto entity : view)
 				{
-					auto [transform, sphere] = view.get<TransformComponent, SphereRendererComponent>(entity);
-					Sphere::DrawSphere(transform.GetTransform(), transform.GetNormalTransform(), sphere, (int)entity);
+					auto parentTransform = view.get<TransformComponent>(entity).GetTransform();
+					auto animation = view.get<AnimationComponent>(entity).animation;
+					if (animation != nullptr)
+					{
+						auto node = animation->GetRootNode();
+						RenderLine(&node, parentTransform, animation.get());
+					}
 				}
+				Renderer2D::EndScene();
 			}
-			Sphere::EndScene(m_RenderType);
+			return;
+
 		}
 
 		Renderer2D::BeginScene(camera, transform);
@@ -857,6 +955,16 @@ namespace Volcano {
 	}
 
 	template<>
+	void Scene::OnComponentAdded<AnimatorComponent>(Entity& entity, AnimatorComponent& component)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<AnimationComponent>(Entity& entity, AnimationComponent& component)
+	{
+	}
+
+	template<>
 	void Scene::OnComponentAdded<LightComponent>(Entity& entity, LightComponent& component)
 	{
 	}
@@ -885,11 +993,6 @@ namespace Volcano {
 
 	template<>
 	void Scene::OnComponentAdded<CircleRendererComponent>(Entity& entity, CircleRendererComponent& component)
-	{
-	}
-
-	template<>
-	void Scene::OnComponentAdded<SphereRendererComponent>(Entity& entity, SphereRendererComponent& component)
 	{
 	}
 
