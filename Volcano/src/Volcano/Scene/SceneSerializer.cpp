@@ -118,7 +118,7 @@ namespace YAML {
 		}
 		static bool decode(const Node& node, glm::mat4& rhs)
 		{
-			if (!node.IsSequence() || node.size() != 4)
+			if (!node.IsSequence() || node.size() != 16)
 				return false;
 
 			for (uint32_t i = 0; i < 4; i++)
@@ -230,6 +230,47 @@ namespace Volcano {
 		: m_Scene(scene)
 	{
 	}
+
+	void SerializeBoneNode(YAML::Emitter& out, AssimpNodeData& node, Animation& animation)
+	{
+		out << YAML::BeginMap;// BoneNode
+		{
+			out << YAML::Key << "Name"          << YAML::Value << node.name;
+			out << YAML::Key << "ID"            << YAML::Value << animation.GetBoneIDMap()[node.name].id;
+			out << YAML::Key << "NodeTransform" << YAML::Value << node.transformation;
+			out << YAML::Key << "Offset"        << YAML::Value << animation.GetBoneIDMap()[node.name].offset;
+			auto* bone = animation.FindBone(node.name);
+			if (bone != nullptr)
+			{
+			    out << YAML::Key << "Bone"      << YAML::BeginSeq;
+				{
+					auto& keyPosition = bone->GetPositions();
+					auto& keyRotation = bone->GetRotations();
+					auto& keyScale = bone->GetScales();
+					for (uint32_t i = 0; i < bone->GetNumPosition(); i++)
+					{
+						out << YAML::BeginMap;
+						out << YAML::Key << "KeyPosition" << YAML::Value << keyPosition[i].position;
+						out << YAML::Key << "PositionTimeStamp" << YAML::Value << keyPosition[i].timeStamp;
+						out << YAML::Key << "KeyRotation" << YAML::Value << keyRotation[i].orientation;
+						out << YAML::Key << "RotationTimeStamp" << YAML::Value << keyRotation[i].timeStamp;
+						out << YAML::Key << "KeyScale" << YAML::Value << keyScale[i].scale;
+						out << YAML::Key << "ScaleTimeStamp" << YAML::Value << keyScale[i].timeStamp;
+						out << YAML::EndMap;
+					}
+				    out << YAML::EndSeq;
+				}
+			}
+			out << YAML::Key << "Children" << YAML::BeginSeq;
+			{
+				for (auto& child : node.children)
+					SerializeBoneNode(out, child, animation);
+				out << YAML::EndSeq;
+			}
+			out << YAML::EndMap;// BoneNode
+		}
+	}
+
 
 	static void SerializeEntity(YAML::Emitter& out, Entity& entity)
 	{
@@ -384,7 +425,19 @@ namespace Volcano {
 				    out << YAML::Key << "ModelPath" << YAML::Value << meshComponent.modelPath;
 				if (meshComponent.modelIndex != -1)
 				    out << YAML::Key << "ModelIndex" << YAML::Value << meshComponent.modelIndex;
-				out << YAML::EndMap; // CircleRendererComponent
+
+				out << YAML::Key << "VertexBone" << YAML::Value << YAML::BeginSeq; // VertexBone
+				for (auto& vertexBone : meshComponent.vertexBone)
+				{
+				    out << YAML::BeginMap;
+					out << YAML::Key << "VertexIndex1" << YAML::Value << vertexBone.vertexIndex1;
+					out << YAML::Key << "VertexIndex2" << YAML::Value << vertexBone.vertexIndex2;
+					out << YAML::Key << "BoneIndex" << YAML::Value << vertexBone.boneIndex;
+					out << YAML::Key << "Weight" << YAML::Value << vertexBone.weight;
+				    out << YAML::EndMap; 
+				}
+				out << YAML::EndSeq;// VertexBone
+				out << YAML::EndMap; // MeshComponent
 			}
 		}
 
@@ -429,6 +482,8 @@ namespace Volcano {
 		if (entity.HasComponent<AnimatorComponent>())
 		{
 			out << YAML::Key << "AnimatorComponent";
+			out << YAML::BeginMap; // AnimatorComponent
+			out << YAML::EndMap; // AnimatorComponent
 		}
 
 		if (entity.HasComponent<AnimationComponent>())
@@ -437,6 +492,13 @@ namespace Volcano {
 			out << YAML::BeginMap; // AnimationComponent
 			auto& animationComponent = entity.GetComponent<AnimationComponent>();
 			out << YAML::Key << "Path" << YAML::Value << animationComponent.path;
+
+			out << YAML::Key << "Duration" << YAML::Value << animationComponent.animation->GetDuration();
+			out << YAML::Key << "TicksPerSecond" << YAML::Value << animationComponent.animation->GetTicksPerSecond();
+
+			out << YAML::Key << "BoneNode";
+			SerializeBoneNode(out, animationComponent.animation->GetRootNode(), *animationComponent.animation.get());
+
 			out << YAML::EndMap; // AnimationComponent
 		}
 
@@ -518,6 +580,37 @@ namespace Volcano {
 	{
 		// Not implemented
 		VOL_CORE_ASSERT(false);
+	}
+
+	void LoadAnimation(YAML::Node& yamlNode, AssimpNodeData& node, Animation& animation)
+	{
+		node.name = yamlNode["Name"].as<std::string>();
+		node.transformation = yamlNode["NodeTransform"].as<glm::mat4>();
+		int id = yamlNode["ID"].as<int>();
+		animation.GetBoneIDMap()[node.name] = { id, yamlNode["Offset"].as<glm::mat4>() };
+		auto yamlBone = yamlNode["Bone"];
+		if (yamlBone.IsDefined())
+		{
+			Bone bone(node.name, id);
+			bone.RemoveKeyPosition(0);
+			bone.RemoveKeyRotation(0);
+			bone.RemoveKeyScale(0);
+			for (auto boneData : yamlBone)
+			{
+				bone.AddKeyPosition(boneData["KeyPosition"].as<glm::vec3>(), boneData["PositionTimeStamp"].as<float>());
+				bone.AddKeyRotation(boneData["KeyRotation"].as<glm::quat>(), boneData["RotationTimeStamp"].as<float>());
+				bone.AddKeyScale(boneData["KeyScale"].as<glm::vec3>(), boneData["ScaleTimeStamp"].as<float>());
+			}
+			animation.GetBones().push_back(bone);
+		}
+		auto yamlChildren = yamlNode["Children"];
+		for (auto yamlChild : yamlChildren)
+		{
+			AssimpNodeData child;
+			LoadAnimation(yamlChild, child, animation);
+			node.childrenCount++;
+			node.children.push_back(child);
+		}
 	}
 
 	bool DeserializeLoadEntity(YAML::Node& entity, Scene* scene, Ref<Entity> entityParent = nullptr)
@@ -671,6 +764,19 @@ namespace Volcano {
 			else
 			    mc.SetMesh(mc.meshType, deserializedEntity.get());
 
+			auto vertexBones = meshComponent["VertexBone"];
+			if (!vertexBones.IsNull())
+			{
+				for (auto vertexBone : vertexBones)
+				{
+					MeshComponent::VertexBone vertexBoneTemp;
+					vertexBoneTemp.vertexIndex1 = vertexBone["VertexIndex1"].as<int>();
+					vertexBoneTemp.vertexIndex2 = vertexBone["VertexIndex2"].as<int>();
+					vertexBoneTemp.boneIndex = vertexBone["BoneIndex"].as<int>();
+					vertexBoneTemp.weight = vertexBone["Weight"].as<float>();
+					mc.vertexBone.push_back(vertexBoneTemp);
+				}
+			}
 		}
 
 		auto meshRendererComponent = entity["MeshRendererComponent"];
@@ -684,8 +790,13 @@ namespace Volcano {
 				{
 					ImageType type = (ImageType)texture["ImageType"].as<int>();
 					std::string path = texture["Path"].as<std::string>();
-					auto filePath = Project::GetAssetFileSystemPath(path);
-					mrc.AddTexture(type, Texture2D::Create(filePath.string()));
+					if (!path.empty())
+					{
+						auto filePath = Project::GetAssetFileSystemPath(path);
+						mrc.AddTexture(type, Texture2D::Create(filePath.string()));
+					}
+					else
+						mrc.AddTexture(type);
 				}
 			}
 		}
@@ -712,13 +823,25 @@ namespace Volcano {
 		{
 			auto& ac = deserializedEntity->AddComponent<AnimationComponent>();
 			std::string path = animationComponent["Path"].as<std::string>();
-			if (Model::GetModelLibrary()->Get(path) != nullptr)
+			if (!path.empty())
 			{
-				ac.path = path;
-				ac.animation = Model::GetModelLibrary()->Get(path)->GetAnimation();
+				if (Model::GetModelLibrary()->Get(path) != nullptr)
+				{
+					ac.path = path;
+					ac.animation = Model::GetModelLibrary()->Get(path)->GetAnimation();
+				}
+				else
+					ac.LoadAnimation(path);
 			}
 			else
-				ac.LoadAnimation(path);
+			{
+				ac.animation->SetDuration(animationComponent["Duration"].as<float>());
+				ac.animation->SetTicksPerSecond(animationComponent["TicksPerSecond"].as<float>());
+				auto& rootNode = ac.animation->GetRootNode();
+				auto yamlBoneNode = animationComponent["BoneNode"];
+				LoadAnimation(yamlBoneNode, rootNode, *ac.animation.get());
+			}
+
 		}
 
 		auto rigidbody2DComponent = entity["Rigidbody2DComponent"];

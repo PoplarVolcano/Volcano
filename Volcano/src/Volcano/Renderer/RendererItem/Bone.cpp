@@ -99,22 +99,22 @@ namespace Volcano
     }
 
 
-    void Bone::AddKeyPosition(glm::vec3 position)
+    void Bone::AddKeyPosition(glm::vec3 position, float timeStamp)
     {
         m_NumPositions++;
-        m_Positions.push_back(KeyPosition{ position, 0.0f });
+        m_Positions.push_back(KeyPosition{ position, timeStamp });
     }
 
-    void Bone::AddKeyRotation(glm::vec3 rotation)
+    void Bone::AddKeyRotation(glm::quat rotation, float timeStamp)
     {
         m_NumRotations++;
-        m_Rotations.push_back(KeyRotation{ rotation, 0.0f });
+        m_Rotations.push_back(KeyRotation{ rotation, timeStamp });
     }
     
-    void Bone::AddKeyScale(glm::vec3 scale)
+    void Bone::AddKeyScale(glm::vec3 scale, float timeStamp)
     {
         m_NumScalings++;
-        m_Scales.push_back(KeyScale{ scale, 0.0f });
+        m_Scales.push_back(KeyScale{ scale, timeStamp });
     }
 
     void Bone::RemoveKeyPosition(int index)

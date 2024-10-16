@@ -26,12 +26,15 @@ namespace Volcano {
 
     void Animator::UpdateAnimation(float dt)
     {
-        m_DeltaTime = dt;
-        if (m_CurrentAnimation)
+        if (m_Play)
         {
-            m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * dt;
-            m_CurrentTime = fmod(m_CurrentTime, m_CurrentAnimation->GetDuration()); // double fmod(double x, double y)返回 x 除以 y 的余数。
-            CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f));
+            m_DeltaTime = dt;
+            if (m_CurrentAnimation)
+            {
+                m_CurrentTime += m_CurrentAnimation->GetTicksPerSecond() * dt;
+                m_CurrentTime = fmod(m_CurrentTime, m_CurrentAnimation->GetDuration()); // double fmod(double x, double y)返回 x 除以 y 的余数。
+                CalculateBoneTransform(&m_CurrentAnimation->GetRootNode(), glm::mat4(1.0f));
+            }
         }
     }
 
@@ -64,7 +67,8 @@ namespace Volcano {
         {
             int index = boneInfoMap[nodeName].id;
             glm::mat4 offset = boneInfoMap[nodeName].offset;
-            m_FinalBoneMatrices[index] = globalTransformation * offset;
+            if(index >= 0)
+                m_FinalBoneMatrices[index] = globalTransformation * offset;
         }
 
         for (int i = 0; i < node->childrenCount; i++)

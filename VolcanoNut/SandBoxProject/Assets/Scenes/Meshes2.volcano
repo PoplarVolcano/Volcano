@@ -39,6 +39,11 @@ Entities:
           Scale: [1, 1, 1]
         MeshComponent:
           MeshType: 4
+          VertexBone:
+            - VertexIndex1: 0
+              VertexIndex2: 35
+              BoneIndex: 0
+              Weight: 1
         MeshRendererComponent:
           Textures:
             - ImageType: 0
@@ -56,6 +61,8 @@ Entities:
           Scale: [1, 1, 1]
         MeshComponent:
           MeshType: 4
+          VertexBone:
+            []
         MeshRendererComponent:
           Textures:
             - ImageType: 0
@@ -77,6 +84,8 @@ Entities:
           Scale: [1, 1, 1]
         MeshComponent:
           MeshType: 4
+          VertexBone:
+            []
         MeshRendererComponent:
           Textures:
             - ImageType: 0
@@ -144,6 +153,8 @@ Entities:
           Scale: [10, 10, 1]
         MeshComponent:
           MeshType: 4
+          VertexBone:
+            []
         MeshRendererComponent:
           Textures:
             - ImageType: 0
@@ -159,6 +170,8 @@ Entities:
           Scale: [50, 1, 50]
         MeshComponent:
           MeshType: 4
+          VertexBone:
+            []
         MeshRendererComponent:
           Textures:
             - ImageType: 0
@@ -172,6 +185,8 @@ Entities:
           Scale: [1, 10, 10]
         MeshComponent:
           MeshType: 4
+          VertexBone:
+            []
         MeshRendererComponent:
           Textures:
             - ImageType: 0
@@ -193,6 +208,8 @@ Entities:
           Scale: [1, 1, 1]
         MeshComponent:
           MeshType: 5
+          VertexBone:
+            []
         MeshRendererComponent:
           Textures:
             - ImageType: 0

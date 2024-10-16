@@ -538,6 +538,7 @@ namespace Volcano{
         ImGui::End();
 
         ImGui::Begin("Settings");
+        ImGui::Checkbox("Show Bones", &m_ActiveScene->GetShowBone());
         ImGui::Checkbox("Show physics colliders", &m_ShowPhysicsColliders);
         ImGui::End();
 

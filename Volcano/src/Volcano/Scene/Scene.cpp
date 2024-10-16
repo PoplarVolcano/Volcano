@@ -602,14 +602,29 @@ namespace Volcano {
 					{
 						mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
 					}
-
-					//mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
 					break;
 				case MeshType::Sphere:
 					for (auto& vertexBone : mesh.vertexBone)
 						mesh.mesh->SetBoneID(vertexBone.vertexIndex1, vertexBone.vertexIndex2, vertexBone.boneIndex, vertexBone.weight);
 					mesh.mesh->StartBatch();
-					mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+
+					entityNode = m_EntityEnttMap[entity].get();
+					do
+					{
+						if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
+						{
+							auto animator = entityNode->GetComponent<AnimatorComponent>().animator;
+							mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
+							break;
+						}
+						else
+							entityNode = entityNode->GetEntityParent();
+					} while (entityNode != nullptr);
+
+					if (entityNode == nullptr)
+					{
+						mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+					}
 					break;
 				case MeshType::Model:
 					mesh.mesh->StartBatch();
@@ -640,7 +655,7 @@ namespace Volcano {
 		}
 	}
 
-	void RenderLine(const AssimpNodeData* node, glm::mat4 parentTransform, Animation* animation)
+	void RenderBone(const AssimpNodeData* node, glm::mat4 parentTransform, Animation* animation)
 	{
 		std::string nodeName = node->name;
 		glm::mat4 nodeTransform = node->transformation;
@@ -658,16 +673,16 @@ namespace Volcano {
 		auto boneInfoMap = animation->GetBoneIDMap();
 		if (boneInfoMap.find(nodeName) != boneInfoMap.end())
 		{
-			//int index = boneInfoMap[nodeName].id;
+			int index = boneInfoMap[nodeName].id;
 			glm::mat4 offset = boneInfoMap[nodeName].offset;
-			glm::mat4 transform = offset;//globalTransformation* offset;
+			glm::mat4 transform = globalTransformation* offset;
 			glm::vec4 p0 = transform * glm::vec4(0.0f,  0.0f, 0.0f, 1.0f);
 			glm::vec4 p1 = transform * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
 			Renderer2D::DrawLine(p0, p1, glm::vec4(1.0f), -1);
 		}
 
 		for (int i = 0; i < node->childrenCount; i++)
-			RenderLine(&node->children[i], globalTransformation, animation);
+			RenderBone(&node->children[i], globalTransformation, animation);
 	}
 
 	// 摄像头渲染场景，摄像头，摄像头TRS，摄像头位置（translation），摄像头方向
@@ -688,7 +703,8 @@ namespace Volcano {
 		if (m_RenderType == RenderType::NORMAL)
 		{
 
-			// Render Animation
+			// Render Bone
+			if(m_ShowBone)
 			{
 				Renderer2D::BeginScene(camera, transform);
 				auto view = m_Registry.view<TransformComponent, AnimationComponent>();
@@ -699,7 +715,7 @@ namespace Volcano {
 					if (animation != nullptr)
 					{
 						auto node = animation->GetRootNode();
-						RenderLine(&node, parentTransform, animation.get());
+						RenderBone(&node, parentTransform, animation.get());
 					}
 				}
 				Renderer2D::EndScene();

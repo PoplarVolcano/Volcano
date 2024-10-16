@@ -136,12 +136,23 @@ namespace Volcano {
 		void SetTexture(ImageType type, Ref<Texture> texture, uint32_t index) { Textures[index] = { type, texture }; }
 		void DeleteTexture(uint32_t index) { Textures.erase(Textures.begin() + index); }
 		void AddTexture(ImageType type, Ref<Texture> texture) { Textures.push_back({ type, texture }); }
-		void AddTexture()
+		void AddTexture(ImageType type = ImageType::Diffuse)
 		{
-			Ref<Texture2D> whiteTexture = Texture2D::Create(1, 1);
-			uint32_t whiteTextureData = 0xffffffff;
-			whiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
-			Textures.push_back({ ImageType::Diffuse, whiteTexture });
+			if (type == ImageType::Diffuse)
+			{
+				Ref<Texture2D> whiteTexture = Texture2D::Create(1, 1);
+				uint32_t whiteTextureData = 0xffffffff;
+				whiteTexture->SetData(&whiteTextureData, sizeof(uint32_t));
+				Textures.push_back({ type, whiteTexture });
+			}
+			else
+			{
+				Ref<Texture2D> blackTexture = Texture2D::Create(1, 1);
+				uint32_t blackTextureData = 0x00000000;
+				blackTexture->SetData(&blackTextureData, sizeof(uint32_t));
+				Textures.push_back({ type, blackTexture });
+			}
+
 		}
 		void SetTextureWhite(uint32_t index) 
 		{
@@ -182,7 +193,12 @@ namespace Volcano {
 	{
 		std::string path;
 		Ref<Animation> animation = std::make_shared<Animation>();
-		int key;
+		int key;  //µ±Ç°¹Ø¼üÖ¡
+		
+		int boneIDBuffer;
+		std::string boneNameBuffer;
+		AssimpNodeData* newBoneNodeParent;
+
 
 		AnimationComponent() = default;
 		AnimationComponent(const AnimationComponent&) = default;

@@ -275,56 +275,37 @@ namespace Volcano {
 			ModelLoading(modelNodeChild, model, entityNode);
 	}
 
-	void DestroyAssimpNode(AssimpNodeData& node, std::map<std::string, BoneInfo> boneIDMap)
+	void DestroyAssimpNode(AssimpNodeData& node, AnimationComponent& ac)
 	{
 		for (uint32_t i = 0; i < node.children.size(); i++)
-			DestroyAssimpNode(node.children[i], boneIDMap);
+			DestroyAssimpNode(node.children[i], ac);
 		
+		auto& bones = ac.animation->GetBones();
 		for (uint32_t i = 0; i < node.children.size(); i++)
 		{
-			// 擦除m_Bones中的Bone会造成索引混乱
-			boneIDMap.erase(node.children.begin()->name);
+			bones.erase(std::find_if(bones.begin(), bones.end(), [&](Bone& Bone){ return Bone.GetBoneName() == node.children.begin()->name; } ));
+			ac.animation->GetBoneIDMap().erase(node.children.begin()->name);
 			node.children.erase(node.children.begin());
 		}
 	}
 
-	void DrawAssimpNode(AssimpNodeData& node, Animation* animation)
+	void DrawAssimpNode(AssimpNodeData& node, AnimationComponent& ac)
 	{
-		const char* name = node.name.c_str();
+		auto& boneMap = ac.animation->GetBoneIDMap();
+		int boneID = boneMap[node.name].id;
 
 		ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 
 		ImGui::Separator();
-		auto& boneMap = animation->GetBoneIDMap();
 
-		bool open = ImGui::TreeNodeEx((void*)boneMap[node.name].id, treeNodeFlags, name);
+		bool open = ImGui::TreeNodeEx((void*)boneID, treeNodeFlags, (node.name + std::to_string(boneID)).c_str());
 
 		bool entityDeleted = false;
 		if (ImGui::BeginPopupContextItem())
 		{
 			if (ImGui::MenuItem("Create Empty Bone"))
 			{
-				AssimpNodeData child;
-				child.transformation = glm::mat4(1.0f);
-				child.parent = &node;
-				child.name = "Empty Bone";
-				for (uint32_t i = 0; boneMap.find(child.name) != boneMap.end(); i++)
-				{
-					child.name = "Empty Bone(" + std::to_string(i) + ")";
-				}
-				auto& bones = animation->GetBones();
-
-				// 添加AssimpNodeData
-				node.childrenCount++;
-				node.children.push_back(child);
-
-				boneMap[child.name].id = bones.size();
-				boneMap[child.name].offset = glm::mat4(1.0f);
-
-				// 添加Bone
-				Bone newBone(child.name, bones.size());
-				bones.push_back(newBone);
-
+				ac.newBoneNodeParent = &node;
 			}
 			if (ImGui::MenuItem("Delete Bone"))
 				entityDeleted = true;
@@ -334,10 +315,11 @@ namespace Volcano {
 
 		if (open)
 		{
-			ImGui::PushID(boneMap[node.name].id);
-			if (ImGui::TreeNodeEx((void*)boneMap[node.name].id, treeNodeFlags, "Bone Information"))
+			// BoneInfo.id
+			ImGui::PushID(boneID);
+			if (ImGui::TreeNodeEx((void*)boneID, treeNodeFlags, "Bone Information"))
 			{
-				char buffer[256];
+				char buffer[64];
 				memset(buffer, 0, sizeof(buffer));
 				strncpy_s(buffer, sizeof(buffer), node.name.c_str(), sizeof(buffer));
 
@@ -353,8 +335,12 @@ namespace Volcano {
 						node.name = name + "(" + std::to_string(i) + ")";
 					}
 					boneMap[node.name] = boneInfo;
-					animation->GetBones()[boneInfo.id].SetBoneName(node.name);
+					ac.animation->GetBones()[boneInfo.id].SetBoneName(node.name);
 				}
+
+				ImGui::SameLine();
+
+				ImGui::Text(std::to_string(boneID).c_str());
 
 				ImGui::SameLine();
 
@@ -416,7 +402,7 @@ namespace Volcano {
 
 			for (auto& child : node.children)
 			{
-				DrawAssimpNode(child, animation);
+				DrawAssimpNode(child, ac);
 			}
 			ImGui::TreePop();
 		}
@@ -424,9 +410,9 @@ namespace Volcano {
 
 		if (entityDeleted)
 		{
-			DestroyAssimpNode(node, boneMap);
 			if (node.parent != nullptr)
 			{
+				DestroyAssimpNode(node, ac);
 				for (auto itr = node.parent->children.begin(); itr != node.parent->children.end(); itr++)
 					if (itr->name == node.name)
 					{
@@ -720,31 +706,10 @@ namespace Volcano {
 					ImGui::Text(("VertexSize: " + std::to_string(component.mesh->GetVertexSize())).c_str());
 
 					auto flags = ImGuiInputTextFlags_CharsDecimal | ImGuiInputTextFlags_EnterReturnsTrue;
-					//ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(25.0f, 10.0f));
 					char buffer[32];
-					ImGui::PushItemWidth(80);
 					auto& vertexBone = component.vertexBone;
-					for (uint32_t i = 0; i < vertexBone.size(); i++)
+					if (vertexBone.size())
 					{
-						ImGui::PushID(i);
-						ImGui::PushItemWidth(80);
-						memset(buffer, 0, sizeof(buffer));
-						sprintf(buffer, "%d", vertexBone[i].vertexIndex1);
-
-						if (ImGui::InputText("VI1", buffer, sizeof(buffer), flags))
-							vertexBone[i].vertexIndex1 = atoi(buffer);
-
-						ImGui::SameLine();
-
-						memset(buffer, 0, sizeof(buffer));
-						sprintf(buffer, "%d", vertexBone[i].vertexIndex2);
-
-						if (ImGui::InputText("VI2", buffer, sizeof(buffer), flags))
-							vertexBone[i].vertexIndex2 = atoi(buffer);
-
-						ImGui::SameLine();
-
-						ImGui::PushItemWidth(200);
 						Entity* entityTemp = entity.get();
 						do
 						{
@@ -752,53 +717,91 @@ namespace Volcano {
 							{
 								auto& ac = entityTemp->GetComponent<AnimationComponent>();
 								auto& bones = ac.animation->GetBones();
-								char** boneName = new char* [bones.size()];
-								for (uint32_t i = 0; i < bones.size(); i++)
+
+								static int deleteIndex = -1;
+
+								ImGui::PushItemWidth(80);
+								for (uint32_t i = 0; i < vertexBone.size(); i++)
 								{
-									auto name = bones[i].GetBoneName();
-									boneName[i] = new char[name.size() + 1];
-									std::strcpy(boneName[i], name.c_str());
-								}
-								if (bones.size())
-								{
-									ImGui::Combo("BoneIndex", &vertexBone[i].boneIndex, boneName, bones.size());
+									ImGui::PushItemWidth(80);
+									ImGui::PushID(i);
+									memset(buffer, 0, sizeof(buffer));
+									sprintf(buffer, "%d", vertexBone[i].vertexIndex1);
+									if (ImGui::InputTextWithHint("##vi1", "vi1:", buffer, sizeof(buffer), flags))
+										vertexBone[i].vertexIndex1 = atoi(buffer);
 
 									ImGui::SameLine();
-									ImGui::PushItemWidth(80);
+
 									memset(buffer, 0, sizeof(buffer));
-									sprintf(buffer, "%.4f", vertexBone[i].weight);
-									if (ImGui::InputText("weight", buffer, sizeof(buffer), flags))
-										vertexBone[i].weight = atof(buffer);
+									sprintf(buffer, "%d", vertexBone[i].vertexIndex2);
+
+									if (ImGui::InputTextWithHint("##vi2", "vi2:", buffer, sizeof(buffer), flags))
+										vertexBone[i].vertexIndex2 = atoi(buffer);
+
+									ImGui::SameLine();
+
+									ImGui::PushItemWidth(200);
+									if (bones.size())
+									{
+										auto* bone = ac.animation->FindBone(vertexBone[i].boneIndex);
+										std::string boneName = bone == nullptr ? std::string() : bone->GetBoneName();
+										if (ImGui::BeginCombo("##combo", boneName.c_str()))
+										{
+											for (uint32_t comboIndex = 0; comboIndex < bones.size(); comboIndex++)
+											{
+												const bool is_selected = (vertexBone[i].boneIndex == bones[comboIndex].GetBoneID());
+												if (ImGui::Selectable(bones[comboIndex].GetBoneName().c_str(), is_selected))
+												{
+													vertexBone[i].boneIndex = bones[comboIndex].GetBoneID();
+												}
+
+											}
+											ImGui::EndCombo();
+										}
+
+										ImGui::SameLine();
+										ImGui::PushItemWidth(80);
+										memset(buffer, 0, sizeof(buffer));
+										sprintf(buffer, "%.4f", vertexBone[i].weight);
+										if (ImGui::InputText("weight", buffer, sizeof(buffer), flags))
+											vertexBone[i].weight = atof(buffer);
+									}
+									else
+										ImGui::Text("No Bone");
+									ImGui::PopItemWidth();
+
+									ImGui::SameLine();
+
+									if (ImGui::Button("-"))
+										deleteIndex = i;
+
+									ImGui::PopID();
 								}
-								else
-									ImGui::Text("No Bone");
+
+								if (deleteIndex != -1)
+								{
+									vertexBone.erase(vertexBone.begin() + deleteIndex);
+									deleteIndex = -1;
+								}
+
 								break;
 							}
 							else
 								entityTemp = entityTemp->GetEntityParent();
 						} while (entityTemp != nullptr);
+
+
 						if (entityTemp == nullptr)
 						{
 							ImGui::Text("No Animation");
 						}
-
-
-						ImGui::PopID();
 					}
-					ImGui::PopItemWidth();
-					//ImGui::PopStyleVar();
-
 					if (ImGui::Button("+"))
 					{
 						MeshComponent::VertexBone vertexBone;
 						component.vertexBone.push_back(vertexBone);
 					}
-					ImGui::SameLine();
-					if (ImGui::Button("-"))
-					{
-						if (component.vertexBone.size())
-							component.vertexBone.erase(--component.vertexBone.end());
-					}
+
 				}
 			});
 
@@ -888,6 +891,25 @@ namespace Volcano {
 			{
 			    if (ImGui::Button("Animator"))
 					component.animator = std::make_shared<Animator>();
+				ImGui::SameLine();
+				if (component.animator->GetPlay())
+				{
+					if (ImGui::Button("Pause"))
+						component.animator->SetPlay(false);
+				}
+				else
+				{
+					if (ImGui::Button("Play"))
+						component.animator->SetPlay(true);
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Stop"))
+				{
+					component.animator->SetPlay(true);
+					component.animator->SetCurrentTime(0.0f);
+					component.animator->UpdateAnimation(0.0f);
+					component.animator->SetPlay(false);
+				}
 			});
 
 		DrawComponent<AnimationComponent>("Animation", entity, [](AnimationComponent& component)
@@ -915,8 +937,66 @@ namespace Volcano {
 				ImGui::DragFloat("TicksPerSecond", &component.animation->GetTicksPerSecond(), 1.0f);
 
 				auto& node = component.animation->GetRootNode();
-				DrawAssimpNode(node, component.animation.get());
+				DrawAssimpNode(node, component);
 
+				if (component.newBoneNodeParent != nullptr)
+				{
+					ImGui::Begin("New Bone");
+					{
+						ImGui::InputInt("BoneID", &component.boneIDBuffer);
+						char buffer[64];
+						memset(buffer, 0, sizeof(buffer));
+						strncpy_s(buffer, sizeof(buffer), component.boneNameBuffer.c_str(), sizeof(buffer));
+						if (ImGui::InputText("BoneName", buffer, sizeof(buffer)))
+							component.boneNameBuffer = buffer;
+						bool boneIDExist = component.animation->FindBone(component.boneIDBuffer);
+						bool boneNameExist = component.animation->FindBone(component.boneNameBuffer);
+
+						if (ImGui::Button("Create Bone"))
+						{
+							if (!boneIDExist && !boneNameExist)
+							{
+								auto& boneMap = component.animation->GetBoneIDMap();
+								AssimpNodeData child;
+								child.transformation = glm::mat4(1.0f);
+								child.parent = component.newBoneNodeParent;
+								child.name = component.boneNameBuffer;
+								auto& bones = component.animation->GetBones();
+
+								// 添加AssimpNodeData
+								component.newBoneNodeParent->childrenCount++;
+								component.newBoneNodeParent->children.push_back(child);
+
+								boneMap[child.name].id = component.boneIDBuffer;
+								boneMap[child.name].offset = glm::mat4(1.0f);
+
+								// 添加Bone
+								bones.push_back(Bone(child.name, component.boneIDBuffer));
+
+								component.boneIDBuffer = 0;
+								component.boneNameBuffer = std::string();
+								component.newBoneNodeParent = nullptr;
+							}
+						}
+						if (boneIDExist || boneNameExist)
+						{
+							if (ImGui::BeginItemTooltip())
+							{
+								ImGui::Text("Bone already exist.");
+								ImGui::EndTooltip();
+							}
+
+						}
+						ImGui::SameLine();
+						if (ImGui::Button("Cancel"))
+						{
+							component.boneIDBuffer = 0;
+							component.boneNameBuffer = std::string();
+							component.newBoneNodeParent = nullptr;
+						}
+					}
+					ImGui::End();
+				}
 
 				//ImGui::Separator();
 				//for (auto& boneInfo : component.animation->GetBoneIDMap())
@@ -933,51 +1013,51 @@ namespace Volcano {
 					{
 						ImGui::PushID(i);
 
-							if (ImGui::TreeNodeEx((void*)i, ImGuiTreeNodeFlags_SpanAvailWidth, bones[i].GetBoneName().c_str()))
+						if (ImGui::TreeNodeEx((void*)i, ImGuiTreeNodeFlags_SpanAvailWidth, (bones[i].GetBoneName() + std::to_string(bones[i].GetBoneID())).c_str()))
+						{
+							//ImGui::Text(bones[i].GetBoneName().c_str());
+							auto& positions = bones[i].GetPositions();
+								auto& rotations = bones[i].GetRotations();
+							auto& scales = bones[i].GetScales();
+							int size = glm::min(bones[i].GetNumPosition(), bones[i].GetNumRotation());
+							size = glm::min(size, bones[i].GetNumScale());
+							if (component.key < size)
 							{
-								//ImGui::Text(bones[i].GetBoneName().c_str());
-								auto& positions = bones[i].GetPositions();
-									auto& rotations = bones[i].GetRotations();
-								auto& scales = bones[i].GetScales();
-								int size = glm::min(bones[i].GetNumPosition(), bones[i].GetNumRotation());
-								size = glm::min(size, bones[i].GetNumScale());
-								if (component.key < size)
+								DrawVec3Control("Translation", positions[component.key].position);
+
+								glm::vec3 rotation = glm::degrees(glm::eulerAngles(rotations[component.key].orientation)); // 弧度
+								DrawVec3Control("Rotation", rotation);
+								rotations[component.key].orientation = glm::quat(glm::radians(rotation));
+
+								DrawVec3Control("Scale", scales[component.key].scale, 1.0f);
+
+								float timeStamp = positions[component.key].timeStamp;
+								if (ImGui::InputFloat("TimeStamp", &timeStamp))
 								{
-									DrawVec3Control("Translation", positions[component.key].position);
-
-									glm::vec3 rotation = glm::eulerAngles(rotations[component.key].orientation);
-									DrawVec3Control("Rotation", rotation);
-									rotations[component.key].orientation = glm::quat(rotation);
-
-									DrawVec3Control("Scale", scales[component.key].scale, 1.0f);
-
-									float timeStamp = positions[component.key].timeStamp;
-									if (ImGui::InputFloat("TimeStamp", &timeStamp))
-									{
-										positions[component.key].timeStamp = timeStamp;
-										rotations[component.key].timeStamp = timeStamp;
-										scales[component.key].timeStamp = timeStamp;
-									}
+									positions[component.key].timeStamp = timeStamp;
+									rotations[component.key].timeStamp = timeStamp;
+									scales[component.key].timeStamp = timeStamp;
 								}
-
-								if (ImGui::Button("+"))
-								{
-									bones[i].AddKeyPosition(glm::vec3(0.0f));
-									bones[i].AddKeyRotation(glm::vec3(0.0f));
-									bones[i].AddKeyScale(glm::vec3(1.0f));
-								}
-								ImGui::SameLine();
-								if (ImGui::Button("-"))
-								{
-									bones[i].RemoveKeyPosition(bones[i].GetNumPosition() - 1);
-									bones[i].RemoveKeyRotation(bones[i].GetNumRotation() - 1);
-									bones[i].RemoveKeyScale(bones[i].GetNumScale() - 1);
-								}
-								ImGui::SameLine();
-								ImGui::Text(("KeySize: " + std::to_string(size)).c_str());
-
-								ImGui::TreePop();
 							}
+
+							if (ImGui::Button("+"))
+							{
+								bones[i].AddKeyPosition(glm::vec3(0.0f));
+								bones[i].AddKeyRotation(glm::quat(glm::vec3(0.0f)));
+								bones[i].AddKeyScale(glm::vec3(1.0f));
+							}
+							ImGui::SameLine();
+							if (ImGui::Button("-"))
+							{
+								bones[i].RemoveKeyPosition(bones[i].GetNumPosition() - 1);
+								bones[i].RemoveKeyRotation(bones[i].GetNumRotation() - 1);
+								bones[i].RemoveKeyScale(bones[i].GetNumScale() - 1);
+							}
+							ImGui::SameLine();
+							ImGui::Text(("KeySize: " + std::to_string(size)).c_str());
+
+							ImGui::TreePop();
+						}
 						ImGui::PopID();
 					}
 					ImGui::TreePop();

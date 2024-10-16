@@ -15,6 +15,10 @@ namespace Volcano {
         void CalculateBoneTransform(const AssimpNodeData* node, glm::mat4 parentTransform);
         std::vector<glm::mat4>& GetFinalBoneMatrices();
 
+        bool GetPlay() { return m_Play; }
+
+        void SetCurrentTime(float time) { m_CurrentTime = time; }
+        void SetPlay(bool play) { m_Play = play; }
         void SetAnimation(Animation* animation);
     private:
         // ¹Ç÷À¾ØÕóÊý×é
@@ -22,5 +26,6 @@ namespace Volcano {
         Animation* m_CurrentAnimation;
         float m_CurrentTime;
         float m_DeltaTime;
+        bool m_Play;
     };
 }

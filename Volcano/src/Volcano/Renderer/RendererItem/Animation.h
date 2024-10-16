@@ -7,10 +7,11 @@ namespace Volcano {
     // 用于将动画从Assimp提取出来。
     struct AssimpNodeData
     {
+        // 没有骨骼动画的骨骼使用AssimpNodeData.transformation
         glm::mat4 transformation;
         std::string name;
         AssimpNodeData* parent;
-        int childrenCount;
+        int childrenCount = 0;
         std::vector<AssimpNodeData> children;
     };
 
@@ -23,6 +24,8 @@ namespace Volcano {
         ~Animation(){}
 
         Bone* FindBone(const std::string& name);
+
+        Bone* FindBone(int id);
 
         inline float& GetTicksPerSecond() { return m_TicksPerSecond; }
         inline float& GetDuration() { return m_Duration; }

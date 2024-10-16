@@ -71,6 +71,7 @@ namespace Volcano {
 		Ref<Entity> GetDirectionalLightEntity();
 		std::vector<Ref<Entity>> GetPointLightEntities();
 		std::vector<Ref<Entity>> GetSpotLightEntities();
+		bool& GetShowBone() { return m_ShowBone; }
 
 		bool IsRunning() const { return m_IsRunning; }
 		bool IsPaused() const { return m_IsPaused; }
@@ -113,6 +114,7 @@ namespace Volcano {
 
 		uint32_t m_ViewportWidth = 0, m_ViewportHeight = 0;
 
+		bool m_ShowBone = false;
 		bool m_IsRunning = false;
 		bool m_IsPaused = false;
 		int m_StepFrames = 0;

@@ -46,9 +46,9 @@ namespace Volcano
         std::vector<KeyPosition>& GetPositions() { return m_Positions; }
         std::vector<KeyRotation>& GetRotations() { return m_Rotations; }
         std::vector<KeyScale>& GetScales() { return m_Scales; }
-        void AddKeyPosition(glm::vec3 position);
-        void AddKeyRotation(glm::vec3 rotation);
-        void AddKeyScale(glm::vec3 scale);
+        void AddKeyPosition(glm::vec3 position, float timeStamp = 0.0f);
+        void AddKeyRotation(glm::quat rotation, float timeStamp = 0.0f);
+        void AddKeyScale(glm::vec3 scale, float timeStamp = 0.0f);
         void RemoveKeyPosition(int index);
         void RemoveKeyRotation(int index);
         void RemoveKeyScale(int index);

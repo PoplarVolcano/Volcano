@@ -8,8 +8,7 @@ namespace Volcano {
     {
         m_RootNode.name = "RootNode";
         m_RootNode.transformation = glm::mat4(1.0f);
-        m_BoneInfoMap[m_RootNode.name] = BoneInfo(m_Bones.size(), glm::mat4(1.0f));
-        m_Bones.push_back(Bone(m_RootNode.name, m_Bones.size()));
+        m_BoneInfoMap[m_RootNode.name] = BoneInfo(-1, glm::mat4(1.0f));
         m_Duration = 0;
         m_TicksPerSecond = 0;
     }
@@ -37,6 +36,18 @@ namespace Volcano {
             [&](const Bone& Bone)
             {
                 return Bone.GetBoneName() == name;
+            }
+        );
+        if (iter == m_Bones.end()) return nullptr;
+        else return &(*iter);
+    }
+
+    Bone* Animation::FindBone(int id)
+    {
+        auto iter = std::find_if(m_Bones.begin(), m_Bones.end(),
+            [&](Bone& Bone)
+            {
+                return Bone.GetBoneID() == id;
             }
         );
         if (iter == m_Bones.end()) return nullptr;
