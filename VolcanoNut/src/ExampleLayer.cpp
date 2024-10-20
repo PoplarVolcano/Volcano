@@ -76,6 +76,9 @@ namespace Volcano{
         m_EditorScene = CreateRef<Scene>();
         m_ActiveScene = m_EditorScene;
 
+        // 初始化脚本引擎（Core指令集）
+        ScriptEngine::Init();
+
         // 从app获取指令行，如果指令行大于1则读取场景
         auto commandLineArgs = Application::Get().GetSpecification().CommandLineArgs;
         if (commandLineArgs.Count > 1)
@@ -86,8 +89,10 @@ namespace Volcano{
         else {
             // 引导用户选择一个项目路径prompt the user to select a directory
             // 如果没有打开项目则关闭VolcanoNut If no project is opened, close VolcanoNut
-            if (!OpenProject())
-                Application::Get().Close();
+            if (OpenProject())
+                m_ProjectLoaded = true;
+            else
+                m_NewProject = true;
         }
 
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
@@ -182,8 +187,8 @@ namespace Volcano{
 
         //=============================================================================================================
 
-
         Renderer::Clear();
+        /*
         // 将FrameBuffer的图像放到window上
         // 还原视图尺寸
         Application::Get().GetWindow().ResetViewport();
@@ -199,11 +204,83 @@ namespace Volcano{
         //Renderer::GetShaderLibrary()->Get("Skybox")->Bind();
         //Skybox::DrawIndexed();
         Renderer::SetDepthTest(true);
+        */
 
     }
 
     void ExampleLayer::OnImGuiRender()
     {
+        if (m_NewProject)
+        {
+            static bool use_work_area = true;
+            static ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings;
+
+            // We demonstrate using the full viewport area or the work area (without menu-bars, task-bars etc.)
+            // Based on your use case you may want one or the other.
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(use_work_area ? viewport->WorkPos : viewport->Pos);
+            ImGui::SetNextWindowSize(use_work_area ? viewport->WorkSize : viewport->Size);
+
+            ImGui::Begin("NewProject", &m_NewProject, flags);
+            static std::string newProjectName = "Project1";
+            ImGui::Text((const char*)u8"项目名称");
+            ImGui::InputText("##NewProjectName", newProjectName.data(), 64);
+            static std::string newProjectPath = FileDialogs::GetProjectPath().append("Projects").string();
+            ImGui::Text((const char*)u8"位置(如果路径不存在，将新建路径。)");
+            ImGui::InputText("##newProjectPath", newProjectPath.data(), 256);
+            ImGui::SameLine();
+            if(ImGui::Button("..."))
+                newProjectPath = FileDialogs::OpenFolder(newProjectPath);
+
+            std::filesystem::path projectPath = std::filesystem::path(newProjectPath).append(newProjectName);
+            ImGui::Text(((const char*)u8"项目将在" + projectPath.string() + (const char*)u8"中创建").c_str());
+            if (ImGui::Button("Create Project"))
+            {
+                if (!std::filesystem::exists(projectPath))
+                {
+                    NewProject(projectPath, newProjectName);
+                    auto projectPathTemp = projectPath;
+                    OpenProject(projectPathTemp.append(newProjectName + ".hproj"));
+                    m_NewProject = false;
+                    m_ProjectLoaded = true;
+                }
+
+            }
+            if (std::filesystem::exists(projectPath))
+            {
+                if (ImGui::BeginItemTooltip())
+                {
+                    ImGui::Text("Project already exist.");
+                    ImGui::EndTooltip();
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel"))
+            {
+                if(m_ProjectLoaded)
+                    m_NewProject = false;
+            }
+            if (!m_ProjectLoaded)
+            {
+                if (ImGui::BeginItemTooltip())
+                {
+                    ImGui::Text("No project loaded.");
+                    ImGui::EndTooltip();
+                }
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Open Project"))
+            {
+                OpenProject();
+                m_NewProject = false;
+                m_ProjectLoaded = true;
+            }
+            ImGui::End();
+        }
+
+        if (!m_ProjectLoaded)
+            return;
+
         // =============================DockSpace from ImGui::ShowDemoWindow()======================
         static bool p_open = true;
 
@@ -279,8 +356,12 @@ namespace Volcano{
                 ImGui::MenuItem("Padding", NULL, &opt_padding);
                 ImGui::Separator();
 
+                if (ImGui::MenuItem("New Project..."))
+                    m_NewProject = true;
                 if (ImGui::MenuItem("Open Project...", "Ctrl+O"))
 					OpenProject();
+                if (ImGui::MenuItem("Save Project...", "Ctrl+O"))
+                    SaveProject(*m_ActiveScene.get());
 
 				ImGui::Separator();
 
@@ -293,6 +374,9 @@ namespace Volcano{
 				if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S"))
 					SaveSceneAs();
 
+                if (ImGui::MenuItem("Set Scene As StartScene", "Ctrl+Shift+S"))
+                    Project::GetActive()->GetConfig().StartScene = std::filesystem::relative(m_ActiveScene->GetFilePath(), Project::GetActive()->GetAssetDirectory());
+
 				ImGui::Separator();
 
                 if (ImGui::MenuItem("Exit")) 
@@ -303,6 +387,12 @@ namespace Volcano{
 
             if (ImGui::BeginMenu("Script"))
             {
+                if (ImGui::MenuItem("Set assembly", "Ctrl+R"))
+                {
+                    std::string assemblyPath = FileDialogs::OpenFile("C# Assembly (*.dll)\0*.dll\0 ");
+                    Project::GetActive()->GetConfig().ScriptModulePath = std::filesystem::relative(assemblyPath, Project::GetActive()->GetAssetDirectory()).string();
+                    ScriptEngine::ReloadAssembly();
+                }
                 if (ImGui::MenuItem("Reload assembly", "Ctrl+R"))
                     ScriptEngine::ReloadAssembly();
 
@@ -314,176 +404,177 @@ namespace Volcano{
 
         // =====================================================Viewport=====================================================
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
-
-        ImGui::Begin("ViewportTemp");
         {
-            uint32_t textureID = 0;
-            const char* frameBuffers[] = 
-            { "None", "DirectionalShadow", "PointShadow", "SpotShadow", "GBuffer1", "GBuffer2", "GBuffer3", 
-                "GBuffer4", "SSAO", "SSAOBlur", "DefferedShading", "HDR", "LightShading1", "LightShading2" , 
-                "LightShading3", "PBRLightShading"};
-            ImGui::Combo("FrameBuffer", &m_ViewportTempIndex, frameBuffers, IM_ARRAYSIZE(frameBuffers));
-            switch (m_ViewportTempIndex)
+            ImGui::Begin("ViewportTemp");
             {
-            case 0:
-                textureID = 0;
-                break;
-            case 1:
-                textureID = SceneRenderer::GetDirectionalDepthMapFramebuffer()->GetDepthAttachmentRendererID();
-                break;
-            case 2:
-                textureID = SceneRenderer::GetPointDepthMapFramebuffer()->GetDepthAttachmentRendererID();
-                break;
-            case 3:
-                textureID = SceneRenderer::GetSpotDepthMapFramebuffer()->GetDepthAttachmentRendererID();
-                break;
-            case 4:
-                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(0);
-                break;
-            case 5:
-                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(1);
-                break;
-            case 6:
-                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(2);
-                break;
-            case 7:
-                textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(3);
-                break;
-            case 8:
-                textureID = SceneRenderer::GetSSAOFramebuffer()->GetColorAttachmentRendererID(0);
-                break;
-            case 9:
-                textureID = SceneRenderer::GetSSAOBlurFramebuffer()->GetColorAttachmentRendererID(0);
-                break;
-            case 10:
-                textureID = SceneRenderer::GetDeferredShadingFramebuffer()->GetColorAttachmentRendererID();
-                break;
-            case 11:
-                textureID = SceneRenderer::GetHDRFramebuffer()->GetColorAttachmentRendererID();
-                break;
-            case 12:
-                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
-                break;
-            case 13:
-                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(1);
-                break;
-            case 14:
-                textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(2);
-                break;
-            case 15:
-                textureID = SceneRenderer::GetPBRLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
-                break;
-            default:
-                textureID = 0;
-                break;
+                uint32_t textureID = 0;
+                const char* frameBuffers[] =
+                { "None", "DirectionalShadow", "PointShadow", "SpotShadow", "GBuffer1", "GBuffer2", "GBuffer3",
+                    "GBuffer4", "SSAO", "SSAOBlur", "DefferedShading", "HDR", "LightShading1", "LightShading2" ,
+                    "LightShading3", "PBRLightShading" };
+                ImGui::Combo("FrameBuffer", &m_ViewportTempIndex, frameBuffers, IM_ARRAYSIZE(frameBuffers));
+                switch (m_ViewportTempIndex)
+                {
+                case 0:
+                    textureID = 0;
+                    break;
+                case 1:
+                    textureID = SceneRenderer::GetDirectionalDepthMapFramebuffer()->GetDepthAttachmentRendererID();
+                    break;
+                case 2:
+                    textureID = SceneRenderer::GetPointDepthMapFramebuffer()->GetDepthAttachmentRendererID();
+                    break;
+                case 3:
+                    textureID = SceneRenderer::GetSpotDepthMapFramebuffer()->GetDepthAttachmentRendererID();
+                    break;
+                case 4:
+                    textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(0);
+                    break;
+                case 5:
+                    textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(1);
+                    break;
+                case 6:
+                    textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(2);
+                    break;
+                case 7:
+                    textureID = SceneRenderer::GetGBufferFramebuffer()->GetColorAttachmentRendererID(3);
+                    break;
+                case 8:
+                    textureID = SceneRenderer::GetSSAOFramebuffer()->GetColorAttachmentRendererID(0);
+                    break;
+                case 9:
+                    textureID = SceneRenderer::GetSSAOBlurFramebuffer()->GetColorAttachmentRendererID(0);
+                    break;
+                case 10:
+                    textureID = SceneRenderer::GetDeferredShadingFramebuffer()->GetColorAttachmentRendererID();
+                    break;
+                case 11:
+                    textureID = SceneRenderer::GetHDRFramebuffer()->GetColorAttachmentRendererID();
+                    break;
+                case 12:
+                    textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
+                    break;
+                case 13:
+                    textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(1);
+                    break;
+                case 14:
+                    textureID = SceneRenderer::GetLightShadingFramebuffer(0)->GetColorAttachmentRendererID(2);
+                    break;
+                case 15:
+                    textureID = SceneRenderer::GetPBRLightShadingFramebuffer(0)->GetColorAttachmentRendererID(0);
+                    break;
+                default:
+                    textureID = 0;
+                    break;
+                }
+
+                ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+
+                ImGui::End();
             }
-            
+
+            ImGui::Begin("Viewport");
+
+            // 获取Viewport视口左上角与viewport视口标题栏距离的偏移位置（0, 24) - 必须放这，因为标题栏后就是视口的左上角
+            auto viewportOffset = ImGui::GetCursorPos();  // Include Tab bar
+
+            // 窗口是否被选中
+            m_ViewportFocused = ImGui::IsWindowFocused();
+            // 鼠标是否悬浮在窗口上
+            m_ViewportHovered = ImGui::IsWindowHovered();
+            // 只有同时选中和悬浮才会执行Event
+            Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused);
+
+            // 获取视图窗口尺寸
+            ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
+            m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
+
+            // 在视图显示帧缓冲画面
+            //uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
+            uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
             ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-            
+
+
+            // 接收在此视口拖放过来的值，On target candidates，拖放目标
+            if (ImGui::BeginDragDropTarget())
+            {
+                // 因为接收内容可能为空，需要if判断。 CONTENT_BROWSER_ITEM：拖动携带的内容
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+                {
+                    const wchar_t* path = (const wchar_t*)payload->Data;
+                    OpenScene(path);
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+
+            // 获取vieport视口大小 - 包含标题栏的高
+            auto windowSize = ImGui::GetWindowSize();
+            // 获取当前vieport视口标题栏左上角距离当前整个屏幕左上角（0,0）的位置
+            ImVec2 minBound = ImGui::GetWindowPos();
+            minBound.x += viewportOffset.x;
+            minBound.y += viewportOffset.y;
+
+            ImVec2 maxBound = { minBound.x + windowSize.x, minBound.y + windowSize.y };
+            // 保存左上角和右下角距离整个屏幕左上角的位置
+            m_ViewportBounds[0] = { minBound.x, minBound.y };
+            m_ViewportBounds[1] = { maxBound.x, maxBound.y };
+
+            //Gizmos
+            Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
+            if (selectedEntity && m_GizmoType != -1 && m_SceneState == SceneState::Edit)
+            {
+                ImGuizmo::SetOrthographic(false);
+                ImGuizmo::SetDrawlist();
+                float windowWidth = (float)ImGui::GetWindowWidth();
+                float windowHeight = (float)ImGui::GetWindowHeight();
+                ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
+
+                //Editor Camera
+                const glm::mat4& cameraProjection = m_EditorCamera.GetProjection();
+                glm::mat4 cameraView = m_EditorCamera.GetViewMatrix();
+
+                // Selected Entity transform
+                auto& tc = selectedEntity->GetComponent<TransformComponent>();
+                glm::mat4 transform = tc.GetTransform();
+
+                // Snapping
+                bool snap = Input::IsKeyPressed(Key::LeftControl);
+                // Snap to 0.5m for translation/scale
+                float snapValue = 0.5f;
+                // Snap to 45 defrees for rotation
+                if (m_GizmoType == ImGuizmo::OPERATION::ROTATE)
+                {
+                    snapValue = 45.0f;
+                }
+                float snapValues[3] = { snapValue, snapValue, snapValue };
+
+                ImGuizmo::Manipulate(
+                    glm::value_ptr(glm::inverse(cameraView)),
+                    glm::value_ptr(cameraProjection),
+                    (ImGuizmo::OPERATION)m_GizmoType,
+                    ImGuizmo::LOCAL,
+                    glm::value_ptr(transform),
+                    nullptr,
+                    snap ? snapValues : nullptr);
+
+                if (ImGuizmo::IsUsing())
+                {
+                    // 预防万向节死锁
+                    glm::vec3 translation, rotation, scale;
+                    Math::DecomposeTransform(transform, translation, rotation, scale);
+
+                    glm::vec3 deltaRotation = rotation - tc.Rotation;
+                    tc.Translation = translation;
+                    tc.Rotation += deltaRotation;
+                    tc.Scale = scale;
+                }
+            }
+
+            // Viewport
             ImGui::End();
+            ImGui::PopStyleVar();
         }
-
-        ImGui::Begin("Viewport");
-
-        // 获取Viewport视口左上角与viewport视口标题栏距离的偏移位置（0, 24) - 必须放这，因为标题栏后就是视口的左上角
-        auto viewportOffset = ImGui::GetCursorPos();  // Include Tab bar
-
-        // 窗口是否被选中
-        m_ViewportFocused = ImGui::IsWindowFocused();
-        // 鼠标是否悬浮在窗口上
-        m_ViewportHovered = ImGui::IsWindowHovered();
-        // 只有同时选中和悬浮才会执行Event
-        Application::Get().GetImGuiLayer()->BlockEvents(!m_ViewportFocused);
-
-        // 获取视图窗口尺寸
-        ImVec2 viewportPanelSize = ImGui::GetContentRegionAvail();
-        m_ViewportSize = { viewportPanelSize.x, viewportPanelSize.y };
-
-        // 在视图显示帧缓冲画面
-        //uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
-        uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
-        ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{0, 1}, ImVec2{1, 0});
-        
-        
-        // 接收在此视口拖放过来的值，On target candidates，拖放目标
-        if (ImGui::BeginDragDropTarget()) 
-        {
-            // 因为接收内容可能为空，需要if判断。 CONTENT_BROWSER_ITEM：拖动携带的内容
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) 
-            {
-                const wchar_t* path = (const wchar_t*)payload->Data;
-                OpenScene(path);
-            }
-            ImGui::EndDragDropTarget();
-        }
-
-
-        // 获取vieport视口大小 - 包含标题栏的高
-        auto windowSize = ImGui::GetWindowSize();
-        // 获取当前vieport视口标题栏左上角距离当前整个屏幕左上角（0,0）的位置
-        ImVec2 minBound = ImGui::GetWindowPos();
-        minBound.x += viewportOffset.x;
-        minBound.y += viewportOffset.y;
-
-        ImVec2 maxBound = { minBound.x + windowSize.x, minBound.y + windowSize.y };
-        // 保存左上角和右下角距离整个屏幕左上角的位置
-        m_ViewportBounds[0] = { minBound.x, minBound.y };
-        m_ViewportBounds[1] = { maxBound.x, maxBound.y };
-
-        //Gizmos
-        Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
-        if (selectedEntity && m_GizmoType != -1 && m_SceneState == SceneState::Edit)
-        {
-            ImGuizmo::SetOrthographic(false);
-            ImGuizmo::SetDrawlist();
-            float windowWidth = (float)ImGui::GetWindowWidth();
-            float windowHeight = (float)ImGui::GetWindowHeight();
-            ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowWidth, windowHeight);
-            
-            //Editor Camera
-            const glm::mat4& cameraProjection = m_EditorCamera.GetProjection();
-            glm::mat4 cameraView = m_EditorCamera.GetViewMatrix();
-
-            // Selected Entity transform
-            auto& tc = selectedEntity->GetComponent<TransformComponent>();
-            glm::mat4 transform = tc.GetTransform();
-
-            // Snapping
-            bool snap = Input::IsKeyPressed(Key::LeftControl);
-            // Snap to 0.5m for translation/scale
-            float snapValue = 0.5f;
-            // Snap to 45 defrees for rotation
-            if (m_GizmoType == ImGuizmo::OPERATION::ROTATE) 
-            {
-                snapValue = 45.0f;
-            }
-            float snapValues[3] = { snapValue, snapValue, snapValue };
-
-            ImGuizmo::Manipulate(
-                glm::value_ptr(glm::inverse(cameraView)), 
-                glm::value_ptr(cameraProjection),
-                (ImGuizmo::OPERATION)m_GizmoType, 
-                ImGuizmo::LOCAL, 
-                glm::value_ptr(transform),
-                nullptr,
-                snap ? snapValues : nullptr);
-
-            if (ImGuizmo::IsUsing())
-            {
-                // 预防万向节死锁
-                glm::vec3 translation, rotation, scale;
-                Math::DecomposeTransform(transform, translation, rotation, scale);
-
-                glm::vec3 deltaRotation = rotation - tc.Rotation;
-                tc.Translation = translation;
-                tc.Rotation += deltaRotation;
-                tc.Scale = scale;
-            }
-        }
-
-        // Viewport
-        ImGui::End();
-        ImGui::PopStyleVar();
 
         m_SceneHierarchyPanel.OnImGuiRender();
         m_ContentBrowserPanel->OnImGuiRender();
@@ -837,18 +928,23 @@ namespace Volcano{
         Renderer2D::EndScene();
     }
 
-    void ExampleLayer::NewProject()
+    void ExampleLayer::NewProject(std::filesystem::path newProjectPath, const std::string name)
     {
-        Project::New();
+        Project::New(newProjectPath, name);
     }
 
     void ExampleLayer::OpenProject(const std::filesystem::path& path)
     {
         if (Project::Load(path))
         {
-            ScriptEngine::Init();
+            // 根据Project提供路径读取指令集
+            ScriptEngine::ReloadAssembly();
             auto startScenePath = Project::GetAssetFileSystemPath(Project::GetActive()->GetConfig().StartScene);
-            OpenScene(startScenePath);
+            // 场景路径为空 或 找不到文件 则 新建场景 或 文件选择框选择场景
+            if(Project::GetActive()->GetConfig().StartScene.empty() || !std::filesystem::exists(startScenePath))
+                OpenScene();
+            else
+                OpenScene(startScenePath);
             m_ContentBrowserPanel = CreateScope<ContentBrowserPanel>();
         }
     }
@@ -864,9 +960,9 @@ namespace Volcano{
         return true;
     }
 
-    void ExampleLayer::SaveProject()
+    void ExampleLayer::SaveProject(Scene& scene)
     {
-        // Project::SaveActive();
+        Project::SaveActive(scene);
     }
 
     void ExampleLayer::NewScene()
@@ -882,6 +978,12 @@ namespace Volcano{
         std::string filepath = FileDialogs::OpenFile("Volcano Scene (*.volcano)\0*.volcano\0");
         if (!filepath.empty())
             OpenScene(filepath);
+        else
+        {
+            if (m_SceneState != SceneState::Edit)
+                OnSceneStop();
+            NewScene();
+        }
     }
     
     void ExampleLayer::OpenScene(const std::filesystem::path& path)

@@ -5,10 +5,31 @@
 
 namespace Volcano {
 
-	Ref<Project> Project::New()
+	void CreateProjectPath(std::filesystem::path projectPath)
 	{
-		s_ActiveProject = CreateRef<Project>();
-		return s_ActiveProject;
+		if (!std::filesystem::exists(projectPath.parent_path()))
+			CreateProjectPath(projectPath.parent_path());
+		if (!std::filesystem::exists(projectPath))
+		    std::filesystem::create_directory(projectPath);
+
+	}
+	Ref<Project> Project::New(std::filesystem::path newProjectPath, const std::string name)
+	{
+		Ref<Project> project = CreateRef<Project>();
+		ProjectConfig projectConfig;
+		projectConfig.Name = name;
+		projectConfig.StartScene;
+		projectConfig.AssetDirectory = "Assets";
+		projectConfig.ScriptModulePath;
+		project->SetConfig(projectConfig);
+		project->m_ProjectDirectory = newProjectPath;
+		CreateProjectPath(newProjectPath);
+		CreateProjectPath(newProjectPath / projectConfig.AssetDirectory.string());
+		ProjectSerializer serializer(project);
+		std::filesystem::path projectFilePath = newProjectPath / (name + ".hproj");
+		serializer.Serialize(projectFilePath);
+		
+		return project;
 	}
 
 	Ref<Project> Project::Load(const std::filesystem::path& path)
@@ -26,16 +47,10 @@ namespace Volcano {
 		return nullptr;
 	}
 
-	bool Project::SaveActive(const std::filesystem::path& path)
+	bool Project::SaveActive(Scene& scene)
 	{
 		ProjectSerializer serializer(s_ActiveProject);
-		if (serializer.Serialize(path))
-		{
-			s_ActiveProject->m_ProjectDirectory = path.parent_path();
-			return true;
-		}
-
-		return false;
+		return serializer.Serialize(s_ActiveProject->GetProjectDirectory().append(s_ActiveProject->GetConfig().Name + ".hproj"));
 	}
 
 }

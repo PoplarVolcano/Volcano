@@ -41,9 +41,13 @@ namespace Volcano {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;        // 启用自动布局
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;      // 启用多视窗/平台视窗（能出opengl的框子）
 
-		float fontSize = 18.0f * 1.5f;
-		io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", fontSize);
-		io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", fontSize);
+		float fontSize = 12.0f * 1.5f;
+		//io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Bold.ttf", fontSize);
+		//io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/opensans/OpenSans-Regular.ttf", fontSize);
+		//io.Fonts->AddFontFromFileTTF("assets/fonts/SiYuanSongTiRegular/SourceHanSerifCN-Bold-2.otf", fontSize, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+		//io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/SiYuanSongTiRegular/SourceHanSerifCN-Regular-1.otf", fontSize, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+		io.Fonts->AddFontFromFileTTF("assets/fonts/SiYuanHeiTiRegular/SourceHanSansCN-Bold.otf", fontSize, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+		io.FontDefault = io.Fonts->AddFontFromFileTTF("assets/fonts/SiYuanHeiTiRegular/SourceHanSansCN-Regular.otf", fontSize, NULL, io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
 
 		//设置颜色
 		ImGui::StyleColorsDark();

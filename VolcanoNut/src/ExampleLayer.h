@@ -27,10 +27,10 @@ namespace Volcano {
 
 		void OnOverlayRender();
 
-		void NewProject();
+		void NewProject(std::filesystem::path newProjectPath, const std::string name);
 		void OpenProject(const std::filesystem::path& path);
 		bool OpenProject();
-		void SaveProject();
+		void SaveProject(Scene& scene);
 
 		void NewScene();
 		void OpenScene();
@@ -105,5 +105,8 @@ namespace Volcano {
 		SceneHierarchyPanel m_SceneHierarchyPanel;
 		Scope<ContentBrowserPanel> m_ContentBrowserPanel;
 
+		// Project
+		bool m_NewProject = false;
+		bool m_ProjectLoaded = false;
 	};
 }

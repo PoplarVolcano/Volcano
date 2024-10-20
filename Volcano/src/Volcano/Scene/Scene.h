@@ -36,6 +36,13 @@ namespace Volcano {
 		Scene();
 		~Scene();
 
+		std::string GetName() { return m_Name; }
+		void SetName(std::string name) { m_Name = name; }
+		std::string GetFilePath() { return m_FilePath; }
+		void SetFilePath(std::string filePath) { m_FilePath = filePath; }
+		std::string GetPath() { return m_Path; }
+		void SetPath(std::string path) { m_Path = path; }
+
 		void InitializeUniform();
 
 		static Ref<Scene> Copy(Ref<Scene> other);
@@ -107,6 +114,10 @@ namespace Volcano {
 		void RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
 
 	private:
+		std::string m_Name = "Untitled";
+		std::string m_FilePath;
+		std::string m_Path;
+
 		entt::registry m_Registry;                                     // 注册表，存所有entt::entity
 		std::unordered_map<UUID, Ref<Entity>> m_EntityIDMap;           // ID表，存id和Ref<Entity>的对应关系，包括子节点Entity
 		std::unordered_map<entt::entity, Ref<Entity>> m_EntityEnttMap; // Entt表，存entt::entity和Ref<Entity>的对应关系，包括子节点Entity

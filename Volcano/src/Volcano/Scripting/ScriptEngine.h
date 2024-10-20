@@ -150,7 +150,7 @@ namespace Volcano {
 		static bool LoadAssembly(const std::filesystem::path& filepath);
 
 		static bool LoadAppAssembly(const std::filesystem::path& filepath);
-
+		static void SetAppAssembly(const std::filesystem::path& filepath);
 		static void ReloadAssembly();
 
 		static void OnRuntimeStart(Scene* scene);

@@ -1,5 +1,6 @@
 #pragma once
 #include "Volcano/Core/Base.h"
+#include "Volcano/Scene/Scene.h"
 
 namespace Volcano {
 
@@ -21,7 +22,7 @@ namespace Volcano {
 	class Project
 	{
 	public:
-		static const std::filesystem::path& GetProjectDirectory()
+		static std::filesystem::path GetProjectDirectory()
 		{
 			if(s_ActiveProject)
 				return s_ActiveProject->m_ProjectDirectory;
@@ -44,15 +45,16 @@ namespace Volcano {
 		}
 
 		ProjectConfig& GetConfig() { return m_Config; }
+		void SetConfig(ProjectConfig config) { m_Config = config; }
 
 		static Ref<Project> GetActive() { return s_ActiveProject; }
 
-		static Ref<Project> New();
+		static Ref<Project> New(std::filesystem::path newProjectPath, const std::string name);
 		static Ref<Project> Load(const std::filesystem::path& path);
-		static bool SaveActive(const std::filesystem::path& path);
+		static bool SaveActive(Scene& scene);
 	private:
 		ProjectConfig m_Config;
-		std::filesystem::path m_ProjectDirectory;
+		std::filesystem::path m_ProjectDirectory; // project文件所在目录
 
 		inline static Ref<Project> s_ActiveProject;
 	};

@@ -298,7 +298,7 @@ namespace Volcano {
 
 		ImGui::Separator();
 
-		bool open = ImGui::TreeNodeEx((void*)boneID, treeNodeFlags, (node.name + std::to_string(boneID)).c_str());
+		bool open = ImGui::TreeNodeEx((void*)boneID, treeNodeFlags, node.name.c_str());
 
 		bool entityDeleted = false;
 		if (ImGui::BeginPopupContextItem())
@@ -323,8 +323,11 @@ namespace Volcano {
 				memset(buffer, 0, sizeof(buffer));
 				strncpy_s(buffer, sizeof(buffer), node.name.c_str(), sizeof(buffer));
 
+				ImGui::Text(("ID：" + std::to_string(boneID)).c_str());
+
+				ImGui::PushItemWidth(200);
 				ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue;
-				if (ImGui::InputText("##Tag", buffer, sizeof(buffer), flags))
+				if (ImGui::InputText("##Name", buffer, sizeof(buffer), flags))
 				{
 					auto boneInfo = boneMap[node.name];
 					boneMap.erase(node.name);
@@ -337,10 +340,7 @@ namespace Volcano {
 					boneMap[node.name] = boneInfo;
 					ac.animation->GetBones()[boneInfo.id].SetBoneName(node.name);
 				}
-
-				ImGui::SameLine();
-
-				ImGui::Text(std::to_string(boneID).c_str());
+				ImGui::PopItemWidth();
 
 				ImGui::SameLine();
 
@@ -755,6 +755,9 @@ namespace Volcano {
 													vertexBone[i].boneIndex = bones[comboIndex].GetBoneID();
 												}
 
+												if (is_selected)
+													ImGui::SetItemDefaultFocus();
+
 											}
 											ImGui::EndCombo();
 										}
@@ -919,6 +922,76 @@ namespace Volcano {
 					component.path = std::string();
 					component.animation = std::make_shared<Animation>();
 				}
+
+				static bool loadAnimation = false;
+				if (ImGui::Button("LoadAnimation"))
+					loadAnimation = !loadAnimation;
+				if (loadAnimation)
+				{
+					ImGui::PushItemWidth(200);
+					auto& animations = Animation::GetAnimationLibrary()->GetAnimations();
+					ImGui::SameLine();
+					if (ImGui::BeginCombo("##Animations", component.path.c_str()))
+					{
+						for (auto& animation : animations)
+						{
+							bool isSelected = component.path == animation.first;
+							if (ImGui::Selectable(animation.first.c_str(), isSelected))
+							{
+								component.path = animation.first;
+								component.animation = animation.second;
+							}
+
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::PopItemWidth();
+				}
+
+				static bool saveAnimation = false;
+				if (ImGui::Button("SaveAnimation"))
+					saveAnimation = !saveAnimation;
+				if (saveAnimation)
+				{
+					auto& animationLibrary = Animation::GetAnimationLibrary();
+					ImGui::PushItemWidth(200);
+					char buffer[256]; // path可能有十层的路径，buffer长一点避免意外
+					memset(buffer, 0, sizeof(buffer));
+					strncpy_s(buffer, sizeof(buffer), component.path.c_str(), sizeof(buffer));
+					if (ImGui::InputText("##SaveAnimation", buffer, sizeof(buffer)))
+						component.path = buffer;
+
+					ImGui::PopItemWidth();
+					ImGui::SameLine();
+					if (ImGui::Button("Save"))
+					{
+						if (!animationLibrary->Exists(component.path))
+							animationLibrary->Add(component.path, component.animation);
+					}
+					if (animationLibrary->Exists(component.path))
+					{
+						if (ImGui::BeginItemTooltip())
+						{
+							ImGui::Text("Animation already exist.");
+							ImGui::EndTooltip();
+						}
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("SaveOrOverwrite"))
+					{
+						animationLibrary->Add(component.path, component.animation);
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Remove"))
+					{
+						animationLibrary->Remove(component.path);
+					}
+
+				}
+
+
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))

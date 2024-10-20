@@ -188,27 +188,13 @@ namespace Volcano {
 		// 添加内部调用
 		ScriptGlue::RegisterFunctions();
 
-		// 2.加载c#程序集
+		// 2.加载c#程序集Core
 		bool status = LoadAssembly("Resources/Scripts/Volcano-ScriptCore.dll");
 		if (!status)
 		{
 			VOL_CORE_ERROR("[ScriptEngine] Could not load Volcano-ScriptCore assembly.");
 			return;
 		}
-
-		auto scriptModulePath = Project::GetAssetDirectory() / Project::GetActive()->GetConfig().ScriptModulePath;
-		status = LoadAppAssembly(scriptModulePath);
-		if (!status)
-		{
-			VOL_CORE_ERROR("[ScriptEngine] Could not load app assembly.");
-			return;
-		}
-		LoadAssemblyClasses();
-
-		ScriptGlue::RegisterComponents();
-
-		// 创建加载Entity父类-为了在调用OnCreate函数之前把UUID传给C#Entity的构造函数
-		s_ScriptEngineData->EntityClass = ScriptClass("Volcano", "Entity", true);
 	}
 
 	void ScriptEngine::Shutdown()
@@ -300,20 +286,32 @@ namespace Volcano {
 		return true;
 	}
 
+	void ScriptEngine::SetAppAssembly(const std::filesystem::path& filepath)
+	{
+		s_ScriptEngineData->AppAssemblyFilepath = filepath;
+	}
+
 	void ScriptEngine::ReloadAssembly()
 	{
-		mono_domain_set(mono_get_root_domain(), false);
+		//mono_domain_set(mono_get_root_domain(), false);
+		//mono_domain_unload(s_ScriptEngineData->AppDomain);
+		//LoadAssembly(s_ScriptEngineData->CoreAssemblyFilepath);
 
-		mono_domain_unload(s_ScriptEngineData->AppDomain);
-
-		LoadAssembly(s_ScriptEngineData->CoreAssemblyFilepath);
-		LoadAppAssembly(s_ScriptEngineData->AppAssemblyFilepath);
-		LoadAssemblyClasses();
-
-		ScriptGlue::RegisterComponents();
-
-		// Retrieve and instantiate class
-		s_ScriptEngineData->EntityClass = ScriptClass("Volcano", "Entity", true);
+		auto scriptModulePath = Project::GetAssetDirectory() / Project::GetActive()->GetConfig().ScriptModulePath;
+		if (!Project::GetActive()->GetConfig().ScriptModulePath.empty() && std::filesystem::exists(scriptModulePath))
+		{
+			bool status = LoadAppAssembly(scriptModulePath);
+			if (!status)
+			{
+				VOL_CORE_ERROR("[ScriptEngine] Could not load app assembly.");
+				return;
+			}
+			LoadAssemblyClasses();
+			ScriptGlue::RegisterComponents();
+		    // Retrieve and instantiate class
+		    // 创建加载Entity父类-为了在调用OnCreate函数之前把UUID传给C#Entity的构造函数
+			s_ScriptEngineData->EntityClass = ScriptClass("Volcano", "Entity", true);
+		}
 	}
 
 	// 脚本引擎获取Scene

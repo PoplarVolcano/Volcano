@@ -4,6 +4,15 @@
 
 namespace Volcano {
 
+    std::once_flag Animation::init_flag;
+    Scope<AnimationLibrary> Animation::m_AnimationLibrary;
+
+    const Scope<AnimationLibrary>& Animation::GetAnimationLibrary()
+    {
+        std::call_once(init_flag, []() { m_AnimationLibrary.reset(new AnimationLibrary()); });
+        return m_AnimationLibrary;
+    }
+
     Animation::Animation()
     {
         m_RootNode.name = "RootNode";
@@ -96,4 +105,51 @@ namespace Volcano {
             dest.children.push_back(newData);
         }
     }
+
+
+    void AnimationLibrary::Add(const Ref<Animation> animation)
+    {
+        auto& path = animation->GetPath();
+        Add(path, animation);
+    }
+
+    void AnimationLibrary::Add(const std::string& path, const Ref<Animation> animation)
+    {
+
+        VOL_CORE_ASSERT(!Exists(path), "AnimationLibrary:Animation已经存在了");
+        m_Animations[path] = animation;
+    }
+
+    Ref<Animation> AnimationLibrary::Load(const std::string filepath)
+    {
+        auto& modelLibrary = Model::GetModelLibrary();
+        if (!modelLibrary->Exists(filepath))
+            modelLibrary->Load(filepath);
+        auto model = modelLibrary->Get(filepath);
+        Ref<Animation> animation = std::make_shared<Animation>(filepath, model.get());
+        Add(animation);
+        return animation;
+    }
+
+
+    Ref<Animation> AnimationLibrary::Get(const std::string& path)
+    {
+        if (!Exists(path))
+        {
+            VOL_CORE_TRACE("AnimationLibrary:未找到Animation");
+            return nullptr;
+        }
+        return m_Animations[path];
+    }
+
+    bool AnimationLibrary::Exists(const std::string& path)
+    {
+        return m_Animations.find(path) != m_Animations.end();
+    }
+
+    void AnimationLibrary::Remove(const std::string& path)
+    {
+        m_Animations.erase(path);
+    }
+
 }

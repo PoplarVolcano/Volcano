@@ -559,7 +559,11 @@ namespace Volcano {
 	
 	void SceneSerializer::Serialize(const std::string& filepath)
 	{
-		std::string sceneName = "Untitled";// TODO：获取filepath的文件名
+		auto lastSlash = filepath.find_last_of("/\\");
+		lastSlash = lastSlash == std::string::npos ? 0 : lastSlash + 1;
+		auto lastDot = filepath.rfind('.');
+		auto count = lastDot == std::string::npos ? filepath.size() - lastSlash : lastDot - lastSlash;
+		std::string sceneName = filepath.substr(lastSlash, count);// 获取filepath的文件名
 		YAML::Emitter out;
 		out << YAML::BeginMap;
 		out << YAML::Key << "Scene" << YAML::Value << sceneName;
@@ -901,6 +905,9 @@ namespace Volcano {
 			return false;
 		std::string sceneName = data["Scene"].as<std::string>();
 		VOL_CORE_TRACE("Deserializing scene '{0}'", sceneName);
+		m_Scene->SetName(sceneName);
+		m_Scene->SetFilePath(filepath);
+		m_Scene->SetPath(std::filesystem::path(filepath).parent_path().append(sceneName).string());
 
 		auto entities = data["Entities"];
 		if (entities)
