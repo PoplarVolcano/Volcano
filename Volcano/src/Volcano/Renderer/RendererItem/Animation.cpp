@@ -1,6 +1,8 @@
 #include "volpch.h"
 #include "Animation.h"
 #include "Volcano/Renderer/RendererItem/AssimpGLMHelpers.h"
+#include "Volcano/Project/Project.h"
+#include "Volcano/Scene/SceneSerializer.h"
 
 namespace Volcano {
 
@@ -37,6 +39,8 @@ namespace Volcano {
             if(model != nullptr)
                 ReadMissingBones(animation, *model);
         }
+        m_Path = animationPath;
+        m_Name = std::filesystem::relative(animationPath, Project::GetAssetDirectory()).string();
     }
 
     Bone* Animation::FindBone(const std::string& name)
@@ -109,14 +113,16 @@ namespace Volcano {
 
     void AnimationLibrary::Add(const Ref<Animation> animation)
     {
-        auto& path = animation->GetPath();
-        Add(path, animation);
+        if (!animation->GetName().empty())
+            AddOrReplace(animation->GetName(), animation);
+        else
+            VOL_ASSERT(false, "AnimationLibrary::Add: Bug");
     }
 
-    void AnimationLibrary::Add(const std::string& path, const Ref<Animation> animation)
+    void AnimationLibrary::AddOrReplace(const std::string& path, const Ref<Animation> animation)
     {
 
-        VOL_CORE_ASSERT(!Exists(path), "AnimationLibrary:Animation已经存在了");
+        //VOL_CORE_ASSERT(!Exists(path), "AnimationLibrary:Animation已经存在了");
         m_Animations[path] = animation;
     }
 
@@ -131,6 +137,16 @@ namespace Volcano {
         return animation;
     }
 
+    Ref<Animation> AnimationLibrary::LoadAnm(const std::string filepath)
+    {
+        Ref<Animation> animation = std::make_shared<Animation>();
+        animation->SetPath(Project::GetAssetFileSystemPath(filepath).string());
+        animation->SetName(filepath);
+        AnimationSerializer serializer(animation);
+        serializer.Deserialize(animation->GetPath());
+        Add(animation);
+        return animation;
+    }
 
     Ref<Animation> AnimationLibrary::Get(const std::string& path)
     {

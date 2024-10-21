@@ -87,16 +87,13 @@ namespace Volcano {
 		// 对于model中读取的mesh，需要在序列化的时候同时保存model的路径和model中的索引以读取mesh信息
 		MeshType meshType = MeshType::None;
 		Ref<Mesh> mesh;
-		std::string modelPath;
-		int modelIndex;
+		std::string modelPath = std::string();
 		std::vector<VertexBone> vertexBone;
 
 		MeshComponent() = default;
 		MeshComponent(const MeshComponent&) = default;
 		void SetMesh(MeshType type, Entity* entity, Ref<Mesh> modelMesh = nullptr) {
 			meshType = type;
-			modelPath = std::string();
-			modelIndex = -1;
 			switch (type)
 			{
 			case MeshType::None:
@@ -191,7 +188,6 @@ namespace Volcano {
 
 	struct AnimationComponent
 	{
-		std::string path;
 		Ref<Animation> animation = std::make_shared<Animation>();
 		int key;  //当前关键帧
 		
@@ -204,7 +200,6 @@ namespace Volcano {
 		AnimationComponent(const AnimationComponent&) = default;
 		void LoadAnimation(std::string path, Model* model = nullptr)
 		{
-			this->path = path;
 			animation = std::make_shared<Animation>(path, model);
 		}
 	};

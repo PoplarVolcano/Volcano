@@ -52,7 +52,10 @@ namespace Volcano {
 		MeshVertex()
 		{
 			for (uint32_t i = 0; i < MAX_BONE_INFLUENCE; i++)
+			{
 				BoneIDs[i] = -1;
+				Weights[i] = 0;
+			}
 		}
 	};
 
@@ -78,7 +81,10 @@ namespace Volcano {
 		void SetEntity(Entity* entity) { m_Entity = entity; }
 		void SetBoneID(int vertexIndex1, int vertexIndex2, int boneIndex, float weight);
 
+		std::vector<MeshVertex>& GetVertices() { return m_Vertices; }
+		std::vector<uint32_t>& GetIndices() { return m_Indices; }
 		uint32_t GetVertexSize() { return m_VertexSize; }
+		uint32_t GetIndexSize() { return m_IndexSize; }
 
 		void SetVertexBoneDataToDefault();
 

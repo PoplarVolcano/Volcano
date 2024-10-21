@@ -1538,6 +1538,8 @@
     <ClInclude Include="src\Volcano\Renderer\RendererItem\SphereMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\ModelMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\LineMesh.h" />
+    <ClInclude Include="src\Volcano\Utils\FileUtils.h" />
+    <ClInclude Include="src\Volcano\Utils\YAMLUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1704,5 +1706,6 @@
     <ClCompile Include="src\Volcano\Renderer\RendererItem\SphereMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\ModelMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\LineMesh.cpp" />
+    <ClCompile Include="src\Volcano\Utils\FileUtils.cpp" />
   </ItemGroup>
 </Project>

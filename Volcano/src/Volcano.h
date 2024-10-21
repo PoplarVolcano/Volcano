@@ -28,3 +28,4 @@
 #include "Volcano/Scene/Components.h"
 
 #include "Volcano/Project/Project.h"
+#include "Volcano/Utils/PlatformUtils.h"

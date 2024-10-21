@@ -37,8 +37,10 @@ namespace Volcano {
         inline std::map<std::string, BoneInfo>& GetBoneIDMap() { return m_BoneInfoMap; }
         std::vector<Bone>& GetBones() { return m_Bones; }
         std::string& GetPath() { return m_Path; }
+        std::string& GetName() { return m_Name; }
 
         void SetPath(std::string path) { m_Path = path; }
+        void SetName(std::string name) { m_Name = name; }
         void SetDuration(float duration) { m_Duration = duration; }
         void SetTicksPerSecond(float ticksPerSecond) { m_TicksPerSecond = ticksPerSecond; }
 
@@ -46,7 +48,10 @@ namespace Volcano {
         void ReadMissingBones(const aiAnimation* animation, Model& model);
         void ReadHeirarchyData(AssimpNodeData& dest, const aiNode* src);
 
+        // 绝对路径
         std::string m_Path;
+        // 相对路径
+        std::string m_Name;
         // 动画多长
         float m_Duration;
         // 动画速度，每秒几次
@@ -63,8 +68,9 @@ namespace Volcano {
     {
     public:
         void Add(const Ref<Animation> animation);
-        void Add(const std::string& path, const Ref<Animation> animation);
+        void AddOrReplace(const std::string& path, const Ref<Animation> animation);
         Ref<Animation> Load(const std::string filepath);
+        Ref<Animation> LoadAnm(const std::string filepath);
         Ref<Animation> Get(const std::string& path);
         bool Exists(const std::string& path);
         void Remove(const std::string& path);

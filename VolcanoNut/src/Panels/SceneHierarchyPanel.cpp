@@ -1,7 +1,10 @@
 #include "SceneHierarchyPanel.h"
 #include "Volcano/Scene/Components.h"
+#include "Volcano/Scene/SceneSerializer.h"
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/UI/UI.h"
+#include "Volcano/Utils/PlatformUtils.h"
+#include "Volcano/Project/Project.h"
 
 #include "Volcano/Renderer/RendererItem/Model.h"
 #include "Volcano/Math/Math.h"
@@ -260,8 +263,6 @@ namespace Volcano {
 		    auto& mesh = model->GetMeshes()[modelNode->meshes[i]];
 			auto& mc = entityMesh->AddComponent<MeshComponent>();
 			mc.SetMesh(MeshType::Model, entityMesh.get(), std::make_shared<Mesh>(*mesh->mesh.get()));
-			mc.modelPath = model->GetPath();
-			mc.modelIndex = modelNode->meshes[i];
 
 			if (!mesh->textures.empty())
 			{
@@ -323,7 +324,7 @@ namespace Volcano {
 				memset(buffer, 0, sizeof(buffer));
 				strncpy_s(buffer, sizeof(buffer), node.name.c_str(), sizeof(buffer));
 
-				ImGui::Text(("ID：" + std::to_string(boneID)).c_str());
+				ImGui::Text(("ID: " + std::to_string(boneID)).c_str());
 
 				ImGui::PushItemWidth(200);
 				ImGuiInputTextFlags flags = ImGuiInputTextFlags_EnterReturnsTrue;
@@ -701,7 +702,7 @@ namespace Volcano {
 					component.SetMesh((MeshType)meshType, entity.get());
 				}
 
-				if (component.meshType != MeshType::None)
+				if (component.meshType != MeshType::None && component.meshType != MeshType::Model && component.mesh != nullptr)
 				{
 					ImGui::Text(("VertexSize: " + std::to_string(component.mesh->GetVertexSize())).c_str());
 
@@ -804,7 +805,49 @@ namespace Volcano {
 						MeshComponent::VertexBone vertexBone;
 						component.vertexBone.push_back(vertexBone);
 					}
+				}
 
+				if (component.meshType == MeshType::Model)
+				{
+					if (ImGui::Button("Load"))
+					{
+						std::string filePath = FileDialogs::OpenFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
+
+						if (!filePath.empty())
+						{
+							MeshSerializer serializer(entity);
+							serializer.Deserialize(filePath);
+							component.modelPath = filePath;
+						}
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Save..."))
+					{
+						std::string filePath;
+						if (component.modelPath.empty())
+							filePath = FileDialogs::SaveFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
+						else
+							filePath = component.modelPath;
+
+						if (!filePath.empty())
+						{
+							MeshSerializer serializer(entity);
+							serializer.Serialize(filePath);
+							component.modelPath = filePath;
+						}
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Save as..."))
+					{
+						std::string filePath = FileDialogs::SaveFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
+
+						if (!filePath.empty())
+						{
+							MeshSerializer serializer(entity);
+							serializer.Serialize(filePath);
+							component.modelPath = filePath;
+						}
+					}
 				}
 			});
 
@@ -919,79 +962,8 @@ namespace Volcano {
 			{
 				if (ImGui::Button("Animation"))
 				{
-					component.path = std::string();
 					component.animation = std::make_shared<Animation>();
 				}
-
-				static bool loadAnimation = false;
-				if (ImGui::Button("LoadAnimation"))
-					loadAnimation = !loadAnimation;
-				if (loadAnimation)
-				{
-					ImGui::PushItemWidth(200);
-					auto& animations = Animation::GetAnimationLibrary()->GetAnimations();
-					ImGui::SameLine();
-					if (ImGui::BeginCombo("##Animations", component.path.c_str()))
-					{
-						for (auto& animation : animations)
-						{
-							bool isSelected = component.path == animation.first;
-							if (ImGui::Selectable(animation.first.c_str(), isSelected))
-							{
-								component.path = animation.first;
-								component.animation = animation.second;
-							}
-
-							if (isSelected)
-								ImGui::SetItemDefaultFocus();
-						}
-						ImGui::EndCombo();
-					}
-					ImGui::PopItemWidth();
-				}
-
-				static bool saveAnimation = false;
-				if (ImGui::Button("SaveAnimation"))
-					saveAnimation = !saveAnimation;
-				if (saveAnimation)
-				{
-					auto& animationLibrary = Animation::GetAnimationLibrary();
-					ImGui::PushItemWidth(200);
-					char buffer[256]; // path可能有十层的路径，buffer长一点避免意外
-					memset(buffer, 0, sizeof(buffer));
-					strncpy_s(buffer, sizeof(buffer), component.path.c_str(), sizeof(buffer));
-					if (ImGui::InputText("##SaveAnimation", buffer, sizeof(buffer)))
-						component.path = buffer;
-
-					ImGui::PopItemWidth();
-					ImGui::SameLine();
-					if (ImGui::Button("Save"))
-					{
-						if (!animationLibrary->Exists(component.path))
-							animationLibrary->Add(component.path, component.animation);
-					}
-					if (animationLibrary->Exists(component.path))
-					{
-						if (ImGui::BeginItemTooltip())
-						{
-							ImGui::Text("Animation already exist.");
-							ImGui::EndTooltip();
-						}
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("SaveOrOverwrite"))
-					{
-						animationLibrary->Add(component.path, component.animation);
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Remove"))
-					{
-						animationLibrary->Remove(component.path);
-					}
-
-				}
-
-
 				if (ImGui::BeginDragDropTarget())
 				{
 					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
@@ -1006,9 +978,111 @@ namespace Volcano {
 					ImGui::EndDragDropTarget();
 				}
 
+				ImGui::Separator();
+				static bool animationManager = false;
+				if (ImGui::Button("AnimationManager"))
+					animationManager = !animationManager;
+				if (animationManager)
+				{
+					ImGui::PushItemWidth(200);
+					auto& animations = Animation::GetAnimationLibrary()->GetAnimations();
+					if (ImGui::BeginCombo("##Animations", component.animation->GetName().c_str()))
+					{
+						for (auto& animation : animations)
+						{
+							bool isSelected = component.animation->GetName() == animation.first;
+							if (ImGui::Selectable(animation.first.c_str(), isSelected))
+							{
+								component.animation = animation.second;
+							}
+
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::PopItemWidth();
+
+
+					if (ImGui::Button("Save"))
+					{
+						std::string filePath;
+						if (component.animation->GetName().empty())
+						{
+							filePath = FileDialogs::SaveFile("Animation (*.anm)\0*.anm\0 ", Project::GetAssetDirectory().string());
+							if (!filePath.empty())
+							{
+								AnimationSerializer serializer(component.animation);
+								serializer.Serialize(filePath);
+								// 删除原动画的记录
+								Animation::GetAnimationLibrary()->Remove(component.animation->GetName());
+								std::string animationName = Project::GetRelativeAssetDirectory(filePath).string();
+								component.animation->SetPath(filePath);
+								component.animation->SetName(animationName);
+								// 如果目标动画已导入过，删除目标动画记录，重新设置添加记录
+								if (Animation::GetAnimationLibrary()->Exists(component.animation->GetName()))
+									Animation::GetAnimationLibrary()->Remove(component.animation->GetName());
+								Animation::GetAnimationLibrary()->Add(component.animation);
+							}
+						}
+						else
+						{
+							filePath = component.animation->GetPath();
+							AnimationSerializer serializer(component.animation);
+							serializer.Serialize(filePath);
+						}
+
+					}
+
+					ImGui::SameLine();
+					if (ImGui::Button("Save as..."))
+					{
+						std::string filePath = FileDialogs::SaveFile("Animation (*.anm)\0*.anm\0 ", Project::GetAssetDirectory().string());
+
+						if (!filePath.empty())
+						{
+							AnimationSerializer serializer(component.animation);
+							serializer.Serialize(filePath);
+
+							Animation::GetAnimationLibrary()->Remove(component.animation->GetName());
+							std::string animationName = Project::GetRelativeAssetDirectory(filePath).string();
+							component.animation->SetPath(filePath);
+							component.animation->SetName(animationName);
+							if (Animation::GetAnimationLibrary()->Exists(component.animation->GetName()))
+								Animation::GetAnimationLibrary()->Remove(component.animation->GetName());
+							Animation::GetAnimationLibrary()->Add(component.animation);
+						}
+					}
+
+					ImGui::SameLine();
+					if (ImGui::Button("Load"))
+					{
+						std::string filePath = FileDialogs::OpenFile("Animation (*.anm)\0*.anm\0 ", Project::GetAssetDirectory().string());
+						if (!filePath.empty())
+						{
+							std::string filePathTemp = Project::GetRelativeAssetDirectory(filePath).string();
+							// 如果已读取动画，删除动画重新读取
+							if (Animation::GetAnimationLibrary()->Exists(filePathTemp))
+								Animation::GetAnimationLibrary()->Remove(filePathTemp);
+							component.animation = Animation::GetAnimationLibrary()->LoadAnm(filePathTemp);
+							component.animation->SetPath(filePath);
+							component.animation->SetName(filePathTemp);
+						}
+					}
+
+					ImGui::SameLine();
+					if (ImGui::Button("Drop"))
+					{
+						Animation::GetAnimationLibrary()->Remove(component.animation->GetName());
+						component.animation = std::make_shared<Animation>();
+					}
+				}
+
+				ImGui::Separator();
 				ImGui::DragFloat("Duration", &component.animation->GetDuration());
 				ImGui::DragFloat("TicksPerSecond", &component.animation->GetTicksPerSecond(), 1.0f);
 
+				ImGui::Separator();
 				auto& node = component.animation->GetRootNode();
 				DrawAssimpNode(node, component);
 
@@ -1086,7 +1160,7 @@ namespace Volcano {
 					{
 						ImGui::PushID(i);
 
-						if (ImGui::TreeNodeEx((void*)i, ImGuiTreeNodeFlags_SpanAvailWidth, (bones[i].GetBoneName() + std::to_string(bones[i].GetBoneID())).c_str()))
+						if (ImGui::TreeNodeEx((void*)i, ImGuiTreeNodeFlags_SpanAvailWidth, (bones[i].GetBoneName() + "[" + std::to_string(bones[i].GetBoneID()) + "]").c_str()))
 						{
 							//ImGui::Text(bones[i].GetBoneName().c_str());
 							auto& positions = bones[i].GetPositions();
@@ -1206,13 +1280,11 @@ namespace Volcano {
 				if (!entity->HasComponent<AnimationComponent>())
 				{
 					auto& ac = entity->AddComponent<AnimationComponent>();
-					ac.path = modelPath.string();
 					ac.animation = model->GetAnimation();
 				}
 				else
 				{
 					auto& ac = entity->GetComponent<AnimationComponent>();
-					ac.path = modelPath.string();
 					ac.animation = model->GetAnimation();
 				}
 			}

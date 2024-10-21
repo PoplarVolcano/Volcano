@@ -36,6 +36,13 @@ namespace Volcano {
 			VOL_CORE_TRACE("GetAssetDirectory::bug");
 		}
 
+		static std::filesystem::path GetRelativeAssetDirectory(std::filesystem::path path)
+		{
+			if (s_ActiveProject)
+				return std::filesystem::relative(path, GetAssetDirectory());
+			VOL_CORE_TRACE("GetRelativeAssetDirectory::bug");
+		}
+
 		// TODO(Yan): move to asset manager when we have one
 		static std::filesystem::path GetAssetFileSystemPath(const std::filesystem::path& path)
 		{

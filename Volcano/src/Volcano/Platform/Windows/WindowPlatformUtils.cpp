@@ -9,6 +9,7 @@
 
 #include "Volcano/Core/Application.h"
 #include <tchar.h>
+#include "Volcano/Utils/FileUtils.h"
 
 namespace Volcano {
 
@@ -19,7 +20,7 @@ namespace Volcano {
         return glfwGetTime();
     }
 
-    std::string FileDialogs::OpenFile(const char* filter)
+    std::string FileDialogs::OpenFile(const char* filter, std::string oldPath)
     {
         OPENFILENAME ofn;                        // common dialog box structure  文件夹对话框
         CHAR szFile[260] = { 0 };                // 在Windows平台的C++编程中，LPWSTR是指向Unicode宽字符（UTF-16编码）字符串的指针类型，通常用于Windows API函数。
@@ -31,6 +32,18 @@ namespace Volcano {
         ofn.nMaxFile = sizeof(szFile);
         ofn.lpstrFilter = filter;
         ofn.nFilterIndex = 1;
+        if (!oldPath.empty())
+        {
+            auto lastDot = oldPath.rfind('.');
+            bool directory = lastDot == std::string::npos;
+            if (directory)
+            {
+                FileUtils::CreatePath(oldPath);
+                ofn.lpstrInitialDir = (LPSTR)oldPath.data();
+            }
+            else if (std::filesystem::exists(oldPath))
+                ofn.lpstrInitialDir = (LPSTR)oldPath.data();
+        }
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
         if (GetOpenFileNameA(&ofn) == TRUE) {
             return ofn.lpstrFile;
@@ -81,7 +94,7 @@ namespace Volcano {
         return path;
     }
 
-    std::string FileDialogs::SaveFile(const char* filter)
+    std::string FileDialogs::SaveFile(const char* filter, std::string oldPath)
     {
         OPENFILENAME ofn;
         CHAR szFile[260] = { 0 };
@@ -92,6 +105,18 @@ namespace Volcano {
         ofn.nMaxFile = sizeof(szFile);
         ofn.lpstrFilter = filter;
         ofn.nFilterIndex = 1;
+        if (!oldPath.empty())
+        {
+            auto lastDot = oldPath.rfind('.');
+            bool directory = lastDot == std::string::npos;
+            if (directory)
+            {
+                FileUtils::CreatePath(oldPath);
+                ofn.lpstrInitialDir = (LPSTR)oldPath.data();
+            }
+            else if (std::filesystem::exists(oldPath))
+                ofn.lpstrInitialDir = (LPSTR)oldPath.data();
+        }
         ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
         if (GetSaveFileNameA(&ofn) == TRUE) {
             return ofn.lpstrFile;

@@ -12,6 +12,7 @@
 
 #include "Volcano/Scene/SceneSerializer.h"
 #include "Volcano/Utils/PlatformUtils.h"
+#include "Volcano/Utils/FileUtils.h"
 #include "Volcano/Math/Math.h"
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/MouseBuffer.h"
@@ -271,9 +272,11 @@ namespace Volcano{
             ImGui::SameLine();
             if (ImGui::Button("Open Project"))
             {
-                OpenProject();
-                m_NewProject = false;
-                m_ProjectLoaded = true;
+                if (OpenProject())
+                {
+                    m_NewProject = false;
+                    m_ProjectLoaded = true;
+                }
             }
             ImGui::End();
         }
@@ -389,7 +392,7 @@ namespace Volcano{
             {
                 if (ImGui::MenuItem("Set assembly", "Ctrl+R"))
                 {
-                    std::string assemblyPath = FileDialogs::OpenFile("C# Assembly (*.dll)\0*.dll\0 ");
+                    std::string assemblyPath = FileDialogs::OpenFile("C# Assembly (*.dll)\0*.dll\0 ", Project::GetActive()->GetProjectDirectory().string());
                     Project::GetActive()->GetConfig().ScriptModulePath = std::filesystem::relative(assemblyPath, Project::GetActive()->GetAssetDirectory()).string();
                     ScriptEngine::ReloadAssembly();
                 }
@@ -952,7 +955,7 @@ namespace Volcano{
     bool ExampleLayer::OpenProject()
     {
         // 打开.hproj文件读取Project
-        std::string filepath = FileDialogs::OpenFile("Volcano Project (*.hproj)\0*.hproj\0");
+        std::string filepath = FileDialogs::OpenFile("Volcano Project (*.hproj)\0*.hproj\0", FileDialogs::GetProjectPath().string());
         if (filepath.empty())
             return false;
 
@@ -975,7 +978,7 @@ namespace Volcano{
 
     void ExampleLayer::OpenScene()
     {
-        std::string filepath = FileDialogs::OpenFile("Volcano Scene (*.volcano)\0*.volcano\0");
+        std::string filepath = FileDialogs::OpenFile("Volcano Scene (*.volcano)\0*.volcano\0", Project::GetAssetDirectory().string());
         if (!filepath.empty())
             OpenScene(filepath);
         else
@@ -1024,7 +1027,7 @@ namespace Volcano{
 
     void ExampleLayer::SaveSceneAs()
     {
-        std::string filepath = FileDialogs::SaveFile("Volcano Scene (*.volcano)\0*.volcano\0");
+        std::string filepath = FileDialogs::SaveFile("Volcano Scene (*.volcano)\0*.volcano\0", Project::GetAssetDirectory().string());
         if (!filepath.empty())
         {
             SerializeScene(m_ActiveScene, filepath);
@@ -1039,6 +1042,9 @@ namespace Volcano{
     void ExampleLayer::SerializeScene(Ref<Scene> scene, const std::filesystem::path& path)
     {
         SceneSerializer serializer(scene);
+        scene->SetName(FileUtils::GetFileNameFromPath(path.string()));
+        scene->SetFilePath(path.string());
+        scene->SetPath(std::filesystem::path(path).parent_path().append(scene->GetName()).string());
         serializer.Serialize(path.string());
     }
 

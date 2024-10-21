@@ -9,6 +9,7 @@
 #include "Volcano/Renderer/Shader.h"
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Core/Timer.h"
+#include "Volcano/Utils/FileUtils.h"
 
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
@@ -113,11 +114,7 @@ namespace Volcano {
 			VOL_CORE_WARN("Shader creation took {0} ms", timer.ElapsedMillis());
 		}
 		// Extract name from filepath
-		auto lastSlash = filepath.find_last_of("/\\");
-		lastSlash = lastSlash == std::string::npos ? 0 : lastSlash + 1;
-		auto lastDot = filepath.rfind('.');
-		auto count = lastDot == std::string::npos ? filepath.size() - lastSlash : lastDot - lastSlash;
-		m_Name = filepath.substr(lastSlash, count);
+		m_Name = FileUtils::GetFileNameFromPath(filepath);
 	}
 
 	OpenGLShader::OpenGLShader(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc)

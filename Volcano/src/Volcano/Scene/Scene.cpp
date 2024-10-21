@@ -627,25 +627,27 @@ namespace Volcano {
 					}
 					break;
 				case MeshType::Model:
-					mesh.mesh->StartBatch();
-					entityNode = m_EntityEnttMap[entity].get();
-					do
+					if (mesh.mesh != nullptr)
 					{
-						if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
+						mesh.mesh->StartBatch();
+						entityNode = m_EntityEnttMap[entity].get();
+						do
 						{
-							auto animator = entityNode->GetComponent<AnimatorComponent>().animator;
-							mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
-							break;
+							if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
+							{
+								auto animator = entityNode->GetComponent<AnimatorComponent>().animator;
+								mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
+								break;
+							}
+							else
+								entityNode = entityNode->GetEntityParent();
+						} while (entityNode != nullptr);
+
+						if (entityNode == nullptr)
+						{
+							mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
 						}
-						else
-							entityNode = entityNode->GetEntityParent();
-					} while (entityNode != nullptr);
-
-					if (entityNode == nullptr)
-					{
-						mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
 					}
-
 					break;
 				default:
 					VOL_TRACE("´íÎóMeshType");
@@ -772,10 +774,13 @@ namespace Volcano {
 					mesh.mesh->EndScene();
 					break;
 				case MeshType::Model:
-					mesh.mesh->BeginScene(camera, transform, position);
-					mesh.mesh->BindTextures(renderer.Textures);
-					mesh.mesh->BindShader(m_RenderType);
-					mesh.mesh->EndScene();
+					if (mesh.mesh != nullptr)
+					{
+						mesh.mesh->BeginScene(camera, transform, position);
+						mesh.mesh->BindTextures(renderer.Textures);
+						mesh.mesh->BindShader(m_RenderType);
+						mesh.mesh->EndScene();
+					}
 					break;
 				default:
 					VOL_TRACE("´íÎóMeshType");

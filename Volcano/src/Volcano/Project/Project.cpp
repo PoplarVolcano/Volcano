@@ -1,18 +1,10 @@
 #include "volpch.h"
 #include "Project.h"
-
+#include "Volcano/Utils/FileUtils.h"
 #include "ProjectSerializer.h"
 
 namespace Volcano {
 
-	void CreateProjectPath(std::filesystem::path projectPath)
-	{
-		if (!std::filesystem::exists(projectPath.parent_path()))
-			CreateProjectPath(projectPath.parent_path());
-		if (!std::filesystem::exists(projectPath))
-		    std::filesystem::create_directory(projectPath);
-
-	}
 	Ref<Project> Project::New(std::filesystem::path newProjectPath, const std::string name)
 	{
 		Ref<Project> project = CreateRef<Project>();
@@ -23,8 +15,8 @@ namespace Volcano {
 		projectConfig.ScriptModulePath;
 		project->SetConfig(projectConfig);
 		project->m_ProjectDirectory = newProjectPath;
-		CreateProjectPath(newProjectPath);
-		CreateProjectPath(newProjectPath / projectConfig.AssetDirectory.string());
+		FileUtils::CreatePath(newProjectPath);
+		FileUtils::CreatePath(newProjectPath / projectConfig.AssetDirectory.string());
 		ProjectSerializer serializer(project);
 		std::filesystem::path projectFilePath = newProjectPath / (name + ".hproj");
 		serializer.Serialize(projectFilePath);
