@@ -1,5 +1,6 @@
 #pragma once
 #include "Scene.h"
+#include "Volcano/Renderer/RendererItem/Mesh.h"
 
 namespace Volcano {
 
@@ -22,12 +23,12 @@ namespace Volcano {
 	class MeshSerializer
 	{
 	public:
-		MeshSerializer(Ref<Entity> entity);
+		MeshSerializer(Ref<MeshNode> meshNode);
 
 		bool Serialize(const std::filesystem::path filepath);
 		bool Deserialize(const std::filesystem::path filepath);
 	private:
-		Ref<Entity> m_Entity;
+		Ref<MeshNode> m_MeshNode;
 	};
 
 	class AnimationSerializer

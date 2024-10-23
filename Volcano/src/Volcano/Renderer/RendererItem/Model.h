@@ -22,13 +22,6 @@ namespace Volcano {
         std::vector<Ref<ModelNode>> children;
     };
 
-    struct MeshNode
-    {
-        std::string name;
-        Ref<Mesh> mesh;
-        std::vector<std::pair<ImageType, Ref<Texture>>> textures;
-    };
-
     struct BoneInfo
     {
         /*finalBoneMatricesµÄË÷Òý*/
@@ -39,13 +32,10 @@ namespace Volcano {
 
     };
 
-    class ModelLibrary;
-
     class Model
     {
     public:
         static Ref<Model> Create(const char* path, bool gamma = false);
-        static const Scope<ModelLibrary>& GetModelLibrary();
 
         Model(const char* path, bool gamma = false);
 
@@ -78,21 +68,5 @@ namespace Volcano {
         void processNode(aiNode* node, const aiScene* scene, Ref<ModelNode>& modelNode);
         Ref<MeshNode> processMesh(aiMesh* mesh, const aiScene* scene);
         std::vector<std::pair<ImageType, Ref<Texture>>> loadMaterialTextures(aiMaterial* mat, aiTextureType type, ImageType imageType);
-
-        static std::once_flag init_flag;
-        static Scope<ModelLibrary> m_ModelLibrary;
-
-    };
-
-
-    class ModelLibrary {
-    public:
-        void Add(const Ref<Model> model);
-        void Add(const std::string& path, const Ref<Model> model);
-        Ref<Model> Load(const std::string filepath);
-        Ref<Model> Get(const std::string& path);
-        bool Exists(const std::string& path);
-    private:
-        std::unordered_map<std::string, Ref<Model>> m_Models;
     };
 }

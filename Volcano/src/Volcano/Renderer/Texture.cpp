@@ -16,6 +16,7 @@ namespace Volcano {
 		return nullptr;
 	}
 
+	// path: ÎÆÀí¾ø¶ÔÂ·¾¶
 	Ref<Texture2D> Texture2D::Create(const std::string& path, bool filp, TextureFormat internalFormat)
 	{
 		switch (RendererAPI::Current())

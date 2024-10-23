@@ -237,8 +237,6 @@ namespace Volcano {
 				out << YAML::Key << "MeshType" << YAML::Value << (int)meshComponent.meshType;
 				if (meshComponent.modelPath.empty())
 					out << YAML::Key << "ModelPath" << YAML::Value << meshComponent.modelPath;
-				else
-					out << YAML::Key << "ModelPath" << YAML::Value << std::filesystem::relative(meshComponent.modelPath, Project::GetAssetDirectory()).string();
 
 				out << YAML::Key << "VertexBone" << YAML::Value << YAML::BeginSeq; // VertexBone
 				for (auto& vertexBone : meshComponent.vertexBone)
@@ -269,7 +267,9 @@ namespace Volcano {
 					{
 						out << YAML::BeginMap;
 						out << YAML::Key << "ImageType" << YAML::Value << (int)textures[i].first;
-						out << YAML::Key << "Path" << YAML::Value << textures[i].second->GetPath();
+						// 保存纹理相对路径
+						out << YAML::Key << "Path" << YAML::Value << Project::GetRelativeAssetDirectory(textures[i].second->GetPath()).string();
+						out << YAML::Key << "Filp" << YAML::Value << textures[i].second->GetFilp();
 						out << YAML::EndMap;
 					}
 					out << YAML::EndSeq;
@@ -383,6 +383,18 @@ namespace Volcano {
 					out << YAML::EndSeq; // 结束序列化
 				}
 			}
+
+			out << YAML::Key << "Meshes" << YAML::BeginSeq;
+			{
+				for (auto& [name, mesh] : Mesh::GetMeshLibrary()->GetMeshes())
+				{
+					out << YAML::BeginMap;
+					out << YAML::Key << "Path" << YAML::Value << name;
+					out << YAML::EndMap;
+				}
+				out << YAML::EndSeq;
+			}
+
 			out << YAML::Key << "Animations" << YAML::BeginSeq;
 			{
 				for (auto& [name, animation] : Animation::GetAnimationLibrary()->GetAnimations())
@@ -430,6 +442,7 @@ namespace Volcano {
 		for (auto yamlChild : yamlChildren)
 		{
 			AssimpNodeData child;
+			child.parent = &node;
 			LoadAnimation(yamlChild, child, animation);
 			node.childrenCount++;
 			node.children.push_back(child);
@@ -574,18 +587,11 @@ namespace Volcano {
 			mc.meshType = (MeshType)meshComponent["MeshType"].as<int>();
 			if (mc.meshType == MeshType::Model && meshComponent["ModelPath"].IsDefined())
 			{
-				MeshSerializer meshSerializer(deserializedEntity);
-				meshSerializer.Deserialize(Project::GetAssetFileSystemPath(meshComponent["ModelPath"].as<std::string>()));
-				/*
-				std::string modelPath = meshComponent["ModelPath"].as<std::string>();
-				int modelIndex = meshComponent["ModelIndex"].as<int>();
-				if (!Model::GetModelLibrary()->Exists(modelPath))
-					Model::GetModelLibrary()->Load(modelPath);
-				auto model = Model::GetModelLibrary()->Get(modelPath);
-				auto& meshData = model->GetMeshes()[modelIndex];
-				mc.SetMesh(mc.meshType, deserializedEntity.get(), meshData->mesh);
-				mc.modelPath = modelPath;
-				*/
+				mc.modelPath = meshComponent["ModelPath"].as<std::string>();
+				if (!Mesh::GetMeshLibrary()->Exists(mc.modelPath))
+					Mesh::GetMeshLibrary()->Load(mc.modelPath);
+				auto meshNode = Mesh::GetMeshLibrary()->Get(mc.modelPath);
+				mc.SetMesh(MeshType::Model, deserializedEntity.get(), meshNode->mesh);
 			}
 			else
 				mc.SetMesh(mc.meshType, deserializedEntity.get());
@@ -619,7 +625,7 @@ namespace Volcano {
 					if (!path.empty())
 					{
 						auto filePath = Project::GetAssetFileSystemPath(path);
-						mrc.AddTexture(type, Texture2D::Create(filePath.string()));
+						mrc.AddTexture(type, Texture2D::Create(filePath.string(), texture["Filp"].as<bool>()));
 					}
 					else
 						mrc.AddTexture(type);
@@ -657,18 +663,6 @@ namespace Volcano {
 			}
 			else
 				ac.animation = std::make_shared<Animation>();
-				//ac.LoadAnimation(path);
-			/*
-			else
-			{
-				ac.animation->SetDuration(animationComponent["Duration"].as<float>());
-				ac.animation->SetTicksPerSecond(animationComponent["TicksPerSecond"].as<float>());
-				auto& rootNode = ac.animation->GetRootNode();
-				auto yamlBoneNode = animationComponent["BoneNode"];
-				LoadAnimation(yamlBoneNode, rootNode, *ac.animation.get());
-			}
-			*/
-
 		}
 
 		auto rigidbody2DComponent = entity["Rigidbody2DComponent"];
@@ -732,6 +726,11 @@ namespace Volcano {
 		m_Scene->SetFilePath(filepath);
 		m_Scene->SetPath(std::filesystem::path(filepath).parent_path().append(sceneName).string());
 
+		auto meshes = data["Meshes"];
+		if (meshes)
+			for (auto mesh : meshes)
+				Mesh::GetMeshLibrary()->Load(mesh["Path"].as<std::string>());
+
 		auto animations = data["Animations"];
 		if (animations)
 			for (auto animation : animations)
@@ -752,59 +751,59 @@ namespace Volcano {
 	}
 
 
-	MeshSerializer::MeshSerializer(Ref<Entity> entity)
-		: m_Entity(entity)
+	MeshSerializer::MeshSerializer(Ref<MeshNode> meshNode)
+		: m_MeshNode(meshNode)
 	{
 	}
+
+	// 序列化Mesh的顶点、索引、纹理、骨骼信息
+	// filepath: 目标mms的绝对路径
 	bool MeshSerializer::Serialize(const std::filesystem::path filepath)
 	{
 		std::string name = FileUtils::GetFileNameFromPath(filepath.string());
-		auto& mc = m_Entity->GetComponent<MeshComponent>();
-		std::string scenePath = m_Entity->GetScene()->GetPath();
 
-		auto& mesh = mc.mesh;
-		if (mesh == nullptr)
+		if (m_MeshNode == nullptr)
 			return false;
 
 		YAML::Emitter out;
 		{
 			out << YAML::BeginMap;
-			out << YAML::Key << "Mesh";
-			out << YAML::BeginMap;// Mesh
 			{
-				out << YAML::Key << "Name" << YAML::Value << name;
-				out << YAML::Key << "NumVertices" << YAML::Value << mc.mesh->GetVertexSize();
-				out << YAML::Key << "Vertices" << YAML::BeginSeq; // Vertices
+				out << YAML::Key << "Mesh";
+				out << YAML::BeginMap;// Mesh
 				{
-					for (auto& vertex : mesh->GetVertices())
+					out << YAML::Key << "Name" << YAML::Value << name;
+					out << YAML::Key << "NumVertices" << YAML::Value << m_MeshNode->mesh->GetVertexSize();
+					out << YAML::Key << "Vertices" << YAML::BeginSeq; // Vertices
 					{
-						out << YAML::BeginMap;
+						auto& vertices = m_MeshNode->mesh->GetVertices();
+						for (uint32_t i = 0; i < vertices.size(); i++)
 						{
-							out << YAML::Key << "Position" << YAML::Value << vertex.Position;
-							out << YAML::Key << "TexCoords" << YAML::Value << vertex.TexCoords;
-							out << YAML::Key << "Normal" << YAML::Value << vertex.Normal;
-							out << YAML::Key << "Tangent" << YAML::Value << vertex.Tangent;
-							out << YAML::Key << "Bitangent" << YAML::Value << vertex.Bitangent;
-							out << YAML::Key << "BoneIDs" << YAML::Value << glm::ivec4(vertex.BoneIDs[0], vertex.BoneIDs[1], vertex.BoneIDs[2], vertex.BoneIDs[3]);
-							out << YAML::Key << "Weights" << YAML::Value << glm::vec4(vertex.Weights[0], vertex.Weights[1], vertex.Weights[2], vertex.Weights[3]);
-							out << YAML::EndMap;
+							out << YAML::BeginMap;
+							{
+								out << YAML::Key << "Position" << YAML::Value << vertices[i].Position;
+								out << YAML::Key << "TexCoords" << YAML::Value << vertices[i].TexCoords;
+								out << YAML::Key << "Normal" << YAML::Value << vertices[i].Normal;
+								out << YAML::Key << "Tangent" << YAML::Value << vertices[i].Tangent;
+								out << YAML::Key << "Bitangent" << YAML::Value << vertices[i].Bitangent;
+								out << YAML::Key << "BoneIDs" << YAML::Value << glm::ivec4(vertices[i].BoneIDs[0], vertices[i].BoneIDs[1], vertices[i].BoneIDs[2], vertices[i].BoneIDs[3]);
+								out << YAML::Key << "Weights" << YAML::Value << glm::vec4(vertices[i].Weights[0], vertices[i].Weights[1], vertices[i].Weights[2], vertices[i].Weights[3]);
+								out << YAML::EndMap;
+							}
 						}
+						out << YAML::EndSeq; // Vertices
 					}
-					out << YAML::EndSeq; // Vertices
-				}
-				auto& indices = mesh->GetIndices();
-				out << YAML::Key << "NumIndices" << YAML::Value << mc.mesh->GetIndexSize();
-				out << YAML::Key << "Indices" << YAML::BeginSeq; // Indices
-				{
-					for (uint32_t i = 0; i < indices.size(); i++)
-						out << indices[i];
-					out << YAML::EndSeq; // Indices
-				}
+					auto& indices = m_MeshNode->mesh->GetIndices();
+					out << YAML::Key << "NumIndices" << YAML::Value << m_MeshNode->mesh->GetIndexSize();
+					out << YAML::Key << "Indices" << YAML::BeginSeq; // Indices
+					{
+						for (uint32_t i = 0; i < indices.size(); i++)
+							out << indices[i];
+						out << YAML::EndSeq; // Indices
+					}
 
-				if (m_Entity->HasComponent<MeshRendererComponent>())
-				{
-					auto& mrc = m_Entity->GetComponent<MeshRendererComponent>();
-					auto& textures = mrc.Textures;
+
+					auto& textures = m_MeshNode->textures;
 					if (!textures.empty())
 					{
 						out << YAML::Key << "Textures" << YAML::Value << YAML::BeginSeq; // Textures
@@ -812,69 +811,70 @@ namespace Volcano {
 						{
 							out << YAML::BeginMap;
 							out << YAML::Key << "ImageType" << YAML::Value << (int)textures[i].first;
-							out << YAML::Key << "Path" << YAML::Value << std::filesystem::relative(textures[i].second->GetPath(), Project::GetAssetDirectory()).string();
+							// 保存纹理相对路径
+							out << YAML::Key << "Path" << YAML::Value << Project::GetRelativeAssetDirectory(textures[i].second->GetPath()).string();
+							out << YAML::Key << "Filp" << YAML::Value << textures[i].second->GetFilp();
 							out << YAML::EndMap;
 						}
 						out << YAML::EndSeq;// Textures
 					}
-				}
-				struct BoneData
-				{
-					int id;
-					std::string name;
-					glm::mat4 offset;
-				};
-
-				Entity* entityTemp = m_Entity.get();
-				do
-				{
-					if (entityTemp->HasComponent<AnimationComponent>())
-					{
-						auto& animation = entityTemp->GetComponent<AnimationComponent>().animation;
-
-						out << YAML::Key << "Bones" << YAML::BeginSeq; // Bones
+					/*
+						struct BoneData
 						{
-							std::unordered_map<int, BoneData> boneMap;
-							for (auto& vertex : mesh->GetVertices())
+							int id;
+							std::string name;
+							glm::mat4 offset;
+						};
+
+						Entity* entityTemp = m_MeshNode->mesh->GetEntity();
+						do
+						{
+							if (entityTemp->HasComponent<AnimationComponent>())
 							{
-								for (uint32_t boneIndex = 0; boneIndex < MAX_BONE_INFLUENCE; boneIndex++)
+								auto& animation = entityTemp->GetComponent<AnimationComponent>().animation;
+
+								out << YAML::Key << "Bones" << YAML::BeginSeq; // Bones
 								{
-									int id = vertex.BoneIDs[boneIndex];
-									if (id == -1)
-										continue;
-									if (boneMap.find(id) == boneMap.end())
+									std::unordered_map<int, BoneData> boneMap;
+									for (auto& vertex : m_MeshNode->mesh->GetVertices())
 									{
-										Bone* bone = animation->FindBone(id);
-										if (bone != nullptr)
+										for (uint32_t boneIndex = 0; boneIndex < MAX_BONE_INFLUENCE; boneIndex++)
 										{
-											boneMap[id] = BoneData(bone->GetBoneID(), bone->GetBoneName(), animation->GetBoneIDMap()[bone->GetBoneName()].offset);
+											int id = vertex.BoneIDs[boneIndex];
+											if (id == -1)
+												continue;
+											if (boneMap.find(id) == boneMap.end())
+											{
+												Bone* bone = animation->FindBone(id);
+												if (bone != nullptr)
+												{
+													boneMap[id] = BoneData(bone->GetBoneID(), bone->GetBoneName(), animation->GetBoneIDMap()[bone->GetBoneName()].offset);
+												}
+											}
 										}
 									}
+									for (auto& [id, bone] : boneMap)
+									{
+										out << YAML::BeginMap;
+										{
+											out << YAML::Key << "ID" << YAML::Value << bone.id;
+											out << YAML::Key << "Name" << YAML::Value << bone.name;
+											out << YAML::Key << "Offset" << YAML::Value << bone.offset;
+											out << YAML::EndMap;
+										}
+									}
+									out << YAML::EndSeq;// Bones
 								}
+								break;
 							}
-							for (auto& [id, bone] : boneMap)
-							{
-								out << YAML::BeginMap;
-								{
-									out << YAML::Key << "ID" << YAML::Value << bone.id;
-									out << YAML::Key << "Name" << YAML::Value << bone.name;
-									out << YAML::Key << "Offset" << YAML::Value << bone.offset;
-									out << YAML::EndMap;
-								}
-							}
-							out << YAML::EndSeq;// Bones
-						}
-
-						break;
-					}
-					else
-						entityTemp = entityTemp->GetEntityParent();
-				} while (entityTemp != nullptr);
-
-
-				out << YAML::EndMap; // Mesh
+							else
+								entityTemp = entityTemp->GetEntityParent();
+						} while (entityTemp != nullptr);
+						*/
+					out << YAML::EndMap; // Mesh
+				}
+				out << YAML::EndMap;
 			}
-			out << YAML::EndMap;
 		}
 
 		std::ofstream fout(filepath);
@@ -883,6 +883,8 @@ namespace Volcano {
 		return true;
 	}
 
+	// 从目标mms文件中读取mesh和textures
+	// filepath: mms文件绝对路径
 	bool MeshSerializer::Deserialize(const std::filesystem::path filepath)
 	{
 
@@ -901,10 +903,6 @@ namespace Volcano {
 		if (!meshNode)
 			return false;
 
-		if (!m_Entity->HasComponent<MeshComponent>())
-			m_Entity->AddComponent<MeshComponent>();
-		auto& mc = m_Entity->GetComponent<MeshComponent>();
-
 		std::vector<MeshVertex> vertices;
 		std::vector<uint32_t> indices;
 		std::vector<std::pair<ImageType, Ref<Texture>>> textures;
@@ -912,13 +910,13 @@ namespace Volcano {
 		for (auto vertex : meshNode["Vertices"])
 		{
 			MeshVertex mv;
-			mv.Position = vertex["Position"].as<glm::vec3>();
-			mv.TexCoords = vertex["TexCoords"].as<glm::vec2>();
-			mv.Normal = vertex["Normal"].as<glm::vec3>();
-			mv.Tangent = vertex["Tangent"].as<glm::vec3>();
-			mv.Bitangent = vertex["Bitangent"].as<glm::vec3>();
+			mv.Position        = vertex["Position"].as<glm::vec3>();
+			mv.TexCoords       = vertex["TexCoords"].as<glm::vec2>();
+			mv.Normal          = vertex["Normal"].as<glm::vec3>();
+			mv.Tangent         = vertex["Tangent"].as<glm::vec3>();
+			mv.Bitangent       = vertex["Bitangent"].as<glm::vec3>();
 			glm::ivec4 boneIDs = vertex["BoneIDs"].as<glm::ivec4>();
-			glm::vec4 weights = vertex["Weights"].as<glm::vec4>();
+			glm::vec4 weights  = vertex["Weights"].as<glm::vec4>();
 			for (uint32_t i = 0; i < 4; i++)
 			{
 				if (boneIDs[i] == -1)
@@ -931,21 +929,16 @@ namespace Volcano {
 		for (auto index : meshNode["Indices"])
 			indices.push_back(index.as<int>());
 
-		mc.modelPath = filepath.string();
-		mc.vertexBone.clear();
-		mc.SetMesh(MeshType::Model, m_Entity.get(), std::make_shared<ModelMesh>(vertices, indices));
+		m_MeshNode->mesh = std::make_shared<ModelMesh>(vertices, indices);
 
 		auto texturesNode = meshNode["Textures"];
 		if (texturesNode.size())
 		{
-			if (!m_Entity->HasComponent<MeshRendererComponent>())
-				m_Entity->AddComponent<MeshRendererComponent>();
-			auto& mrc = m_Entity->GetComponent<MeshRendererComponent>();
-			mrc.Textures.clear();
+			m_MeshNode->textures.clear();
 			for (auto texture : texturesNode)
 			{
 				std::string texturePath = Project::GetAssetFileSystemPath(texture["Path"].as<std::string>()).string();
-				mrc.Textures.push_back({ (ImageType)texture["ImageType"].as<int>(), Texture2D::Create(texturePath) });
+				m_MeshNode->textures.push_back({ (ImageType)texture["ImageType"].as<int>(), Texture2D::Create(texturePath, texture["Filp"].as<bool>())});
 			}
 		}
 

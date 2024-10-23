@@ -59,9 +59,21 @@ namespace Volcano {
 		}
 	};
 
+	class Mesh;
+	class MeshLibrary;
+
+	struct MeshNode
+	{
+		std::string name;
+		Ref<Mesh> mesh;
+		std::vector<std::pair<ImageType, Ref<Texture>>> textures;
+	};
+
+
 	class Mesh
 	{
 	public:
+		static const Scope<MeshLibrary>& GetMeshLibrary();
 		static void Init();
 		
 		void Shutdown();
@@ -81,6 +93,7 @@ namespace Volcano {
 		void SetEntity(Entity* entity) { m_Entity = entity; }
 		void SetBoneID(int vertexIndex1, int vertexIndex2, int boneIndex, float weight);
 
+		auto GetEntity() { return m_Entity; }
 		std::vector<MeshVertex>& GetVertices() { return m_Vertices; }
 		std::vector<uint32_t>& GetIndices() { return m_Indices; }
 		uint32_t GetVertexSize() { return m_VertexSize; }
@@ -116,6 +129,22 @@ namespace Volcano {
 
 		static Ref<Texture2D> m_WhiteTextures[2];
 		static Ref<Texture2D> m_BlackTextures[5];
+
+		static std::once_flag init_flag;
+		static Scope<MeshLibrary> m_MeshLibrary;
 	};
 
+	class MeshLibrary 
+	{
+	public:
+		void Add(const Ref<MeshNode> meshNode);
+		void AddOrReplace(const std::string& path, const Ref<MeshNode> meshNode);
+		Ref<MeshNode> Load(const std::string filepath);
+		Ref<MeshNode> Get(const std::string& path);
+		bool Exists(const std::string& path);
+		void Remove(const std::string& path);
+		auto& GetMeshes() { return m_Meshes; }
+	private:
+		std::unordered_map<std::string, Ref<MeshNode>> m_Meshes;
+	};
 }

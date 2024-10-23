@@ -10,7 +10,7 @@ namespace Volcano {
         // 没有骨骼动画的骨骼使用AssimpNodeData.transformation
         glm::mat4 transformation;
         std::string name;
-        AssimpNodeData* parent;
+        AssimpNodeData* parent = nullptr;
         int childrenCount = 0;
         std::vector<AssimpNodeData> children;
     };

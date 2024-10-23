@@ -126,17 +126,16 @@ namespace Volcano {
         m_Animations[path] = animation;
     }
 
+    // filepath: model文件的绝对路径
     Ref<Animation> AnimationLibrary::Load(const std::string filepath)
     {
-        auto& modelLibrary = Model::GetModelLibrary();
-        if (!modelLibrary->Exists(filepath))
-            modelLibrary->Load(filepath);
-        auto model = modelLibrary->Get(filepath);
+        auto model = Model::Create(filepath.c_str());
         Ref<Animation> animation = std::make_shared<Animation>(filepath, model.get());
         Add(animation);
         return animation;
     }
 
+    // filepath: anm文件的相对路径
     Ref<Animation> AnimationLibrary::LoadAnm(const std::string filepath)
     {
         Ref<Animation> animation = std::make_shared<Animation>();

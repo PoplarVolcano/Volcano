@@ -5,11 +5,16 @@
 #include "Volcano/Scene/Entity.h"
 #include "Volcano/Renderer/RendererItem/Model.h"
 #include "Volcano/Renderer/RendererItem/Animator.h"
+#include "Volcano/Scene/SceneSerializer.h"
+#include "Volcano/Project/Project.h"
 
 namespace Volcano {
 
     Ref<Texture2D> Mesh::m_WhiteTextures[2];
     Ref<Texture2D> Mesh::m_BlackTextures[5];
+
+    std::once_flag Mesh::init_flag;
+    Scope<MeshLibrary> Mesh::m_MeshLibrary;
 
 
     void Mesh::Init()
@@ -41,20 +46,7 @@ namespace Volcano {
         float Shininess = 32.0f;
         UniformBufferManager::GetUniformBuffer("Material")->SetData(&Shininess, sizeof(float));
 
-        /*
-        auto& mc = m_Entity->GetComponent<MeshComponent>();
-        if (!mc.modelPath.empty())
-        {
-            auto animator = Model::GetModelLibrary()->Get(mc.modelPath)->GetAnimator();
-            auto finalBoneMatrices = animator->GetFinalBoneMatrices();
-            UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&finalBoneMatrices, finalBoneMatrices.size() * 4 * 4 * sizeof(float));
-        }
-        else
-        {
-            float zero[1600] = { 0.0f };
-            UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&zero, sizeof(zero));
-        }
-        */
+        
         //StartBatch();
     }
 
@@ -70,6 +62,52 @@ namespace Volcano {
             // 不加uint8_t转化会得到元素数量, 加uint8_t返回以char为单位占用多少元素
             uint32_t dataSize = (uint32_t)((uint8_t*)vertexBufferPtr - (uint8_t*)vertexBufferBase);
             m_VertexBuffer->SetData(vertexBufferBase, dataSize);
+
+            glm::mat4 transform = m_Entity->GetTransform();
+            Entity* entityParent = m_Entity->GetEntityParent();
+            while (entityParent != nullptr)
+            {
+                transform = entityParent->GetTransform() * transform;
+                entityParent = entityParent->GetEntityParent();
+            }
+            glm::mat4 normalTransform = transpose(inverse(transform));//glm::mat3(transpose(inverse(transform)));
+
+            UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&transform, sizeof(glm::mat4));
+            UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&normalTransform, sizeof(glm::mat4), 4 * 4 * sizeof(float));
+
+
+            auto& mc = m_Entity->GetComponent<MeshComponent>();
+            if (mc.meshType == MeshType::Model || !mc.vertexBone.empty())
+            {
+                Entity* entityTemp = m_Entity;
+                do
+                {
+                    if (entityTemp->HasComponent<AnimationComponent>() && entityTemp->HasComponent<AnimatorComponent>())
+                    {
+
+                        auto& animatorComponent = entityTemp->GetComponent<AnimatorComponent>();
+                        auto& finalBoneMatrices = animatorComponent.animator->GetFinalBoneMatrices();
+                        for(uint32_t i = 0; i < finalBoneMatrices.size(); i++)
+                            UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&finalBoneMatrices[i], sizeof(glm::mat4), i * 4 * 4 * sizeof(float));
+                            //UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&finalBoneMatrices, finalBoneMatrices.size() * 4 * 4 * sizeof(float));
+                        break;
+                    }
+                    else
+                        entityTemp = entityTemp->GetEntityParent();
+                } while (entityTemp != nullptr);
+                if (entityTemp == nullptr) 
+                {
+                    float zero[1600] = { 0.0f };
+                    UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&zero, sizeof(zero));
+                }
+
+            }
+            else
+            {
+                float zero[1600] = { 0.0f };
+                UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&zero, sizeof(zero));
+            }
+
 
             Draw();
         }
@@ -92,22 +130,20 @@ namespace Volcano {
         if (m_IndexCount >= MaxIndices)
             NextBatch();
 
-        glm::mat4 transform = m_Entity->GetTransform();
-        Entity* entityParent = m_Entity->GetEntityParent();
-        while (entityParent != nullptr)
-        {
-            transform =  entityParent->GetTransform() * transform;
-            entityParent = entityParent->GetEntityParent();
-        }
-        glm::mat3 normalTransform = glm::mat3(transpose(inverse(transform)));
-
         for (uint32_t i = 0; i < m_VertexSize; i++)
         {
+            vertexBufferPtr->Position  = m_Vertices[i].Position;
             vertexBufferPtr->TexCoords = m_Vertices[i].TexCoords;
-            vertexBufferPtr->Normal    = normalTransform * m_Vertices[i].Normal;
-            vertexBufferPtr->Tangent   = normalTransform * m_Vertices[i].Tangent;
-            vertexBufferPtr->Bitangent = glm::cross(vertexBufferPtr->Normal, vertexBufferPtr->Tangent);
+            vertexBufferPtr->Normal    = m_Vertices[i].Normal;
+            vertexBufferPtr->Tangent   = m_Vertices[i].Tangent;
+            vertexBufferPtr->Bitangent = m_Vertices[i].Bitangent;
+            for (uint32_t index = 0; index < MAX_BONE_INFLUENCE; index++)
+            {
+                vertexBufferPtr->BoneIDs[index] = m_Vertices[i].BoneIDs[index];
+                vertexBufferPtr->Weights[index] = m_Vertices[i].Weights[index];
+            }
 
+            /*
             if (!finalBoneMatrices.empty())
             {
                 glm::vec4 position = glm::vec4(0.0f);
@@ -126,11 +162,13 @@ namespace Volcano {
                     glm::vec4 localPosition = finalBoneMatrices[vertexBufferPtr->BoneIDs[index]] * glm::vec4(m_Vertices[i].Position, 1.0f);
                     position += localPosition * vertexBufferPtr->Weights[index];
                 }
-                vertexBufferPtr->Position = transform * position;
+                //vertexBufferPtr->Position = transform * position;
+                vertexBufferPtr->Position = position;
             }
             else
-                vertexBufferPtr->Position = transform * glm::vec4(m_Vertices[i].Position, 1.0f);
-
+                //vertexBufferPtr->Position = transform * glm::vec4(m_Vertices[i].Position, 1.0f);
+                vertexBufferPtr->Position = m_Vertices[i].Position;
+            */
             vertexBufferPtr->EntityID  = entityID;
             vertexBufferPtr++;
         }
@@ -304,4 +342,57 @@ namespace Volcano {
 
     }
 
+    const Scope<MeshLibrary>& Mesh::GetMeshLibrary()
+    {
+        std::call_once(init_flag, []() { m_MeshLibrary.reset(new MeshLibrary()); });
+        return m_MeshLibrary;
+    }
+
+
+    void MeshLibrary::Add(const Ref<MeshNode> meshNode)
+    {
+        if(meshNode->name != std::string())
+            AddOrReplace(meshNode->name, meshNode);
+        else
+            VOL_ASSERT(false, "MeshLibrary::Add: Bug");
+    }
+
+    // path: mms文件的相对路径
+    void MeshLibrary::AddOrReplace(const std::string& path, const Ref<MeshNode> meshNode)
+    {
+        VOL_CORE_ASSERT(!Exists(path), "ModelLibrary:Mesh已经存在了");
+        m_Meshes[path] = meshNode;
+    }
+
+    // path: mms文件的相对路径
+    Ref<MeshNode> MeshLibrary::Load(const std::string filepath)
+    {
+        Ref<MeshNode> meshNode = std::make_shared<MeshNode>();
+        MeshSerializer serializer(meshNode);
+        serializer.Deserialize(Project::GetAssetFileSystemPath(filepath).string());
+        meshNode->name = filepath;
+        Add(meshNode);
+        return meshNode;
+    }
+
+
+    // path: mms文件的相对路径
+    Ref<MeshNode> MeshLibrary::Get(const std::string& path)
+    {
+        if (!Exists(path))
+        {
+            VOL_CORE_TRACE("ModelLibrary:未找到Mesh");
+            return nullptr;
+        }
+        return m_Meshes[path];
+    }
+
+    bool MeshLibrary::Exists(const std::string& path)
+    {
+        return m_Meshes.find(path) != m_Meshes.end();
+    }
+    void MeshLibrary::Remove(const std::string& path)
+    {
+        m_Meshes.erase(path);
+    }
 }

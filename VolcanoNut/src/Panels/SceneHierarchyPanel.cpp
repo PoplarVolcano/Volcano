@@ -281,10 +281,11 @@ namespace Volcano {
 		for (uint32_t i = 0; i < node.children.size(); i++)
 			DestroyAssimpNode(node.children[i], ac);
 		
+		// 删除所有Children节点以及对应BoneInfo和Bone
 		auto& bones = ac.animation->GetBones();
 		for (uint32_t i = 0; i < node.children.size(); i++)
 		{
-			bones.erase(std::find_if(bones.begin(), bones.end(), [&](Bone& Bone){ return Bone.GetBoneName() == node.children.begin()->name; } ));
+			bones.erase(std::find_if(bones.begin(), bones.end(), [&](Bone& bone){ return bone.GetBoneName() == node.children.begin()->name; } ));
 			ac.animation->GetBoneIDMap().erase(node.children.begin()->name);
 			node.children.erase(node.children.begin());
 		}
@@ -413,13 +414,22 @@ namespace Volcano {
 		{
 			if (node.parent != nullptr)
 			{
+				// 删除node所有子节点
 				DestroyAssimpNode(node, ac);
+
+				// 删除node对应的BoneInfo和Bone
+				auto& bones = ac.animation->GetBones();
+				bones.erase(std::find_if(bones.begin(), bones.end(), [&](Bone& bone) { return bone.GetBoneName() == node.name; }));
+				ac.animation->GetBoneIDMap().erase(node.name);
+
+				// 从父节点的children中删除node
 				for (auto itr = node.parent->children.begin(); itr != node.parent->children.end(); itr++)
 					if (itr->name == node.name)
 					{
 						node.parent->children.erase(itr);
 						break;
 					}
+
 			}
 		}
 
@@ -809,45 +819,139 @@ namespace Volcano {
 
 				if (component.meshType == MeshType::Model)
 				{
+
+					ImGui::PushItemWidth(200);
+					auto& meshes = Mesh::GetMeshLibrary()->GetMeshes();
+					if (ImGui::BeginCombo("##Meshes", component.modelPath.c_str()))
+					{
+						for (auto& mesh : meshes)
+						{
+							bool isSelected = component.modelPath == mesh.first;
+							if (ImGui::Selectable(mesh.first.c_str(), isSelected))
+							{
+								component.modelPath = mesh.first;
+								component.SetMesh(MeshType::Model, entity.get(), mesh.second->mesh);
+								if (entity->HasComponent<MeshRendererComponent>())
+									if (mesh.second->textures.empty())
+										entity->RemoveComponent<MeshRendererComponent>();
+									else
+										entity->GetComponent<MeshRendererComponent>().Textures = mesh.second->textures;
+								else
+									if (!mesh.second->textures.empty())
+										entity->AddComponent<MeshRendererComponent>().Textures = mesh.second->textures;
+
+							}
+
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::PopItemWidth();
+
 					if (ImGui::Button("Load"))
 					{
 						std::string filePath = FileDialogs::OpenFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
 
 						if (!filePath.empty())
 						{
-							MeshSerializer serializer(entity);
-							serializer.Deserialize(filePath);
-							component.modelPath = filePath;
+							std::string relativePath = Project::GetRelativeAssetDirectory(filePath).string();
+							Ref<MeshNode> meshNode = Mesh::GetMeshLibrary()->Load(relativePath);
+							component.modelPath = relativePath;
+							component.SetMesh(MeshType::Model, entity.get(), meshNode->mesh);
 						}
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("Save..."))
 					{
-						std::string filePath;
-						if (component.modelPath.empty())
-							filePath = FileDialogs::SaveFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
-						else
-							filePath = component.modelPath;
-
-						if (!filePath.empty())
+						if (component.mesh != nullptr)
 						{
-							MeshSerializer serializer(entity);
-							serializer.Serialize(filePath);
-							component.modelPath = filePath;
+							if (component.modelPath.empty())
+							{
+								std::string filePath = FileDialogs::SaveFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
+								if (!filePath.empty())
+								{
+									Ref<MeshNode> meshNode = std::make_shared<MeshNode>();
+									meshNode->name = Project::GetRelativeAssetDirectory(filePath).string();
+									meshNode->mesh = component.mesh;
+									if (entity->HasComponent<MeshRendererComponent>())
+										meshNode->textures = entity->GetComponent<MeshRendererComponent>().Textures;
+									MeshSerializer serializer(meshNode);
+									serializer.Serialize(filePath);
+									Mesh::GetMeshLibrary()->Add(meshNode);
+									component.modelPath = meshNode->name;
+								}
+							}
+							else
+							{
+								Ref<MeshNode> meshNode = std::make_shared<MeshNode>();
+								meshNode->name = component.modelPath;
+								meshNode->mesh = component.mesh;
+								if (entity->HasComponent<MeshRendererComponent>())
+									meshNode->textures = entity->GetComponent<MeshRendererComponent>().Textures;
+								MeshSerializer serializer(meshNode);
+								serializer.Serialize(Project::GetAssetFileSystemPath(meshNode->name));
+							}
 						}
+					}
+					if (component.mesh == nullptr)
+					{
+						if (ImGui::BeginItemTooltip())
+						{
+							ImGui::Text("Please load model.");
+							ImGui::EndTooltip();
+						}
+
 					}
 					ImGui::SameLine();
 					if (ImGui::Button("Save as..."))
 					{
-						std::string filePath = FileDialogs::SaveFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
-
-						if (!filePath.empty())
+						if (component.mesh != nullptr)
 						{
-							MeshSerializer serializer(entity);
-							serializer.Serialize(filePath);
-							component.modelPath = filePath;
+							std::string filePath = FileDialogs::SaveFile("Model Mesh (*.mms)\0*.mms\0 ", entity->GetScene()->GetPath());
+
+							if (!filePath.empty())
+							{
+								Ref<MeshNode> meshNode = std::make_shared<MeshNode>();
+								meshNode->name = Project::GetRelativeAssetDirectory(filePath).string();
+								meshNode->mesh = component.mesh;
+								if (entity->HasComponent<MeshRendererComponent>())
+									meshNode->textures = entity->GetComponent<MeshRendererComponent>().Textures;
+								MeshSerializer serializer(meshNode);
+								serializer.Serialize(filePath);
+								Mesh::GetMeshLibrary()->Add(meshNode);
+								component.modelPath = meshNode->name;
+							}
 						}
 					}
+					if (component.mesh == nullptr)
+					{
+						if (ImGui::BeginItemTooltip())
+						{
+							ImGui::Text("Please load model.");
+							ImGui::EndTooltip();
+						}
+					}
+
+					ImGui::SameLine();
+					if (ImGui::Button("Drop"))
+					{
+						if (component.modelPath != std::string())
+						{
+							component.modelPath = std::string();
+							component.mesh = nullptr;
+							Mesh::GetMeshLibrary()->Remove(component.modelPath);
+						}
+					}
+					if (component.modelPath == std::string())
+					{
+						if (ImGui::BeginItemTooltip())
+						{
+							ImGui::Text("Please load model.");
+							ImGui::EndTooltip();
+						}
+					}
+
 				}
 			});
 
@@ -888,6 +992,13 @@ namespace Volcano {
 							texture = Texture2D::Create(filePath.string());
 						}
 						ImGui::EndDragDropTarget();
+					}
+
+					ImGui::SameLine();
+					if (ImGui::Button("filp"))
+					{
+						if(!texture->GetPath().empty())
+							texture = Texture2D::Create(texture->GetPath(), !texture->GetFilp());
 					}
 
 					ImGui::SameLine();
@@ -970,9 +1081,8 @@ namespace Volcano {
 					{
 						const wchar_t* path = (const wchar_t*)payload->Data;
 						std::filesystem::path animationPath = path;
-						Ref<Model> model = Model::GetModelLibrary()->Get(animationPath.string());
-						if (model == nullptr)
-							model = Model::GetModelLibrary()->Load(animationPath.string());
+
+						Ref<Model> model = Model::Create(animationPath.string().c_str());
 						component.LoadAnimation(animationPath.string(), model.get());
 					}
 					ImGui::EndDragDropTarget();
@@ -1266,10 +1376,9 @@ namespace Volcano {
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
 			{
 				const wchar_t* path = (const wchar_t*)payload->Data;
-				std::filesystem::path modelPath = path;
-				if (!Model::GetModelLibrary()->Exists(modelPath.string()))
-					Model::GetModelLibrary()->Load(modelPath.string());
-				auto model = Model::GetModelLibrary()->Get(modelPath.string());
+				std::filesystem::path modelPath = path;;
+
+				auto model = Model::Create(modelPath.string().c_str());
 				ModelLoading(model->GetModelNodeRoot(), model, entity);
 
 				if (!entity->HasComponent<AnimatorComponent>())

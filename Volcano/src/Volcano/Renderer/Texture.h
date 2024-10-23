@@ -58,6 +58,10 @@ namespace Volcano {
 		static uint32_t CalculateMipMapCount(uint32_t width, uint32_t height);
 
 		virtual bool operator==(const Texture& other) const = 0;
+
+		bool GetFilp() { return m_Filp; }
+	protected:
+		bool m_Filp = true;
 	};
 
 	class Texture2D : public Texture
@@ -68,7 +72,6 @@ namespace Volcano {
 		virtual void SetData(void* data, uint32_t size) = 0;
 		virtual void SetDataFormat(TextureFormat format) = 0;
 		virtual void SetInternalFormat(TextureFormat format) = 0;
-
 	};
 
 	class TextureCube : public Texture

@@ -15,6 +15,20 @@ layout(std140, binding = 0) uniform Camera
 	mat4 u_ViewProjection;
 };
 
+layout(std140, binding = 6) uniform ModelTransform
+{
+	mat4 u_ModelTransform;
+    mat4 u_NormalTransform;
+};
+
+const int MAX_BONES = 100;
+const int MAX_BONE_INFLUENCE = 4;
+
+layout(std140, binding = 15) uniform BonesMatrices
+{
+    mat4 u_FinalBonesMatrices[MAX_BONES];
+};
+
 struct VertexOutput
 {
 	vec3 Position;
@@ -28,15 +42,47 @@ layout (location = 1) out VertexOutput Output;
 
 void main()
 {
-	gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
+    vec4 totalPosition = vec4(0.0);
+    vec3 totalNormal   = vec3(0.0);
+    vec3 totalTangent  = vec3(0.0);
+    if (u_FinalBonesMatrices[0] != mat4(0.0))
+    {
+        for(int i = 0 ; i < MAX_BONE_INFLUENCE ; i++)
+        {
+            if(a_BoneIds[i] == -1) 
+                continue;
+            if(a_BoneIds[i] >= MAX_BONES) 
+            {
+                totalPosition = vec4(a_Position,1.0f);
+                break;
+            }
+            mat3 normalBonesMatrix =  mat3(u_FinalBonesMatrices[a_BoneIds[i]]);
+            vec4 localPosition = u_FinalBonesMatrices[a_BoneIds[i]] * vec4(a_Position,1.0f);
+            vec3 localNormal   = normalBonesMatrix * a_Normal;
+            vec3 localTangent  = normalBonesMatrix * a_Tangent;
+            totalPosition += localPosition * a_Weights[i];
+            totalNormal   += localNormal   * a_Weights[i];
+            totalTangent  += localTangent  * a_Weights[i];
+        }
+	}
+    else
+    {
+        totalPosition = vec4(a_Position, 1.0);
+        totalNormal   = a_Normal;
+        totalTangent  = a_Tangent;
+    }
 
-	vec3 T = normalize(a_Tangent);
-    vec3 B = normalize(a_Bitangent);
-    vec3 N = normalize(a_Normal);
+    vec4 position = u_ModelTransform * totalPosition;
+	gl_Position = u_ViewProjection * position;
+
+    mat3 normalTransform = mat3(u_NormalTransform);
+    vec3 T = normalize(normalTransform * totalTangent);
+    vec3 N = normalize(normalTransform * totalNormal);
+    vec3 B = normalize(cross(N, T));
     mat3 TBN = mat3(T, B, N);
     
 	v_EntityID       = a_EntityID;
-	Output.Position  = a_Position;
+	Output.Position  = position.rgb;
 	Output.TexCoords = a_TexCoords;
 	Output.Normal    = N;
 	Output.TBN       = TBN;

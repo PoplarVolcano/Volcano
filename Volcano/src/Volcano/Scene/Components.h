@@ -94,6 +94,8 @@ namespace Volcano {
 		MeshComponent(const MeshComponent&) = default;
 		void SetMesh(MeshType type, Entity* entity, Ref<Mesh> modelMesh = nullptr) {
 			meshType = type;
+			modelPath = std::string();
+			vertexBone.clear();
 			switch (type)
 			{
 			case MeshType::None:

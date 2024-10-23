@@ -757,6 +757,7 @@ namespace Volcano {
 			for (auto entity : view)
 			{
 				auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
+
 				switch (mesh.meshType)
 				{
 				case MeshType::None:

@@ -11,18 +11,9 @@
 
 namespace Volcano {
 
-    std::once_flag Model::init_flag;
-    Scope<ModelLibrary> Model::m_ModelLibrary;
-
     Ref<Model> Model::Create(const char* path, bool gamma)
     {
         return std::make_shared<Model>(path, gamma);
-    }
-
-    const Scope<ModelLibrary>& Model::GetModelLibrary()
-    {
-        std::call_once(init_flag, []() { m_ModelLibrary.reset(new ModelLibrary()); });
-        return m_ModelLibrary;
     }
 
     Model::Model(const char* path, bool gamma) : gammaCorrection(gamma)
@@ -200,40 +191,4 @@ namespace Volcano {
         return textures;
     }
 
-
-    void ModelLibrary::Add(const Ref<Model> model)
-    {
-        auto& path = model->GetPath();
-        Add(path, model);
-    }
-
-    void ModelLibrary::Add(const std::string& path, const Ref<Model> Model)
-    {
-
-        VOL_CORE_ASSERT(!Exists(path), "ModelLibrary:Model已经存在了");
-        m_Models[path] = Model;
-    }
-
-    Ref<Model> ModelLibrary::Load(const std::string filepath)
-    {
-        auto Model = Model::Create(filepath.c_str());
-        Add(Model);
-        return Model;
-    }
-
-
-    Ref<Model> ModelLibrary::Get(const std::string& path)
-    {
-        if (!Exists(path))
-        {
-            VOL_CORE_TRACE("ModelLibrary:未找到Model");
-            return nullptr;
-        }
-        return m_Models[path];
-    }
-
-    bool ModelLibrary::Exists(const std::string& path)
-    {
-        return m_Models.find(path) != m_Models.end();
-    }
 }
