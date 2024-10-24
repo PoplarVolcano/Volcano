@@ -268,7 +268,7 @@ namespace Volcano {
 						out << YAML::BeginMap;
 						out << YAML::Key << "ImageType" << YAML::Value << (int)textures[i].first;
 						// 保存纹理相对路径
-						out << YAML::Key << "Path" << YAML::Value << Project::GetRelativeAssetDirectory(textures[i].second->GetPath()).string();
+						out << YAML::Key << "Path" << YAML::Value << textures[i].second->GetPath();
 						out << YAML::Key << "Filp" << YAML::Value << textures[i].second->GetFilp();
 						out << YAML::EndMap;
 					}
@@ -355,6 +355,17 @@ namespace Volcano {
 			out << YAML::Key << "RestitutionThreshold" << YAML::Value << cc2dComponent.RestitutionThreshold;
 
 			out << YAML::EndMap; // CircleCollider2DComponent
+		}
+
+		if (entity.HasComponent<SkyboxComponent>())
+		{
+			out << YAML::Key << "SkyboxComponent";
+			out << YAML::BeginMap; // SkyboxComponent
+
+			auto& skyboxComponent = entity.GetComponent<SkyboxComponent>();
+			out << YAML::Key << "Primary" << YAML::Value << skyboxComponent.Primary;
+			out << YAML::Key << "Path" << YAML::Value << skyboxComponent.texture->GetPath();
+			out << YAML::EndMap; // SkyboxComponent
 		}
 
 		if (!entity.GetEntityChildren().empty())
@@ -697,6 +708,16 @@ namespace Volcano {
 			cc2d.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
 		}
 
+		auto skyboxComponent = entity["SkyboxComponent"];
+		if (skyboxComponent)
+		{
+			auto& sc = deserializedEntity->AddComponent<SkyboxComponent>();
+			sc.Primary = skyboxComponent["Primary"].as<bool>();
+			auto paths = skyboxComponent["Path"];
+			if (!paths.IsNull())
+				sc.texture = TextureCube::Create(Project::GetAssetFileSystemPath(paths.as<std::string>()).string());
+		}
+
 		auto entities = entity["Entities"];
 		if (entities)
 			for (auto entity : entities)
@@ -812,7 +833,7 @@ namespace Volcano {
 							out << YAML::BeginMap;
 							out << YAML::Key << "ImageType" << YAML::Value << (int)textures[i].first;
 							// 保存纹理相对路径
-							out << YAML::Key << "Path" << YAML::Value << Project::GetRelativeAssetDirectory(textures[i].second->GetPath()).string();
+							out << YAML::Key << "Path" << YAML::Value << textures[i].second->GetPath();
 							out << YAML::Key << "Filp" << YAML::Value << textures[i].second->GetFilp();
 							out << YAML::EndMap;
 						}

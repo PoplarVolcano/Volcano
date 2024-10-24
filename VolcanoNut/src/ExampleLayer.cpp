@@ -60,18 +60,7 @@ namespace Volcano{
 
     void ExampleLayer::OnAttach()
     {
-        m_IconPlay     = Texture2D::Create("Resources/Icons/PlayButton.png");
-        m_IconPause    = Texture2D::Create("Resources/Icons/PauseButton.png");
-        m_IconStop     = Texture2D::Create("Resources/Icons/StopButton.png");
-        m_IconSimulate = Texture2D::Create("Resources/Icons/SimulateButton.png");
-        m_IconStep     = Texture2D::Create("Resources/Icons/StepButton.png");
-
         FullQuad::Init();
-
-        // =========================================Framebuffer===============================================
-        SceneRenderer::Init();
-        m_Framebuffer = SceneRenderer::GetDeferredShadingFramebuffer();
-        //================================================================================================
 
         // 初始化场景
         m_EditorScene = CreateRef<Scene>();
@@ -96,9 +85,21 @@ namespace Volcano{
                 m_NewProject = true;
         }
 
+        // =========================================Framebuffer===============================================
+        SceneRenderer::Init();
+        m_Framebuffer = SceneRenderer::GetDeferredShadingFramebuffer();
+        //================================================================================================
+
         m_EditorCamera = EditorCamera(30.0f, 1.788f, 0.1f, 1000.0f);
 
         Renderer2D::SetLineWidth(4.0f);
+        
+        m_IconPlay     = Texture2D::Create((FileDialogs::GetProjectPath() / "Resources/Icons/PlayButton.png").string());
+        m_IconPause    = Texture2D::Create((FileDialogs::GetProjectPath() / "Resources/Icons/PauseButton.png").string());
+        m_IconStop     = Texture2D::Create((FileDialogs::GetProjectPath() / "Resources/Icons/StopButton.png").string());
+        m_IconSimulate = Texture2D::Create((FileDialogs::GetProjectPath() / "Resources/Icons/SimulateButton.png").string());
+        m_IconStep     = Texture2D::Create((FileDialogs::GetProjectPath() / "Resources/Icons/StepButton.png").string());
+
     }
 
     void ExampleLayer::OnDetach() {}
@@ -189,28 +190,34 @@ namespace Volcano{
         //=============================================================================================================
 
         Renderer::Clear();
-        /*
+        
         // 将FrameBuffer的图像放到window上
         // 还原视图尺寸
         Application::Get().GetWindow().ResetViewport();
+        glm::vec4 resolution = glm::vec4(
+            Application::Get().GetWindow().GetWidth(), 
+            Application::Get().GetWindow().GetHeight(),
+            m_Framebuffer->GetSpecification().Width,
+            m_Framebuffer->GetSpecification().Height);
+        UniformBufferManager::GetUniformBuffer("Resolution")->SetData(&resolution, sizeof(resolution));
+
         // TODO: 帧缓冲画面会被拉伸至视图尺寸，参考ShaderToy代码将画面保持正常尺寸
         Renderer::GetShaderLibrary()->Get("window")->Bind();
-        //uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(2);
-        //uint32_t windowTextureID = m_SpotDepthMapFramebuffer->GetDepthAttachmentRendererID();
-        uint32_t windowTextureID = SceneRenderer::GetPointDepthMapFramebuffer()->GetDepthAttachmentRendererID();
-        //uint32_t windowTextureID = m_BRDFLUT->GetRendererID();
-        //Texture::Bind(windowTextureID, 0);
+        uint32_t windowTextureID = m_Framebuffer->GetColorAttachmentRendererID(2);
+        Texture::Bind(windowTextureID, 0);
         Renderer::SetDepthTest(false);
         FullQuad::DrawIndexed();
-        //Renderer::GetShaderLibrary()->Get("Skybox")->Bind();
-        //Skybox::DrawIndexed();
         Renderer::SetDepthTest(true);
-        */
+        
 
     }
 
     void ExampleLayer::OnImGuiRender()
     {
+        if (Project::GetActive() != nullptr)
+            if (Project::GetActive()->GetPlayGame())
+                return;
+
         if (m_NewProject)
         {
             static bool use_work_area = true;
@@ -328,6 +335,7 @@ namespace Volcano{
         //停靠空间/设置的任何更改都会导致窗口陷入困境，永远不可见。
         if (!opt_padding)
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
         ImGui::Begin("DockSpace", &p_open, window_flags);
         if (!opt_padding)
             ImGui::PopStyleVar();
@@ -476,6 +484,7 @@ namespace Volcano{
                 ImGui::End();
             }
 
+            ImGuiWindowFlags flag = ImGuiWindowFlags_AlwaysAutoResize;
             ImGui::Begin("Viewport");
 
             // 获取Viewport视口左上角与viewport视口标题栏距离的偏移位置（0, 24) - 必须放这，因为标题栏后就是视口的左上角
@@ -764,62 +773,82 @@ namespace Volcano{
         bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
         bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
 
-        switch (e.GetKeyCode()) 
+        switch (e.GetKeyCode())
         {
-        case Key::N:
-            if (control)
-                NewScene();
-            break;
-        case Key::O:
-            if (control)
-                OpenProject();
-            break;
-        case Key::S:
-            if (control)
-                if (shift)
-                    SaveSceneAs();
-                else
-                    SaveScene();
-            break;
-        case Key::D:
-            if (control)
-                OnDuplicateEntity();
-
-        //Gizmos
-        case Key::Q:
-            m_GizmoType = -1;
-            break;
-        case Key::W:
-            m_GizmoType = ImGuizmo::OPERATION::TRANSLATE;
-            break;
-        case Key::E:
-            m_GizmoType = ImGuizmo::OPERATION::ROTATE;
-            break;
-        case Key::R:
-            if (control)
+        case Key::Home:
+            if (Project::GetActive()->GetPlayGame())
             {
-                ScriptEngine::ReloadAssembly();
+                if (m_SceneState != SceneState::Edit)
+                    OnSceneStop();
             }
             else
             {
-                if (!ImGuizmo::IsUsing())
-                    m_GizmoType = ImGuizmo::OPERATION::SCALE;
+                if (m_SceneState != SceneState::Edit)
+                    OnSceneStop();
+                OnScenePlay();
             }
-            break;
-
-            // TODO: 只有鼠标点击viewport的实体会被选中删除，SceneHierarchyPanel选中实体delete不能删除
-        case Key::Delete:
-            if (Application::Get().GetImGuiLayer()->GetActiveWidgetID() == 0)
-            {
-                Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
-                if (selectedEntity)
-                {
-                    m_SceneHierarchyPanel.SetSelectedEntity({});
-                    m_ActiveScene->DestroyEntity(selectedEntity);
-                }
-            }
+            Project::GetActive()->SetPlayGame(!Project::GetActive()->GetPlayGame());
             break;
         }
+
+        if (!Project::GetActive()->GetPlayGame())
+            switch (e.GetKeyCode()) 
+            {
+            case Key::N:
+                if (control)
+                    NewScene();
+                break;
+            case Key::O:
+                if (control)
+                    OpenProject();
+                break;
+            case Key::S:
+                if (control)
+                    if (shift)
+                        SaveSceneAs();
+                    else
+                        SaveScene();
+                break;
+            case Key::D:
+                if (control)
+                    OnDuplicateEntity();
+            
+            //Gizmos
+            case Key::Q:
+                m_GizmoType = -1;
+                break;
+            case Key::W:
+                m_GizmoType = ImGuizmo::OPERATION::TRANSLATE;
+                break;
+            case Key::E:
+                m_GizmoType = ImGuizmo::OPERATION::ROTATE;
+                break;
+            case Key::R:
+                if (control)
+                {
+                    ScriptEngine::ReloadAssembly();
+                }
+                else
+                {
+                    if (!ImGuizmo::IsUsing())
+                        m_GizmoType = ImGuizmo::OPERATION::SCALE;
+                }
+                break;
+            
+                // TODO: 只有鼠标点击viewport的实体会被选中删除，SceneHierarchyPanel选中实体delete不能删除
+            case Key::Delete:
+                if (Application::Get().GetImGuiLayer()->GetActiveWidgetID() == 0)
+                {
+                    Ref<Entity> selectedEntity = m_SceneHierarchyPanel.GetSelectedEntity();
+                    if (selectedEntity)
+                    {
+                        m_SceneHierarchyPanel.SetSelectedEntity({});
+                        m_ActiveScene->DestroyEntity(selectedEntity);
+                    }
+                }
+                break;
+            
+            }
 
         return false;
     }

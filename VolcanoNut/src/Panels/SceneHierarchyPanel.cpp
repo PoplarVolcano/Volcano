@@ -998,7 +998,7 @@ namespace Volcano {
 					if (ImGui::Button("filp"))
 					{
 						if(!texture->GetPath().empty())
-							texture = Texture2D::Create(texture->GetPath(), !texture->GetFilp());
+							texture = Texture2D::Create(Project::GetAssetFileSystemPath(texture->GetPath()).string(), !texture->GetFilp());
 					}
 
 					ImGui::SameLine();
@@ -1367,6 +1367,26 @@ namespace Volcano {
 				ImGui::DragFloat("Restitution Threshold", &component.RestitutionThreshold, 0.01f, 0.0f);
 			});
 
+		DrawComponent<SkyboxComponent>("Skybox", entity, [](SkyboxComponent& component)
+			{
+				ImGui::Checkbox("Primary", &component.Primary);
+
+				if (ImGui::Button("Skybox"))
+				{
+					component.texture = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
+				}
+				if (ImGui::BeginDragDropTarget())
+				{
+					if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+					{
+						const wchar_t* path = (const wchar_t*)payload->Data;
+						std::filesystem::path texturePath = path;
+						component.texture = TextureCube::Create(texturePath.string());
+					}
+					ImGui::EndDragDropTarget();
+				}
+
+			});
 
 		ImGui::Separator();
 
@@ -1421,6 +1441,7 @@ namespace Volcano {
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
 			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
 			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");
+			DisplayAddComponentEntry<SkyboxComponent>("Skybox");
 
 			ImGui::EndPopup();
 		}

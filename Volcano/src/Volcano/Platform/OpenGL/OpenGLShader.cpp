@@ -104,6 +104,9 @@ namespace Volcano {
 		std::string source = ReadFile(filepath);
 		auto shaderSources = PreProcess(source);
 
+		// Extract name from filepath
+		m_Name = FileUtils::GetFileNameFromPath(filepath);
+
 		{
 			Timer timer;
 			CompileOrGetVulkanBinaries(shaderSources);
@@ -111,10 +114,8 @@ namespace Volcano {
 			CreateProgram();
 			// 显示读取shader的时间
 			// 注：每次修改glsl需要删除二进制缓冲文件并重新编译二进制缓冲文件，编译后读取二进制缓冲文件速度特别快
-			VOL_CORE_WARN("Shader creation took {0} ms", timer.ElapsedMillis());
+			VOL_CORE_WARN("{0}: Shader creation took {1} ms", m_Name, timer.ElapsedMillis());
 		}
-		// Extract name from filepath
-		m_Name = FileUtils::GetFileNameFromPath(filepath);
 	}
 
 	OpenGLShader::OpenGLShader(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc)

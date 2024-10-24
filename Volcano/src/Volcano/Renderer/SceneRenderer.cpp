@@ -3,6 +3,8 @@
 #include "Volcano/Renderer/Renderer.h"
 #include "Volcano/Renderer/RendererItem/FullQuad.h"
 #include "Volcano/Renderer/RendererItem/Skybox.h"
+#include "Volcano/Utils/PlatformUtils.h"
+#include "Volcano/Scene/Entity.h"
 #include <random>
 #include "glm/glm.hpp"
 #include <glm/gtc/matrix_transform.hpp>
@@ -218,122 +220,151 @@ namespace Volcano {
         fbSpec.DepthType = TextureType::TEXTURE_2D;
         m_PBRFramebuffer = Framebuffer::Create(fbSpec);
 
-        glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-        glm::mat4 captureViewProjections[] =
-        {
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
-           glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
-        };
-        for(uint32_t i = 0; i < 6; i++)
-            captureViewProjections[i] = captureProjection * captureViewProjections[i];
 
-        m_EquirectangularMap = Texture2D::Create("SandBoxProject/Assets/Textures/hdr/newport_loft.hdr", true, TextureFormat::RGB16F);
-        m_EnvCubemap = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
-        
-        Renderer::SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+		m_EnvCubemap = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
 
-        m_PBRFramebuffer->Bind();
-        {
-            Renderer::GetShaderLibrary()->Get("EquirectangularToCubemap")->Bind();
-            m_EquirectangularMap->Bind();
-            
-            for (uint32_t i = 0; i < 6; ++i)
-            {
-                UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
-                // 将envCubemap的6个面依次绑定到m_PBRFramebuffer的颜色附件
-                m_PBRFramebuffer->SetColorAttachment(m_EnvCubemap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i));
-                Renderer::Clear();
+		/*
+		glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+		glm::mat4 captureViewProjections[] =
+		{
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+		};
+		for (uint32_t i = 0; i < 6; i++)
+			captureViewProjections[i] = captureProjection * captureViewProjections[i];
 
-                // 取消面剔除
-                RendererAPI::SetCullFace(false);
-                Skybox::DrawIndexed();
-                RendererAPI::SetCullFace(true);
+		// 等距柱状投影图
+		auto equirectangularMapPath = FileDialogs::GetProjectPath() / "SandBoxProject/Assets/Textures/hdr/newport_loft.hdr";
+		m_EquirectangularMap = Texture2D::Create(equirectangularMapPath.string(), true, TextureFormat::RGB16F);
 
-            }
-            m_PBRFramebuffer->Unbind();
-        }
+		Renderer::SetClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
-        std::vector<std::string> faces
-        {
-            std::string("SandBoxProject/Assets/Textures/skybox/right.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/left.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/top.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/bottom.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/front.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/back.jpg"),
-        };
-        m_EnvCubemap = TextureCube::Create(faces);
+		// 等距柱状投影图映射为立方体贴图
+		m_PBRFramebuffer->Bind();
+		{
+			Renderer::GetShaderLibrary()->Get("EquirectangularToCubemap")->Bind();
+			m_EquirectangularMap->Bind();
 
-        m_IrradianceMap = TextureCube::Create(TextureFormat::RGB16F, 32, 32);
-        m_PBRFramebuffer->Resize(32, 32);
+			for (uint32_t i = 0; i < 6; ++i)
+			{
+				UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
+				// 将envCubemap的6个面依次绑定到m_PBRFramebuffer的颜色附件
+				m_PBRFramebuffer->SetColorAttachment(m_EnvCubemap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i));
+				Renderer::Clear();
 
-        m_PBRFramebuffer->Bind();
-        {
-            Renderer::GetShaderLibrary()->Get("IrradianceConvolution")->Bind();
-            m_EnvCubemap->Bind();
+				// 取消面剔除
+				RendererAPI::SetCullFace(false);
+				Skybox::DrawIndexed();
+				RendererAPI::SetCullFace(true);
 
-            for (uint32_t i = 0; i < 6; ++i)
-            {
-                UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
-                m_PBRFramebuffer->SetColorAttachment(m_IrradianceMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i));
-                Renderer::Clear();
-                RendererAPI::SetCullFace(false);
-                Skybox::DrawIndexed();
-                RendererAPI::SetCullFace(true);
-            }
-            m_PBRFramebuffer->Unbind();
-        }
+			}
+			m_PBRFramebuffer->Unbind();
+		}
+		*/
+		Skybox::SetTexture(m_EnvCubemap);
 
-        uint32_t prefilterMapWidth = 128;
-        uint32_t prefilterMapHeight = 128;
-        m_PrefilterMap = TextureCube::Create(TextureFormat::RGB16F, prefilterMapWidth, prefilterMapHeight);
+		PBRInit();
 
-        uint32_t maxMipLevels = 5;
-        for (uint32_t mip = 0; mip < maxMipLevels; ++mip)
-        {
-            // reisze framebuffer according to mip-level size.
-            prefilterMapWidth  = static_cast<uint32_t>(128 * std::pow(0.5, mip));
-            prefilterMapHeight = static_cast<uint32_t>(128 * std::pow(0.5, mip));
-            m_PBRFramebuffer->Resize(prefilterMapWidth, prefilterMapHeight);
-            m_PBRFramebuffer->Bind();
-            {
-                Renderer::GetShaderLibrary()->Get("Prefilter")->Bind();
-                m_EnvCubemap->Bind();
-                float roughness = (float)mip / (float)(maxMipLevels - 1);
-                UniformBufferManager::GetUniformBuffer("Prefilter")->SetData(&roughness, sizeof(float));
-                for (uint32_t i = 0; i < 6; ++i)
-                {
-                    UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
-                    m_PBRFramebuffer->SetColorAttachment(m_PrefilterMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i), 0, mip);
-                    Renderer::Clear();
-                    RendererAPI::SetCullFace(false);
-                    Skybox::DrawIndexed();
-                    RendererAPI::SetCullFace(true);
-                }
-                m_PBRFramebuffer->Unbind();
-            }
-        }
+		/*
+		m_BRDFLUT = Texture2D::Create(512, 512, TextureFormat::RG16F, TextureFormat::RG, TextureWrap::CLAMP_TO_EDGE);
+		m_PBRFramebuffer->Resize(512, 512);
+		m_PBRFramebuffer->Bind();
+		{
+			Renderer::GetShaderLibrary()->Get("BRDF")->Bind();
+			m_PBRFramebuffer->SetColorAttachment(m_BRDFLUT, TextureType::TEXTURE_2D);
+			Renderer::Clear();
+			Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
+			m_PBRFramebuffer->Unbind();
+		}
+		*/
+		auto BRDFLUTPath = FileDialogs::GetProjectPath() / "Resources/PBR/BRDF_LUT.tga";
+		m_BRDFLUT = Texture2D::Create(BRDFLUTPath.string(), true, TextureFormat::RG16F);
 
-        /*
-        m_BRDFLUT = Texture2D::Create(512, 512, TextureFormat::RG16F, TextureFormat::RG, TextureWrap::CLAMP_TO_EDGE);
-        m_PBRFramebuffer->Resize(512, 512);
-        m_PBRFramebuffer->Bind();
-        {
-            Renderer::GetShaderLibrary()->Get("BRDF")->Bind();
-            m_PBRFramebuffer->SetColorAttachment(m_BRDFLUT, TextureType::TEXTURE_2D);
-            Renderer::Clear();
-            Renderer::DrawIndexed(windowVa, windowVa->GetIndexBuffer()->GetCount());
-            m_PBRFramebuffer->Unbind();
-        }
-        */
-        m_BRDFLUT = Texture2D::Create("SandBoxProject/Assets/Textures/BRDF_LUT.tga", true, TextureFormat::RG16F);
-        
-        Skybox::SetTexture(m_EnvCubemap);
-        
+	}
+
+	void SceneRenderer::PBRInit()
+	{
+		glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+		glm::mat4 captureViewProjections[] =
+		{
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+		   glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3( 0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+		};
+		for (uint32_t i = 0; i < 6; i++)
+			captureViewProjections[i] = captureProjection * captureViewProjections[i];
+
+		/*
+		std::vector<std::string> faces
+		{
+			std::string("SandBoxProject/Assets/Textures/skybox/right.jpg"),
+			std::string("SandBoxProject/Assets/Textures/skybox/left.jpg"),
+			std::string("SandBoxProject/Assets/Textures/skybox/top.jpg"),
+			std::string("SandBoxProject/Assets/Textures/skybox/bottom.jpg"),
+			std::string("SandBoxProject/Assets/Textures/skybox/front.jpg"),
+			std::string("SandBoxProject/Assets/Textures/skybox/back.jpg"),
+		};
+		m_EnvCubemap = TextureCube::Create(faces);
+		*/
+
+		m_IrradianceMap = TextureCube::Create(TextureFormat::RGB16F, 32, 32);
+		m_PBRFramebuffer->Resize(32, 32);
+
+		// 立方体贴图的卷积
+		m_PBRFramebuffer->Bind();
+		{
+			Renderer::GetShaderLibrary()->Get("IrradianceConvolution")->Bind();
+			m_EnvCubemap->Bind();
+
+			for (uint32_t i = 0; i < 6; ++i)
+			{
+				UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
+				m_PBRFramebuffer->SetColorAttachment(m_IrradianceMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i));
+				Renderer::Clear();
+				RendererAPI::SetCullFace(false);
+				Skybox::DrawIndexed();
+				RendererAPI::SetCullFace(true);
+			}
+			m_PBRFramebuffer->Unbind();
+		}
+
+		uint32_t prefilterMapWidth = 128;
+		uint32_t prefilterMapHeight = 128;
+		m_PrefilterMap = TextureCube::Create(TextureFormat::RGB16F, prefilterMapWidth, prefilterMapHeight);
+
+		// 预滤波环境贴图，随着粗糙度不同应用不同的mipmap
+		uint32_t maxMipLevels = 5;
+		for (uint32_t mip = 0; mip < maxMipLevels; ++mip)
+		{
+			// reisze framebuffer according to mip-level size.
+			prefilterMapWidth = static_cast<uint32_t>(128 * std::pow(0.5, mip));
+			prefilterMapHeight = static_cast<uint32_t>(128 * std::pow(0.5, mip));
+			m_PBRFramebuffer->Resize(prefilterMapWidth, prefilterMapHeight);
+			m_PBRFramebuffer->Bind();
+			{
+				Renderer::GetShaderLibrary()->Get("Prefilter")->Bind();
+				m_EnvCubemap->Bind();
+				float roughness = (float)mip / (float)(maxMipLevels - 1);
+				UniformBufferManager::GetUniformBuffer("Prefilter")->SetData(&roughness, sizeof(float));
+				for (uint32_t i = 0; i < 6; ++i)
+				{
+					UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
+					m_PBRFramebuffer->SetColorAttachment(m_PrefilterMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i), 0, mip);
+					Renderer::Clear();
+					RendererAPI::SetCullFace(false);
+					Skybox::DrawIndexed();
+					RendererAPI::SetCullFace(true);
+				}
+				m_PBRFramebuffer->Unbind();
+			}
+		}
 
 	}
 
@@ -454,6 +485,18 @@ namespace Volcano {
 
 	void SceneRenderer::PBRDeferredShading()
 	{
+		Ref<Entity> skyboxEntity = m_ActiveScene->GetPrimarySkyboxEntity();
+		if (skyboxEntity != nullptr)
+		{
+			auto& skybox = skyboxEntity->GetComponent<SkyboxComponent>();
+			if (m_EnvCubemap != skybox.texture)
+			{
+				m_EnvCubemap = skybox.texture;
+				Skybox::SetTexture(m_EnvCubemap);
+				PBRInit();
+			}
+		}
+
 		if (!m_SSAOSwitch)
 		{
 			m_SSAOBlurFramebuffer->Bind();
@@ -580,6 +623,18 @@ namespace Volcano {
 
 	void SceneRenderer::DeferredShading()
 	{
+		Ref<Entity> skyboxEntity = m_ActiveScene->GetPrimarySkyboxEntity();
+		if (skyboxEntity != nullptr)
+		{
+			auto& skybox = skyboxEntity->GetComponent<SkyboxComponent>();
+			if (m_EnvCubemap != skybox.texture)
+			{
+				m_EnvCubemap = skybox.texture;
+				Skybox::SetTexture(m_EnvCubemap);
+				PBRInit();
+			}
+		}
+
 		if (!m_SSAOSwitch)
 		{
 			m_SSAOBlurFramebuffer->Bind();

@@ -234,6 +234,15 @@ namespace Volcano {
 		CameraComponent(const CameraComponent&) = default;
 	};
 
+	struct SkyboxComponent 
+	{
+		Ref<TextureCube> texture = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
+		bool Primary = false;
+
+		SkyboxComponent() = default;
+		SkyboxComponent(const SkyboxComponent&) = default;
+	};
+
 	struct ScriptComponent
 	{
 		std::string ClassName;
@@ -334,6 +343,7 @@ namespace Volcano {
 		                        AnimationComponent,
 								LightComponent,
 								CameraComponent, 
+		                        SkyboxComponent,
 								ScriptComponent,
 								NativeScriptComponent,
 								Rigidbody2DComponent, 

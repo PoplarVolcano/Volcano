@@ -30,27 +30,4 @@
     <ClCompile Include="src\Random.cpp" />
     <ClCompile Include="src\VolcanoNut.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="assets\shaders\model\Asteroids.glsl" />
-    <None Include="assets\shaders\model\Planet.glsl" />
-    <None Include="assets\shaders\shadow\ShadowMappingDepth.glsl" />
-    <None Include="assets\shaders\shadow\PointShadowsDepth.glsl" />
-    <None Include="assets\shaders\shadow\SpotShadowDepth.glsl" />
-    <None Include="assets\shaders\HDR.glsl" />
-    <None Include="assets\shaders\Blur.glsl" />
-    <None Include="assets\shaders\LightCube.glsl" />
-    <None Include="assets\shaders\DeferredShading.glsl" />
-    <None Include="assets\shaders\SSAO.glsl" />
-    <None Include="assets\shaders\SSAOBlur.glsl" />
-    <None Include="assets\shaders\AnimModel.glsl" />
-    <None Include="assets\shaders\3D\PBR.glsl" />
-    <None Include="assets\shaders\3D\EquirectangularToCubemap.glsl" />
-    <None Include="assets\shaders\3D\Background.glsl" />
-    <None Include="assets\shaders\3D\IrradianceConvolution.glsl" />
-    <None Include="assets\shaders\3D\Prefilter.glsl" />
-    <None Include="assets\shaders\3D\BRDF.glsl" />
-    <None Include="assets\shaders\shadow\LightShading.glsl" />
-    <None Include="assets\shaders\shadow\PBRLightShading.glsl" />
-    <None Include="assets\shaders\PBRDeferredShading.glsl" />
-  </ItemGroup>
 </Project>

@@ -40,6 +40,9 @@
     <Filter Include="src\Volcano\Renderer">
       <UniqueIdentifier>{B44A11CD-A0D9-9A96-49F8-AE913566AB3C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Volcano\Renderer\RendererItem">
+      <UniqueIdentifier>{69B8DC86-D526-3206-1E10-ED058ABD27A2}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Volcano\Scene">
       <UniqueIdentifier>{EB1E7F16-5735-7DAC-A0AC-08CE0C024E34}</UniqueIdentifier>
     </Filter>
@@ -168,6 +171,9 @@
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLFramebuffer.h">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.h">
+      <Filter>src\Volcano\Platform\OpenGL</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLShader.h">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClInclude>
@@ -207,6 +213,9 @@
     <ClInclude Include="src\Volcano\Renderer\Light.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RenderPass.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Renderer.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
@@ -214,6 +223,51 @@
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\RendererAPI.h">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animation.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animator.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\AssimpGLMHelpers.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Bone.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\CubeMesh.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\FullQuad.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\LineMesh.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Mesh.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Model.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\ModelMesh.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Quad.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Shadow.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\Skybox.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\SphereMesh.h">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\SceneRenderer.h">
       <Filter>src\Volcano\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\Shader.h">
@@ -267,7 +321,13 @@
     <ClInclude Include="src\Volcano\UI\UI.h">
       <Filter>src\Volcano\UI</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Utils\FileUtils.h">
+      <Filter>src\Volcano\Utils</Filter>
+    </ClInclude>
     <ClInclude Include="src\Volcano\Utils\PlatformUtils.h">
+      <Filter>src\Volcano\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Volcano\Utils\YAMLUtils.h">
       <Filter>src\Volcano\Utils</Filter>
     </ClInclude>
     <ClInclude Include="src\volpch.h">
@@ -1521,25 +1581,6 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Skybox.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Shadow.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Bone.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\AssimpGLMHelpers.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animation.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Animator.h" />
-    <ClInclude Include="src\Volcano\Renderer\RenderPass.h" />
-    <ClInclude Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.h" />
-    <ClInclude Include="src\Volcano\Renderer\SceneRenderer.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Quad.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\FullQuad.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Mesh.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\CubeMesh.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Model.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\SphereMesh.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\ModelMesh.h" />
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\LineMesh.h" />
-    <ClInclude Include="src\Volcano\Utils\FileUtils.h" />
-    <ClInclude Include="src\Volcano\Utils\YAMLUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1590,6 +1631,9 @@
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLFramebuffer.cpp">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.cpp">
+      <Filter>src\Volcano\Platform\OpenGL</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRendererAPI.cpp">
       <Filter>src\Volcano\Platform\OpenGL</Filter>
     </ClCompile>
@@ -1632,10 +1676,58 @@
     <ClCompile Include="src\Volcano\Renderer\GraphicsContext.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\Light.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RenderPass.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp">
+      <Filter>src\Volcano\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animation.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animator.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Bone.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\CubeMesh.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\FullQuad.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\LineMesh.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Mesh.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Model.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\ModelMesh.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Quad.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Shadow.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\Skybox.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\SphereMesh.cpp">
+      <Filter>src\Volcano\Renderer\RendererItem</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\SceneRenderer.cpp">
       <Filter>src\Volcano\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\Shader.cpp">
@@ -1686,26 +1778,11 @@
     <ClCompile Include="src\Volcano\Scripting\ScriptGlue.cpp">
       <Filter>src\Volcano\Scripting</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Utils\FileUtils.cpp">
+      <Filter>src\Volcano\Utils</Filter>
+    </ClCompile>
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Skybox.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Shadow.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\Light.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Bone.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animation.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Animator.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RenderPass.cpp" />
-    <ClCompile Include="src\Volcano\Platform\OpenGL\OpenGLRenderPass.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\SceneRenderer.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Quad.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\FullQuad.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Mesh.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\CubeMesh.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Model.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\SphereMesh.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\ModelMesh.cpp" />
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\LineMesh.cpp" />
-    <ClCompile Include="src\Volcano\Utils\FileUtils.cpp" />
   </ItemGroup>
 </Project>

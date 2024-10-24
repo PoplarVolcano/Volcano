@@ -59,11 +59,16 @@ namespace Volcano {
 		static Ref<Project> New(std::filesystem::path newProjectPath, const std::string name);
 		static Ref<Project> Load(const std::filesystem::path& path);
 		static bool SaveActive(Scene& scene);
+
+		bool GetPlayGame() { return m_PlayGame; }
+		void SetPlayGame(bool playGame) { m_PlayGame = playGame; }
 	private:
 		ProjectConfig m_Config;
 		std::filesystem::path m_ProjectDirectory; // project文件所在目录
 
 		inline static Ref<Project> s_ActiveProject;
+
+		bool m_PlayGame = false;
 	};
 	
 }

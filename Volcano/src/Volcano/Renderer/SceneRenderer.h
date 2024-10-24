@@ -9,6 +9,8 @@ namespace Volcano {
 	public:
 		static void Init();
 
+		static void PBRInit();
+
 		static void SetViewportSize(uint32_t width, uint32_t height);
 
 		static void BeginScene(Ref<Scene> scene, Timestep ts, SceneState sceneState, EditorCamera& camera);

@@ -132,7 +132,11 @@ namespace Volcano {
 		for (auto entity : view)
 		{
 			auto& mc = dstSceneRegistry.get<MeshComponent>(entity);
+			auto modelPath = mc.modelPath;
+			auto vertexBone = mc.vertexBone;
 			mc.SetMesh(mc.meshType, entityEnttMap[entity].get(), mc.mesh);
+			mc.modelPath = modelPath;
+			mc.vertexBone = vertexBone;
 		}
 
 		return newScene;
@@ -422,6 +426,18 @@ namespace Volcano {
 		return {};
 	}
 
+	Ref<Entity> Scene::GetPrimarySkyboxEntity()
+	{
+		auto view = m_Registry.view<SkyboxComponent>();
+		for (auto entity : view)
+		{
+			auto skybox = view.get<SkyboxComponent>(entity);
+			if (skybox.Primary)
+				return m_EntityEnttMap[entity];
+		}
+		return {};
+	}
+
 	std::vector<Ref<Entity>> Scene::GetPointLightEntities()
 	{
 		std::vector<Ref<Entity>> pointLights;
@@ -541,6 +557,11 @@ namespace Volcano {
 
 	void Scene::UpdateScene(Timestep ts)
 	{
+		// Update Skybox
+		auto skyboxEntity = GetPrimarySkyboxEntity();
+		if (skyboxEntity != nullptr)
+			Skybox::SetTexture(skyboxEntity->GetComponent<SkyboxComponent>().texture);
+
 		// Update Animator
 		{
 			auto view = m_Registry.view<AnimatorComponent, AnimationComponent>();
@@ -566,7 +587,7 @@ namespace Volcano {
 			}
 		}
 
-		//Draw Mesh
+		// Update Mesh
 		{
 			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
 			std::vector<glm::mat4> finalBoneMatrices;
@@ -694,11 +715,15 @@ namespace Volcano {
 
 		if (m_RenderType == RenderType::SKYBOX)
 		{
-			RendererAPI::SetDepthFunc(DepthFunc::LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
-			Skybox::BeginScene(camera, transform);
-			Skybox::DrawSkybox();
-			Skybox::EndScene();
-			RendererAPI::SetDepthFunc(DepthFunc::LESS); // set depth function back to default
+			auto entity = GetPrimarySkyboxEntity();
+			if (entity != nullptr)
+			{
+				RendererAPI::SetDepthFunc(DepthFunc::LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
+				Skybox::BeginScene(camera, transform);
+				Skybox::DrawSkybox();
+				Skybox::EndScene();
+				RendererAPI::SetDepthFunc(DepthFunc::LESS); // set depth function back to default
+			}
 			return;
 		}
 
@@ -1045,4 +1070,8 @@ namespace Volcano {
 	{
 	}
 
+	template<>
+	void Scene::OnComponentAdded<SkyboxComponent>(Entity& entity, SkyboxComponent& component)
+	{
+	}
 }

@@ -2,6 +2,7 @@
 #include "OpenGLTexture.h"
 
 #include "Volcano/Renderer/Renderer.h"
+#include "Volcano/Project/Project.h"
 
 #include <glad/glad.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -60,8 +61,12 @@ namespace Volcano {
 
 	// 图像文件相对路径
 	OpenGLTexture2D::OpenGLTexture2D(const std::string& path, bool filp, TextureFormat internalFormat)
-		: m_FilePath(path)
 	{
+		if (Project::GetActive())
+			m_FilePath = Project::GetRelativeAssetDirectory(path).string();
+		else
+			m_FilePath = path;
+
 		int width, height, channels;
 		m_Filp = filp;
 		stbi_set_flip_vertically_on_load(filp);//翻转
@@ -197,11 +202,16 @@ namespace Volcano {
 	}
 
 	OpenGLTextureCube::OpenGLTextureCube(const std::string& path)
-		: m_FilePath(path)
 	{
 		int width, height, channels;
 		stbi_set_flip_vertically_on_load(false);
 		m_ImageData = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb);
+
+		if (Project::GetActive())
+			m_FilePath = Project::GetRelativeAssetDirectory(path).string();
+		else
+			m_FilePath = path;
+
 
 		m_Width = width;
 		m_Height = height;
@@ -287,8 +297,12 @@ namespace Volcano {
 	}
 
 	OpenGLTextureCube::OpenGLTextureCube(std::vector<std::string> faces)
-		: m_FilePath(faces[0])
 	{
+		if (Project::GetActive())
+			m_FilePath = Project::GetRelativeAssetDirectory(faces[0]).string();
+		else
+			m_FilePath = faces[0];
+
 		glGenTextures(1, &m_RendererID);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, m_RendererID);
 

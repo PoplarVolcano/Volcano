@@ -17,15 +17,6 @@ namespace Volcano {
 	{
 		s_ShaderLibrary = std::make_unique<ShaderLibrary>();
 
-		// 初始化OpenGL配置
-		RendererAPI::Init(); 
-
-		// 初始化2D Shader
-		Renderer2D::Init();
-		Skybox::Init();
-		Shadow::Init();
-		Mesh::Init();
-
 		Renderer::GetShaderLibrary()->Load("assets/shaders/GBuffer.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/LightShading.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/PBRLightShading.glsl");
@@ -37,6 +28,17 @@ namespace Volcano {
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/IrradianceConvolution.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Prefilter.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/BRDF.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Skybox.glsl");
+
+		// 初始化OpenGL配置
+		RendererAPI::Init(); 
+
+		// 初始化2D Shader
+		Renderer2D::Init();
+		Skybox::Init();
+		Shadow::Init();
+		Mesh::Init();
+
 
 		UniformBufferManager::Init();
 	}

@@ -76,6 +76,7 @@ namespace Volcano {
 
 		Ref<Entity> GetPrimaryCameraEntity();
 		Ref<Entity> GetDirectionalLightEntity();
+		Ref<Entity> GetPrimarySkyboxEntity();
 		std::vector<Ref<Entity>> GetPointLightEntities();
 		std::vector<Ref<Entity>> GetSpotLightEntities();
 		bool& GetShowBone() { return m_ShowBone; }

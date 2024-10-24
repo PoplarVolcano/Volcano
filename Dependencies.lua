@@ -1,5 +1,5 @@
 
-VULKAN_SDK = os.getenv("VULKAN_SDK")
+VULKAN_SDK = "%{wks.location}/Volcano/vendor/VulkanSDK";--os.getenv("VULKAN_SDK")
 
 -- Include directories relative to root folder (solution directory)
 IncludeDir = {}
@@ -15,10 +15,10 @@ IncludeDir["shaderc"] = "%{wks.location}/Volcano/vendor/shaderc/include"
 IncludeDir["SPIRV_Cross"] = "%{wks.location}/Volcano/vendor/SPIRV-Cross"
 IncludeDir["filewatch"] = "%{wks.location}/Volcano/vendor/filewatch"
 IncludeDir["assimp"] = "%{wks.location}/Volcano/vendor/assimp/include"
-IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/Include"
+IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/include"
 
 LibraryDir = {}
-LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/Lib"
+LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/lib"
 LibraryDir["mono"] = "%{wks.location}/Volcano/vendor/mono/lib/%{cfg.buildcfg}"
 
 Library = {}

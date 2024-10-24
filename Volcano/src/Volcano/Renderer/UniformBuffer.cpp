@@ -51,6 +51,8 @@ namespace Volcano {
 		UniformBufferManager::m_UniformBuffers["PBR"]       = UniformBuffer::Create(4 * 4 * sizeof(float), 16);
 		UniformBufferManager::m_UniformBuffers["Prefilter"] = UniformBuffer::Create(sizeof(float), 17);
 
+		UniformBufferManager::m_UniformBuffers["Resolution"] = UniformBuffer::Create(4 * sizeof(float), 17);
+
 	}
 
 }

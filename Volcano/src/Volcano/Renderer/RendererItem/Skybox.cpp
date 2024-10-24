@@ -1,16 +1,17 @@
 #include "volpch.h"
 #include "Skybox.h"
 #include "Volcano/Renderer/Renderer.h"
+#include "Volcano/Utils/PlatformUtils.h"
 
 namespace Volcano {
 
     Ref<SkyboxData> Skybox::m_SkyboxData;
 
-	void Skybox::Init()
+    void Skybox::Init()
 	{
         m_SkyboxData = std::make_shared<SkyboxData>();
 
-        float skyboxVertices[] = {
+        float vertices[] = {
             // positions          
             -1.0f,  1.0f, -1.0f,
             -1.0f, -1.0f, -1.0f,
@@ -58,27 +59,30 @@ namespace Volcano {
         for (uint32_t i = 0; i < 36; i++)
             indices[i] = i;
         m_SkyboxData->VertexArray = VertexArray::Create();
-        Ref<VertexBuffer> vb = VertexBuffer::Create(skyboxVertices, sizeof(skyboxVertices));
-        vb->SetLayout({
+        Ref<VertexBuffer> vertexBuffer = VertexBuffer::Create(vertices, sizeof(vertices));
+        vertexBuffer->SetLayout({
             { ShaderDataType::Float3, "a_Position"}
             });
-        m_SkyboxData->VertexArray->AddVertexBuffer(vb);
+        m_SkyboxData->VertexArray->AddVertexBuffer(vertexBuffer);
 
-        Ref<IndexBuffer> ib = IndexBuffer::Create(indices, 36);
-        m_SkyboxData->VertexArray->SetIndexBuffer(ib);
-        Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Skybox.glsl");
+        Ref<IndexBuffer> indexBuffer = IndexBuffer::Create(indices, 36);
+        m_SkyboxData->VertexArray->SetIndexBuffer(indexBuffer);
         m_SkyboxData->Shader = Renderer::GetShaderLibrary()->Get("Skybox");
-        //m_SkyboxData->Texture = TextureCube::Create("SandBoxProject/Assets/Textures/skybox_texture.jpg");
+
+        m_SkyboxData->Texture = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
+        
+        /*
         std::vector<std::string> faces
         {
-            std::string("SandBoxProject/Assets/Textures/skybox/right.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/left.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/top.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/bottom.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/front.jpg"),
-            std::string("SandBoxProject/Assets/Textures/skybox/back.jpg"),
+            (FileDialogs::GetProjectPath() / "SandBoxProject/Assets/Textures/skybox/right.jpg").string(),
+            (FileDialogs::GetProjectPath() / "SandBoxProject/Assets/Textures/skybox/left.jpg").string(),
+            (FileDialogs::GetProjectPath() / "SandBoxProject/Assets/Textures/skybox/top.jpg").string(),
+            (FileDialogs::GetProjectPath() / "SandBoxProject/Assets/Textures/skybox/bottom.jpg").string(),
+            (FileDialogs::GetProjectPath() / "SandBoxProject/Assets/Textures/skybox/front.jpg").string(),
+            (FileDialogs::GetProjectPath() / "SandBoxProject/Assets/Textures/skybox/back.jpg").string()
         };
         m_SkyboxData->Texture = TextureCube::Create(faces);
+        */
 
 	}
 
@@ -100,6 +104,8 @@ namespace Volcano {
 
     void Skybox::DrawSkybox()
     {
+        if (m_SkyboxData->Texture == nullptr) 
+            m_SkyboxData->Texture = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
         m_SkyboxData->Texture->Bind();
         m_SkyboxData->Shader->Bind();
         DrawIndexed();

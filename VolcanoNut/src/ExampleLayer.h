@@ -108,5 +108,8 @@ namespace Volcano {
 		// Project
 		bool m_NewProject = false;
 		bool m_ProjectLoaded = false;
+
+		// Play
+		bool m_Play = false;
 	};
 }
