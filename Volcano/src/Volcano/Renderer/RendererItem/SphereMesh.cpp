@@ -33,9 +33,9 @@ namespace Volcano {
 				float yPos = std::cos(ySegment * PI);
 				float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
 
-				vertexPosition[y + x * (X_SEGMENTS + 1)] = glm::vec3(xPos, yPos, zPos);
-				normal[y + x * (X_SEGMENTS + 1)] = glm::vec3(xPos, yPos, zPos);
-				UV[y + x * (X_SEGMENTS + 1)] = glm::vec2(xSegment, ySegment);
+				vertexPosition[y + x * (Y_SEGMENTS + 1)] = glm::vec3(xPos, yPos, zPos);
+				normal[y + x * (Y_SEGMENTS + 1)] = glm::vec3(xPos, yPos, zPos);
+				UV[y + x * (Y_SEGMENTS + 1)] = glm::vec2(xSegment, ySegment);
 			}
 		}
 

@@ -11,8 +11,12 @@ namespace Volcano {
 	public:
 		SceneSerializer(const Ref<Scene>& scene);
 
+		void SerializePrefab(const std::string& filepath, Entity& entity, UUID* uuid = nullptr);
+
 		void Serialize(const std::string& filepath);
 		void SerializeRuntime(const std::string& filepath);
+
+		Ref<Entity> DeserializePrefab(const std::string& filepath, const std::string& fileName);
 
 		bool Deserialize(const std::string& filepath);
 		bool DeserializeRuntime(const std::string& filepath);

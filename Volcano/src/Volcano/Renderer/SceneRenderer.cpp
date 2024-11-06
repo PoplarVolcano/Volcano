@@ -328,9 +328,9 @@ namespace Volcano {
 				UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
 				m_PBRFramebuffer->SetColorAttachment(m_IrradianceMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i));
 				Renderer::Clear();
-				RendererAPI::SetCullFace(false);
+				//RendererAPI::SetCullFace(false);
 				Skybox::DrawIndexed();
-				RendererAPI::SetCullFace(true);
+				//RendererAPI::SetCullFace(true);
 			}
 			m_PBRFramebuffer->Unbind();
 		}
@@ -358,9 +358,9 @@ namespace Volcano {
 					UniformBufferManager::GetUniformBuffer("PBR")->SetData(&captureViewProjections[i], 4 * 4 * sizeof(float));
 					m_PBRFramebuffer->SetColorAttachment(m_PrefilterMap, TextureType(uint32_t(TextureType::TEXTURE_CUBE_MAP_POSITIVE_X) + i), 0, mip);
 					Renderer::Clear();
-					RendererAPI::SetCullFace(false);
+					//RendererAPI::SetCullFace(false);
 					Skybox::DrawIndexed();
-					RendererAPI::SetCullFace(true);
+					//RendererAPI::SetCullFace(true);
 				}
 				m_PBRFramebuffer->Unbind();
 			}
@@ -439,11 +439,11 @@ namespace Volcano {
             Renderer::Clear();
             m_GBufferFramebuffer->ClearAttachmentInt(4, -1); // °ÑEntityIDÊý¾ÝÖÃ-1
 
-			RendererAPI::SetCullFace(false);
+			//RendererAPI::SetCullFace(false);
             m_ActiveScene->SetRenderType(RenderType::G_BUFFER);
             RenderScene();
             m_ActiveScene->SetRenderType(RenderType::NORMAL);
-			RendererAPI::SetCullFace(true);
+			//RendererAPI::SetCullFace(true);
 
             m_GBufferFramebuffer->Unbind();
 

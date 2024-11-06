@@ -54,9 +54,17 @@ namespace  Volcano {
 			VOL_CORE_ASSERT(HasComponent<T>(), "RemoveComponent: Entity does not has component!");
 			m_Scene->m_Registry.remove<T>(m_EntityHandle);
 		}
+		
+		template<>
+		void RemoveComponent<TransformComponent>()
+		{
+		}
 
-		UUID GetUUID() { return GetComponent<IDComponent>().ID; }
+		UUID& GetUUID() { return GetComponent<IDComponent>().ID; }
 		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
+		void SetName(std::string name) { GetComponent<TagComponent>().Tag = name; }
+		std::string& GetPrefabPath() { return m_PrefabPath; }
+		void SetPrefabPath(std::string prefabPath) { m_PrefabPath = prefabPath; }
 		const entt::entity& GetEntityHandle() { return m_EntityHandle; }
 
 		std::map<std::string, Ref<Entity>>& GetEntityChildren() { return m_Children; }
@@ -64,6 +72,7 @@ namespace  Volcano {
 		Entity* GetEntityParent() { return m_Parent; }
 
 		Ref<Entity> AddEntityChild(UUID uuid, const std::string& name);
+		Ref<Entity> AddEntityChild(Ref<Entity> entity);
 		void SetEntityParent(Entity* entity);
 
 		operator bool() const { return m_EntityHandle != entt::null; }
@@ -81,14 +90,18 @@ namespace  Volcano {
 
 		glm::mat4 GetTransform() { return m_Transform; }
 		void SetTransform(glm::mat4 transform) { m_Transform = transform; }
+		glm::mat4 GetParentTransform() { return m_ParentTransform; }
+		void SetParentTransform(glm::mat4 transform) { m_ParentTransform = transform; }
 
 	private:
 		Entity* m_Parent = nullptr;
 		std::map<std::string, Ref<Entity>> m_Children;
 		entt::entity m_EntityHandle{ entt::null };
 		Scene* m_Scene = nullptr;
+		std::string m_PrefabPath;
 
 		glm::mat4 m_Transform;
+		glm::mat4 m_ParentTransform;
 
 	};
 }

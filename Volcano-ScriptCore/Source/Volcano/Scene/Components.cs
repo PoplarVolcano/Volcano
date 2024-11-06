@@ -10,6 +10,4 @@ namespace Volcano
     {
         public Entity Entity { get; internal set; }
     }
-
-
 }

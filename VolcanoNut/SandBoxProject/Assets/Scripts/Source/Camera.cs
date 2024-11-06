@@ -13,18 +13,20 @@ namespace SandBox
         public float DistanceFromPlayer = 5.0f;
         private Entity m_Player;
 
-        void OnCreate()
+        void Start()
         {
             m_Player = FindEntityByName("Player");
+            if(m_Player != null)
+                transform.LookAt(m_Player.transform);
         }
 
-        void OnUpdate(float ts)
+        void Update(float ts)
         {
             Mouse.Instance.OnActive = Input.IsKeyPressed(KeyCode.LeftAlt) || Input.IsKeyPressed(KeyCode.RightAlt);
 
             TransformComponent tc = GetComponent<TransformComponent>();
             if (m_Player != null)
-                transform.translation = new Vector3(m_Player.transform.translation.XY, DistanceFromPlayer);
+                transform.localPosition = new Vector3(m_Player.transform.localPosition.XY, DistanceFromPlayer);
 
             float speed = 1.0f;
             Vector3 velocity = Vector3.zero;
@@ -45,9 +47,9 @@ namespace SandBox
                 velocity.y += 1.0f;
 
 
-            Vector3 translation = transform.translation;
-            translation += velocity * speed * ts;
-            transform.translation = translation;
+            Vector3 localPosition = transform.localPosition;
+            localPosition += velocity * speed * ts;
+            transform.localPosition = localPosition;
         }
     }
 }

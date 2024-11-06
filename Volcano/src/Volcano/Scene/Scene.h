@@ -46,7 +46,7 @@ namespace Volcano {
 		void InitializeUniform();
 
 		static Ref<Scene> Copy(Ref<Scene> other);
-		Ref<Entity> DuplicateEntity(Ref<Entity> entity);
+		Ref<Entity> DuplicateEntity(Ref<Entity> entity, Ref<Entity> parent = nullptr, UUID id = UUID());
 
 		Ref<Entity> FindEntityByName(std::string_view name);
 		Ref<Entity> GetEntityByUUID(UUID uuid);

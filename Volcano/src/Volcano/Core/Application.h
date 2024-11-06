@@ -8,9 +8,10 @@
 #include "Volcano/Core/Events/ApplicationEvent.h"
 
 #include "Volcano/ImGui/ImGuiLayer.h"
-#include <Volcano/Renderer/VertexArray.h>
-#include <Volcano/Renderer/Framebuffer.h>
-#include <Volcano/Renderer/Texture.h>
+#include "Volcano/Renderer/VertexArray.h"
+#include "Volcano/Renderer/Framebuffer.h"
+#include "Volcano/Renderer/Texture.h"
+#include "Volcano/Core/Timer.h"
 
 int main(int argc, char** argv);
 
@@ -58,6 +59,11 @@ namespace Volcano {
 
 		void SetMouseActive(bool mouseOnActive);
 
+		int GetTargetFrameRate() { return m_TargetFrameRate; }
+		void SetTargetFrameRate(int targetFrameRage) { m_TargetFrameRate = targetFrameRage; }
+
+		Timer& GetTimer() { return m_Timer; }
+
 		void SubmitToMainThread(const std::function<void()>& function);
 	private:
 		void Run();
@@ -72,8 +78,10 @@ namespace Volcano {
 		LayerStack m_LayerStack;
 		ImGuiLayer* m_ImGuiLayer;
 		Timestep m_Timestep;
+		Timer m_Timer;
 
 		float m_LastFrameTime = 0.0f;
+		int m_TargetFrameRate;
 
 		std::vector<std::function<void()>> m_MainThreadQueue;
 		std::mutex m_MainThreadQueueMutex;

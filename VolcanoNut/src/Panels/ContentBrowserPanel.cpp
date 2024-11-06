@@ -3,6 +3,11 @@
 #include <imgui/imgui.h>
 
 #include "Volcano/Project/Project.h"
+#include "Volcano/Renderer/SceneRenderer.h"
+#include "Volcano/Scene/SceneSerializer.h"
+#include "Volcano/Scene/Entity.h"
+#include "Volcano/Scene/Prefab.h"
+#include "ExampleLayer.h"
 
 namespace Volcano {
 
@@ -43,7 +48,11 @@ namespace Volcano {
 		// 目录迭代器
         if (std::filesystem::exists(m_CurrentDirectory))
         {
-            for (auto& directoryEntry : std::filesystem::directory_iterator(m_CurrentDirectory)) {
+            for (auto& directoryEntry : std::filesystem::directory_iterator(m_CurrentDirectory)) 
+            {
+                // 遍历m_CurrentDirectory文件夹下所有文件
+                // directoryEntry为子文件
+                
                 // 得到子文件夹或文件path类。					比如：path = assets\cache\shader
                 const auto& path = directoryEntry.path();
                 // 获取子文件的文件名。						    filenameString = shader
@@ -79,13 +88,57 @@ namespace Volcano {
                     if (directoryEntry.is_directory())
                         m_CurrentDirectory /= path.filename();
                     else
-                        VOL_CORE_TRACE((m_CurrentDirectory / path.filename()).string());
+                    {
+                        // 双击.prefab文件，切换到Prefab场景并选中对应prefabEntity
+                        if (path.extension() == ".prefab")
+                        {
+                            Ref<Entity> prefabEntity = Prefab::Get(Project::GetRelativeAssetDirectory(path).string());
+                            if (prefabEntity == nullptr)
+                            {
+                                prefabEntity = Prefab::Load(path);
+                            }
+                            m_ExampleLayer->SetEditorSceneTemp(Prefab::GetScene());
+                            m_SceneHierarchyPanel->SetContext(Prefab::GetScene());
+                            m_SceneHierarchyPanel->SetSelectedEntity(prefabEntity);
+                        }
+                        VOL_CORE_TRACE(path.string());
+                    }
                 }
                 ImGui::TextWrapped(filenameString.c_str());
                 ImGui::NextColumn();
 
                 ImGui::PopID();
             }
+
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+            ImGui::Button("##EmptyContentBrowserItem", { thumbnailSize, thumbnailSize });
+            ImGui::PopStyleColor();
+            if (ImGui::BeginDragDropTarget())
+            {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_HIERARCHY_NODE"))
+                {
+                    const UUID* entityID = (const UUID*)payload->Data;
+                    auto& entityIDMap = m_SceneHierarchyPanel->GetContext()->GetEntityIDMap();
+                    VOL_CORE_ASSERT(entityIDMap.find(*entityID) != entityIDMap.end());
+                    Ref<Entity> entityTemp = entityIDMap.at(*entityID);
+                    if (entityTemp != nullptr)
+                    {
+                        // 如果对应Prefab已经存在且已经读取，获取已读取prefab的ID保存到新的prefab，否则使用新ID
+                        std::string prefabName = entityTemp->GetName() + ".prefab";
+                        std::filesystem::path prefabPath = Project::GetRelativeAssetDirectory(m_CurrentDirectory / prefabName);
+                        Ref<Entity> prefabEntity = Prefab::Get(prefabPath.string());
+                        UUID newID;
+                        if (prefabEntity != nullptr)
+                            newID = prefabEntity->GetUUID();
+                        else
+                            newID = UUID();
+                        SceneSerializer serializer(SceneRenderer::GetActiveScene());
+                        serializer.SerializePrefab((m_CurrentDirectory / (prefabName)).string(), *entityTemp.get(), &newID);
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
         }
 
         ImGui::Columns(1);
@@ -96,5 +149,7 @@ namespace Volcano {
         ImGui::SliderFloat("Padding", &padding, 0, 32);
 
         ImGui::End();
+
 	}
+    void ContentBrowserPanel::SetExampleLayer(ExampleLayer* exampleLayer) { m_ExampleLayer = exampleLayer; }
 }

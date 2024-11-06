@@ -30,6 +30,18 @@ namespace Volcano {
 
 		return entity;
 	}
+
+	Ref<Entity> Entity::AddEntityChild(Ref<Entity> entity)
+	{
+		std::string newName = Scene::NewName(m_Children, entity->GetName());
+
+		entity->SetName(newName);
+		entity->SetEntityParent(this);
+		m_Children[newName] = entity;
+
+		return entity;
+	}
+
 	void Entity::SetEntityParent(Entity* entity)
 	{
 		m_Parent = entity;

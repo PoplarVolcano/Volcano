@@ -17,20 +17,21 @@
 #include "Volcano/Scripting/ScriptEngine.h"
 #include "Volcano/Core/MouseBuffer.h"
 #include "Volcano/Core/Window.h"
+#include "Volcano/Scene/Prefab.h"
 
 
 namespace Volcano{
 
 
     template<typename Fn>
-    class Timer {
+    class EditorTimer {
     public:
-        Timer(const char* name, Fn&& func)
+        EditorTimer(const char* name, Fn&& func)
             :m_Name(name), m_Func(func), m_Stopped(false)
         {
             m_StartTimepoint = std::chrono::high_resolution_clock::now();
         }
-        ~Timer() {
+        ~EditorTimer() {
             if (!m_Stopped) {
                 Stop();
             }
@@ -52,7 +53,7 @@ namespace Volcano{
         Fn m_Func;
     };
 
-#define PROFILE_SCOPE(name) Timer timer##__LINE__(name, [&](ProfileResult profileResult) { m_ProfileResults.push_back(profileResult); })
+#define PROFILE_SCOPE(name) EditorTimer timer##__LINE__(name, [&](ProfileResult profileResult) { m_ProfileResults.push_back(profileResult); })
 
     ExampleLayer::ExampleLayer() {}
 
@@ -358,6 +359,8 @@ namespace Volcano{
 
         if (ImGui::BeginMenuBar())
         {
+            bool enable = m_EditorScene->GetName() != "Prefab";
+
             if (ImGui::BeginMenu("File"))
             {
                 // Disabling fullscreen would allow the window to be moved to the front of other windows,
@@ -376,19 +379,40 @@ namespace Volcano{
 
 				ImGui::Separator();
 
-				if (ImGui::MenuItem("New Scene", "Ctrl+N"))
+				if (ImGui::MenuItem("New Scene", "Ctrl+N", false, enable))
 					NewScene();
 
-				if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
+				if (ImGui::MenuItem("Save Scene", "Ctrl+S", false, enable))
 					SaveScene();
 
-				if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S"))
+				if (ImGui::MenuItem("Save Scene As...", "Ctrl+Shift+S", false, enable))
 					SaveSceneAs();
 
-                if (ImGui::MenuItem("Set Scene As StartScene", "Ctrl+Shift+S"))
+                if (ImGui::MenuItem("Set Scene As StartScene", "Ctrl+Shift+S", false, enable))
                     Project::GetActive()->GetConfig().StartScene = std::filesystem::relative(m_ActiveScene->GetFilePath(), Project::GetActive()->GetAssetDirectory());
 
-				ImGui::Separator();
+                ImGui::Separator();
+
+                if (!enable)
+                {
+                    if (ImGui::MenuItem("Back to EditorScene"))
+                    {
+                        SetEditorSceneTemp(m_BackupScene);
+                        m_SceneHierarchyPanel.SetContext(m_EditorScene);
+                        m_SceneHierarchyPanel.SetSelectedEntity(nullptr);
+                    }
+                }
+                else
+                {
+                    if (ImGui::MenuItem("Open PrefabScene"))
+                    {
+                        SetEditorSceneTemp(Prefab::GetScene());
+                        m_SceneHierarchyPanel.SetContext(Prefab::GetScene());
+                        m_SceneHierarchyPanel.SetSelectedEntity(nullptr);
+                    }
+                }
+
+                ImGui::Separator();
 
                 if (ImGui::MenuItem("Exit")) 
                     Application::Get().Close();
@@ -398,13 +422,13 @@ namespace Volcano{
 
             if (ImGui::BeginMenu("Script"))
             {
-                if (ImGui::MenuItem("Set assembly", "Ctrl+R"))
+                if (ImGui::MenuItem("Set assembly", "Ctrl+R", false, enable))
                 {
                     std::string assemblyPath = FileDialogs::OpenFile("C# Assembly (*.dll)\0*.dll\0 ", Project::GetActive()->GetProjectDirectory().string());
                     Project::GetActive()->GetConfig().ScriptModulePath = std::filesystem::relative(assemblyPath, Project::GetActive()->GetAssetDirectory()).string();
                     ScriptEngine::ReloadAssembly();
                 }
-                if (ImGui::MenuItem("Reload assembly", "Ctrl+R"))
+                if (ImGui::MenuItem("Reload assembly", "Ctrl+R", false, enable))
                     ScriptEngine::ReloadAssembly();
 
                 ImGui::EndMenu();
@@ -514,7 +538,10 @@ namespace Volcano{
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
                 {
                     const wchar_t* path = (const wchar_t*)payload->Data;
-                    OpenScene(path);
+                    std::filesystem::path scenePath = path;
+
+                    if (scenePath.extension() == ".volcano")
+                        OpenScene(path);
                 }
                 ImGui::EndDragDropTarget();
             }
@@ -763,6 +790,22 @@ namespace Volcano{
 
     }
 
+    void ExampleLayer::SetEditorSceneTemp(Ref<Scene>& scene)
+    {
+        if (m_BackupScene != scene)
+        {
+            m_BackupScene = m_EditorScene;
+            m_EditorScene = scene;
+            m_ActiveScene = m_EditorScene;
+        }
+        else
+        {
+            m_EditorScene = scene;
+            m_ActiveScene = m_EditorScene;
+            m_BackupScene = nullptr;
+        }
+    }
+
     bool ExampleLayer::OnKeyPressed(KeyPressedEvent& e)
     {
         if (e.IsRepeat()) 
@@ -978,6 +1021,8 @@ namespace Volcano{
             else
                 OpenScene(startScenePath);
             m_ContentBrowserPanel = CreateScope<ContentBrowserPanel>();
+            m_ContentBrowserPanel->SetSceneHierarchyPanel(&m_SceneHierarchyPanel);
+            m_ContentBrowserPanel->SetExampleLayer(this);
         }
     }
 
@@ -1029,6 +1074,12 @@ namespace Volcano{
             return;
         }
 
+        // 清理已读取的.mms缓存
+        //Mesh::GetMeshLibrary()->GetMeshes().clear();
+        // 清理已读取的.anm缓存
+        //Animation::GetAnimationLibrary()->GetAnimations().clear();
+        // 清理已读取的.prefab缓存
+        Prefab::Reset();
         Ref<Scene> newScene = CreateRef<Scene>();
         SceneSerializer serializer(newScene);
         if (serializer.Deserialize(path.string()))

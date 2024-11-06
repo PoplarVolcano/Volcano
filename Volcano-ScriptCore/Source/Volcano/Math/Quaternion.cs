@@ -2,9 +2,11 @@
 using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Volcano
 {
+    [StructLayout(LayoutKind.Sequential)]
     public struct Quaternion : IEquatable<Quaternion>, IFormattable
     {
         public float x;
@@ -43,7 +45,7 @@ namespace Volcano
             }
         }
 
-        //  Constructs new Quaternion with given x,y,z,w components.
+        // Constructs new Quaternion with given x,y,z,w components.
         public Quaternion(float x, float y, float z, float w)
         {
             this.x = x;
@@ -61,6 +63,7 @@ namespace Volcano
             w = newW;
         }
 
+        // 四元数相乘，一个物体先绕某个轴旋转一定角度，再绕另一个轴（或同一轴的不同角度）旋转，最终得到的位置和方向由这两个旋转的复合决定。
         public static Quaternion operator *(Quaternion lhs, Quaternion rhs)
         {
             return new Quaternion(lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y, lhs.w * rhs.y + lhs.y * rhs.w + lhs.z * rhs.x - lhs.x * rhs.z, lhs.w * rhs.z + lhs.z * rhs.w + lhs.x * rhs.y - lhs.y * rhs.x, lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z);
@@ -107,6 +110,44 @@ namespace Volcano
             return !(lhs == rhs);
         }
 
+
+        // Makes euler angles positive 0/360 with 0.0001 hacked to support old behaviour of QuaternionToEuler
+        private static Vector3 Internal_MakePositive(Vector3 euler)
+        {
+            float negativeFlip = -0.0001f * MathF.Rad2Deg;
+            float positiveFlip = 360.0f + negativeFlip;
+
+            if (euler.x < negativeFlip)
+                euler.x += 360.0f;
+            else if (euler.x > positiveFlip)
+                euler.x -= 360.0f;
+
+            if (euler.y < negativeFlip)
+                euler.y += 360.0f;
+            else if (euler.y > positiveFlip)
+                euler.y -= 360.0f;
+
+            if (euler.z < negativeFlip)
+                euler.z += 360.0f;
+            else if (euler.z > positiveFlip)
+                euler.z -= 360.0f;
+
+            return euler;
+        }
+
+        public Vector3 eulerAngles
+        {
+            get { return Internal_MakePositive(MathF.EulerFromQuaternion(this) * MathF.Rad2Deg); }
+            set { this = MathF.QuaternionFromEuler(value * MathF.Deg2Rad); }
+        }
+
+        public static Quaternion Euler(float x, float y, float z) { return MathF.QuaternionFromEuler(new Vector3(x, y, z) * MathF.Deg2Rad); }
+        public static Quaternion Euler(Vector3 euler) { return MathF.QuaternionFromEuler(euler * MathF.Deg2Rad); }
+
+
+
+
+
         public bool Equals(Quaternion other)
         {
             return x.Equals(other.x) && y.Equals(other.y) && z.Equals(other.z) && w.Equals(other.w);
@@ -134,7 +175,7 @@ namespace Volcano
 
         public Quaternion(Vector3 Euler)
         {
-            this = MathF.Quaternion(Euler);
+            this = MathF.QuaternionFromEuler(Euler);
         }
     }
 }

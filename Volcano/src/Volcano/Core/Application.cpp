@@ -18,6 +18,8 @@ namespace Volcano {
 		VOL_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
 
+		m_Timer = Timer();
+
 		// 把工作路径放入ApplicationSpecification
 		if (!m_Specification.WorkingDirectory.empty())
 			std::filesystem::current_path(m_Specification.WorkingDirectory);

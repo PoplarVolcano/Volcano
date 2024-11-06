@@ -10,6 +10,7 @@
 #include "Volcano/Utils/FileUtils.h"
 #include "Volcano/Utils/YAMLUtils.h"
 #include "Volcano/Project/Project.h"
+#include "Volcano/Scene/Prefab.h"
 
 #include <fstream>
 #include <yaml-cpp/yaml.h>
@@ -86,12 +87,16 @@ namespace Volcano {
 	}
 
 
-	static void SerializeEntity(YAML::Emitter& out, Entity& entity)
+	static void SerializeEntity(YAML::Emitter& out, Entity& entity, UUID* uuid = nullptr)
 	{
 		VOL_CORE_ASSERT(entity.HasComponent<IDComponent>());
 
 		out << YAML::BeginMap;//Entity
-		out << YAML::Key << "EntityID" << YAML::Value << entity.GetUUID();
+		if(uuid == nullptr)
+		    out << YAML::Key << "EntityID" << YAML::Value << entity.GetUUID();
+		else
+			out << YAML::Key << "EntityID" << YAML::Value << *uuid;
+
 
 		if (entity.HasComponent<TagComponent>())
 		{
@@ -101,6 +106,8 @@ namespace Volcano {
 			out << YAML::Key << "Tag" << YAML::Value << tag;
 			out << YAML::EndMap;//TagComponent
 		}
+
+		out << YAML::Key << "PrefabPath" << YAML::Value << entity.GetPrefabPath();
 
 		if (entity.HasComponent<TransformComponent>())
 		{
@@ -166,50 +173,55 @@ namespace Volcano {
 			out << YAML::BeginMap; // ScriptComponent
 			out << YAML::Key << "ClassName" << YAML::Value << scriptComponent.ClassName;
 
-			// 保存字段Fields
+				// 保存字段Fields
 			Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(scriptComponent.ClassName);
-			const auto& fields = entityClass->GetFields();
-			if (fields.size() > 0)
+			if (entityClass != nullptr)
 			{
-				out << YAML::Key << "ScriptFields" << YAML::Value;
-				auto& entityFields = ScriptEngine::GetScriptFieldMap(entity);
-				out << YAML::BeginSeq;
-				for (const auto& [name, field] : fields)
+				const auto& fields = entityClass->GetFields();
+				if (fields.size() > 0)
 				{
-					if (entityFields.find(name) == entityFields.end())
-						continue;
-
-					out << YAML::BeginMap; // ScriptField
-					out << YAML::Key << "Name" << YAML::Value << name;
-					out << YAML::Key << "Type" << YAML::Value << Utils::ScriptFieldTypeToString(field.Type);
-
-					out << YAML::Key << "Data" << YAML::Value;
-					ScriptFieldInstance& scriptField = entityFields.at(name);
-
-					switch (field.Type)
+					out << YAML::Key << "ScriptFields" << YAML::Value;
+					auto& entityFields = ScriptEngine::GetScriptFieldMap(entity);
+					out << YAML::BeginSeq;
+					for (const auto& [name, field] : fields)
 					{
-						WRITE_SCRIPT_FIELD(Float, float);
-						WRITE_SCRIPT_FIELD(Double, double);
-						WRITE_SCRIPT_FIELD(Bool, bool);
-						WRITE_SCRIPT_FIELD(Char, char);
-						WRITE_SCRIPT_FIELD(Byte, int8_t);
-						WRITE_SCRIPT_FIELD(Short, int16_t);
-						WRITE_SCRIPT_FIELD(Int, int32_t);
-						WRITE_SCRIPT_FIELD(Long, int64_t);
-						WRITE_SCRIPT_FIELD(UByte, uint8_t);
-						WRITE_SCRIPT_FIELD(UShort, uint16_t);
-						WRITE_SCRIPT_FIELD(UInt, uint32_t);
-						WRITE_SCRIPT_FIELD(ULong, uint64_t);
-						WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
-						WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
-						WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
-						WRITE_SCRIPT_FIELD(Quaternion, glm::quat);
-						WRITE_SCRIPT_FIELD(Matrix4x4, glm::mat4);
-						WRITE_SCRIPT_FIELD(Entity, UUID);
+						if (entityFields.find(name) == entityFields.end())
+							continue;
+
+						out << YAML::BeginMap; // ScriptField
+						out << YAML::Key << "Name" << YAML::Value << name;
+						out << YAML::Key << "Type" << YAML::Value << Utils::ScriptFieldTypeToString(field.Type);
+
+						out << YAML::Key << "Data" << YAML::Value;
+
+						VOL_CORE_ASSERT(entityFields.find(name) != entityFields.end());
+						ScriptFieldInstance& scriptField = entityFields.at(name);
+
+						switch (field.Type)
+						{
+							WRITE_SCRIPT_FIELD(Float, float);
+							WRITE_SCRIPT_FIELD(Double, double);
+							WRITE_SCRIPT_FIELD(Bool, bool);
+							WRITE_SCRIPT_FIELD(Char, char);
+							WRITE_SCRIPT_FIELD(Byte, int8_t);
+							WRITE_SCRIPT_FIELD(Short, int16_t);
+							WRITE_SCRIPT_FIELD(Int, int32_t);
+							WRITE_SCRIPT_FIELD(Long, int64_t);
+							WRITE_SCRIPT_FIELD(UByte, uint8_t);
+							WRITE_SCRIPT_FIELD(UShort, uint16_t);
+							WRITE_SCRIPT_FIELD(UInt, uint32_t);
+							WRITE_SCRIPT_FIELD(ULong, uint64_t);
+							WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
+							WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
+							WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
+							WRITE_SCRIPT_FIELD(Quaternion, glm::quat);
+							WRITE_SCRIPT_FIELD(Matrix4x4, glm::mat4);
+							WRITE_SCRIPT_FIELD(Entity, UUID);
+						}
+						out << YAML::EndMap; // ScriptFields
 					}
-					out << YAML::EndMap; // ScriptFields
+					out << YAML::EndSeq;
 				}
-				out << YAML::EndSeq;
 			}
 
 			out << YAML::EndMap; // ScriptComponent
@@ -372,11 +384,34 @@ namespace Volcano {
 		{
 			out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
 			for (auto& [name, entity] : entity.GetEntityChildren())
-				SerializeEntity(out, *entity.get());
+			{
+				if (uuid != nullptr)
+				{
+					UUID id = UUID();
+					SerializeEntity(out, *entity.get(), &id);
+				}
+				else
+					SerializeEntity(out, *entity.get());
+			}
 			out << YAML::EndSeq; // 结束序列化
 		}
 
 		out << YAML::EndMap;//Entity
+	}
+
+	void SceneSerializer::SerializePrefab(const std::string& filepath, Entity& entity, UUID* uuid)
+	{
+		YAML::Emitter out;
+		out << YAML::BeginMap;
+		{
+			out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
+				Volcano::SerializeEntity(out, entity, uuid);
+			out << YAML::EndSeq; // 结束序列化
+
+			out << YAML::EndMap;
+		}
+		std::ofstream fout(filepath);
+		fout << out.c_str();
 	}
 
 	void SceneSerializer::Serialize(const std::string& filepath)
@@ -390,7 +425,7 @@ namespace Volcano {
 				out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
 				{
 					for (auto& [name, entity] : m_Scene->GetEntityNameMap())
-						SerializeEntity(out, *entity.get());
+						Volcano::SerializeEntity(out, *entity.get());
 					out << YAML::EndSeq; // 结束序列化
 				}
 			}
@@ -412,6 +447,18 @@ namespace Volcano {
 				{
 					out << YAML::BeginMap;
 					out << YAML::Key << "Path" << YAML::Value << animation->GetName();
+					out << YAML::EndMap;
+				}
+				out << YAML::EndSeq;
+			}
+
+			// 将已载入的Prefab的路径保存
+			out << YAML::Key << "Prefabs" << YAML::BeginSeq;
+			{
+				for (auto& [prefabPath, entity] : Prefab::GetEntityPathMap())
+				{
+					out << YAML::BeginMap;
+					out << YAML::Key << "Path" << YAML::Value << prefabPath;
 					out << YAML::EndMap;
 				}
 				out << YAML::EndSeq;
@@ -460,10 +507,11 @@ namespace Volcano {
 		}
 	}
 
-	bool DeserializeLoadEntity(YAML::Node& entity, Scene* scene, Ref<Entity> entityParent = nullptr)
+	// entityParent为null时在scene目录下读取Entity，prefabPath不为null时为预制体读取Entity
+	Ref<Entity> DeserializeLoadEntity(YAML::Node& entity, Scene* scene, Ref<Entity> entityParent = nullptr, const std::string& prefabPath = std::string())
 	{
-
 		uint64_t uuid = entity["EntityID"].as<uint64_t>();
+
 		std::string name;
 		auto tagComponent = entity["TagComponent"];
 		if (tagComponent)
@@ -471,7 +519,26 @@ namespace Volcano {
 
 		VOL_CORE_TRACE("Deserialized entity with ID = {0}, name = {1}", uuid, name);
 
+		// 读取prefab不需要读取prefabPath，不读取prefab时根据entity是否有prefabPath决定正常读取还是读取prefab
+		if (prefabPath.empty())
+		{
+			std::string prefabPathYAML = entity["PrefabPath"].as<std::string>();
+			if (!prefabPathYAML.empty())
+			{
+				Ref<Entity> targetEntity = Prefab::Get(prefabPathYAML);
+				if (targetEntity == nullptr)
+				{
+					targetEntity = Prefab::Load(Project::GetAssetFileSystemPath(prefabPathYAML));
+				}
+				Ref<Entity> resultEntity = scene->DuplicateEntity(targetEntity, entityParent);
+				Prefab::GetTargetEntityPathMap()[resultEntity->GetPrefabPath()][resultEntity->GetUUID()] = resultEntity;
+				return resultEntity;
+			}
+		}
+
 		Ref<Entity> deserializedEntity = scene->CreateEntityWithUUID(uuid, name, entityParent);
+
+		deserializedEntity->SetPrefabPath(Project::GetRelativeAssetDirectory(prefabPath).string());
 
 		auto transformComponent = entity["TransformComponent"];
 		if (transformComponent)
@@ -526,6 +593,7 @@ namespace Volcano {
 			auto scriptFields = scriptComponent["ScriptFields"];
 			if (scriptFields)
 			{
+				// 获取mono类
 				Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(sc.ClassName);
 
 				if (entityClass)
@@ -539,9 +607,10 @@ namespace Volcano {
 						std::string typeString = scriptField["Type"].as<std::string>();
 						ScriptFieldType type = Utils::ScriptFieldTypeFromString(typeString);
 
+						//entityFields[name] = ScriptFieldInstance(); // 初始化实体对应字段
 						ScriptFieldInstance& fieldInstance = entityFields[name];
 
-						// TODO(Yan): turn this assert into Hazelnut log warning
+						// TODO(Yan): turn this assert into volcano log warning
 						VOL_CORE_ASSERT(fields.find(name) != fields.end(), "Deserialize.ScriptComponent");
 
 						if (fields.find(name) == fields.end())
@@ -723,7 +792,34 @@ namespace Volcano {
 			for (auto entity : entities)
 				DeserializeLoadEntity(entity, scene, deserializedEntity);
 
-		return false;
+		return deserializedEntity;
+	}
+
+	Ref<Entity> SceneSerializer::DeserializePrefab(const std::string& filepath, const std::string& fileName)
+	{
+		YAML::Node data;
+		try
+		{
+			data = YAML::LoadFile(filepath);
+		}
+		catch (YAML::ParserException e)
+		{
+			VOL_CORE_ERROR("Failed to load .volcano file '{0}'\n     {1}", filepath, e.what());
+			return nullptr;
+		}
+
+		if (!data["Entities"])
+			return nullptr;
+		VOL_CORE_TRACE("Deserializing Prefab '{0}'", fileName);
+
+
+		auto prefab = data["Entities"];
+		if (prefab.size())
+		{
+			auto entity = prefab[0];
+			return DeserializeLoadEntity(entity, m_Scene.get(), nullptr, filepath);
+		}
+		return nullptr;
 	}
 
 	bool SceneSerializer::Deserialize(const std::string& filepath)
@@ -756,6 +852,15 @@ namespace Volcano {
 		if (animations)
 			for (auto animation : animations)
 				Animation::GetAnimationLibrary()->LoadAnm(animation["Path"].as<std::string>());
+
+		auto prefabs = data["Prefabs"];
+		if (prefabs)
+			for (auto prefab : prefabs)
+			{
+				std::string prefabPath = prefab["Path"].as<std::string>();
+				if (Prefab::Get(prefabPath) == nullptr)
+					Prefab::Load(Project::GetAssetFileSystemPath(prefabPath));
+			}
 
 		auto entities = data["Entities"];
 		if (entities)

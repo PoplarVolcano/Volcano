@@ -69,6 +69,8 @@ namespace Volcano {
 		static void SetDepthFunc(DepthFunc func);
 		static void SetCullFaceFunc(CullFaceFunc func);
 
+		static void SetPolygonMode(bool type);
+
 		static RenderAPICapabilities& GetCapabilities()
 		{
 			static RenderAPICapabilities capabilities;

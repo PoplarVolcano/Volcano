@@ -36,6 +36,7 @@ namespace Volcano {
 			VOL_CORE_TRACE("GetAssetDirectory::bug");
 		}
 
+		// 资源目录相对路径
 		static std::filesystem::path GetRelativeAssetDirectory(std::filesystem::path path)
 		{
 			if (s_ActiveProject)
@@ -43,6 +44,7 @@ namespace Volcano {
 			VOL_CORE_TRACE("GetRelativeAssetDirectory::bug");
 		}
 
+		// 资源目录绝对路径
 		// TODO(Yan): move to asset manager when we have one
 		static std::filesystem::path GetAssetFileSystemPath(const std::filesystem::path& path)
 		{
@@ -68,6 +70,7 @@ namespace Volcano {
 
 		inline static Ref<Project> s_ActiveProject;
 
+		// 是否启动游戏
 		bool m_PlayGame = false;
 	};
 	

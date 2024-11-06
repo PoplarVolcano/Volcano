@@ -1,11 +1,23 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using Volcano.Bindings;
+using Volcano.Scripting;
 
 namespace Volcano
 {
-    public struct Vector3 : IEquatable<Vector3>, IFormattable
+    // Representation of 3D vectors and points.
+    [NativeHeader("Runtime/Math/Vector3.h")]
+    [NativeClass("Vector3f")]
+    [RequiredByNativeCode(Optional = true, GenerateProxy = true)]
+    [StructLayout(LayoutKind.Sequential)]
+    public partial struct Vector3 : IEquatable<Vector3>, IFormattable
     {
         public float x, y, z;
+
+        //Epsilon是希腊字母中的第五个字母，常用于表示极小值或接近于零的数。
+        public const float kEpsilon = 0.00001F;
+        public const float kEpsilonNormalSqrt = 1e-15F;
 
         private static readonly Vector3 zeroVector    = new Vector3( 0.0f,  0.0f,  0.0f);
         private static readonly Vector3 oneVector     = new Vector3( 1.0f,  1.0f,  1.0f);
@@ -56,6 +68,33 @@ namespace Volcano
             }
         }
 
+        // Returns a copy of /vector/ with its magnitude clamped to /maxLength/.
+        public static Vector3 ClampMagnitude(Vector3 vector, float maxLength)
+        {
+            float sqrmag = vector.sqrMagnitude;
+            if (sqrmag > maxLength * maxLength)
+            {
+                float mag = (float)Math.Sqrt(sqrmag);
+                //these intermediate variables force the intermediate result to be
+                //of float precision. without this, the intermediate result can be of higher
+                //precision, which changes behavior.
+                float normalized_x = vector.x / mag;
+                float normalized_y = vector.y / mag;
+                float normalized_z = vector.z / mag;
+                return new Vector3(normalized_x * maxLength,
+                    normalized_y * maxLength,
+                    normalized_z * maxLength);
+            }
+            return vector;
+        }
+
+        // Returns the length of this vector.
+        public float magnitude { get { return (float)Math.Sqrt(x * x + y * y + z * z); } }
+
+        // Returns the squared length of this vector.
+        public float sqrMagnitude { get { return x * x + y * y + z * z; } }
+
+
         public static Vector3 operator +(Vector3 a, Vector3 b)
         {
             return new Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
@@ -83,7 +122,6 @@ namespace Volcano
 
         public float this[int index]
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
                 switch (index)
@@ -94,7 +132,6 @@ namespace Volcano
                     default: throw new IndexOutOfRangeException("Invalid Vector3 index!");
                 };
             }
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set
             {
                 switch (index)

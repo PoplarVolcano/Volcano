@@ -17,7 +17,7 @@ namespace SandBox
         public float Speed;
         public float Time = 0.0f;
 
-        void OnCreate()
+        void Start()
         {
             Console.WriteLine($"Player.OnCreate - {ID}");
 
@@ -25,7 +25,7 @@ namespace SandBox
             m_Rigidbody = GetComponent<Rigidbody2DComponent>();
         }
 
-        void OnUpdate(float ts)
+        void Update(float ts)
         {
             Time += ts;
 
@@ -63,9 +63,9 @@ namespace SandBox
                 m_Rigidbody.ApplyLinearImpulse(velocity.XY, true);
             else
             {
-                Vector3 translation = m_Transform.translation;
-                translation += velocity * ts;
-                m_Transform.translation = translation;
+                Vector3 localPosition = m_Transform.localPosition;
+                localPosition += velocity * ts;
+                m_Transform.localPosition = localPosition;
             }
         }
 

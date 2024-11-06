@@ -19,6 +19,7 @@ namespace Volcano {
 		virtual void OnUpdate(Timestep ts) override;
 		virtual void OnImGuiRender() override;
 		virtual void OnEvent(Event& event) override;
+		void SetEditorSceneTemp(Ref<Scene>& scene);
 	private:
 		bool OnKeyPressed(KeyPressedEvent& e);
 		bool OnMouseButtonPressed(MouseButtonPressedEvent& e);
@@ -67,6 +68,8 @@ namespace Volcano {
 		Ref<Scene> m_ActiveScene;
 		// 编辑器场景
 		Ref<Scene> m_EditorScene;
+		// 用于切换到临时场景时暂存m_EditorScene
+		Ref<Scene> m_BackupScene;
 		// 编辑器场景文件路径
 		std::filesystem::path m_EditorScenePath;
 

@@ -258,9 +258,6 @@
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Quad.h">
       <Filter>src\Volcano\Renderer\RendererItem</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Renderer\RendererItem\Shadow.h">
-      <Filter>src\Volcano\Renderer\RendererItem</Filter>
-    </ClInclude>
     <ClInclude Include="src\Volcano\Renderer\RendererItem\Skybox.h">
       <Filter>src\Volcano\Renderer\RendererItem</Filter>
     </ClInclude>
@@ -1581,6 +1578,10 @@
     <ClInclude Include="vendor\glm\glm\vector_relational.hpp">
       <Filter>vendor\glm\glm</Filter>
     </ClInclude>
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\PlaneMesh.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\CylinderMesh.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\CapsuleMesh.h" />
+    <ClInclude Include="src\Volcano\Scene\Prefab.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1718,9 +1719,6 @@
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Quad.cpp">
       <Filter>src\Volcano\Renderer\RendererItem</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Renderer\RendererItem\Shadow.cpp">
-      <Filter>src\Volcano\Renderer\RendererItem</Filter>
-    </ClCompile>
     <ClCompile Include="src\Volcano\Renderer\RendererItem\Skybox.cpp">
       <Filter>src\Volcano\Renderer\RendererItem</Filter>
     </ClCompile>
@@ -1784,5 +1782,9 @@
     <ClCompile Include="src\volpch.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\PlaneMesh.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\CylinderMesh.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\CapsuleMesh.cpp" />
+    <ClCompile Include="src\Volcano\Scene\Prefab.cpp" />
   </ItemGroup>
 </Project>

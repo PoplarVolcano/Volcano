@@ -12,7 +12,8 @@ namespace Volcano {
 		SceneHierarchyPanel() = default;
 		SceneHierarchyPanel(Ref<Scene>& scene);
 
-		void SetContext(const Ref<Scene>& scene);
+		void SetContext(Ref<Scene>& scene);
+		Ref<Scene>& GetContext() { return m_Context; }
 
 		void OnImGuiRender();
 		Ref<Entity> GetSelectedEntity() const { return m_SelectionContext; }
@@ -22,6 +23,7 @@ namespace Volcano {
 		void DisplayAddComponentEntry(const std::string& entryName);
 
 		void DrawEntityNode(Ref<Entity> entity);
+		void DrawPrefabCombo(std::filesystem::path folder_path, Ref<Entity> entity, bool& stopDraw);
 		void DrawComponents(Ref<Entity> entity);
 	private:
 		Ref<Scene> m_Context;

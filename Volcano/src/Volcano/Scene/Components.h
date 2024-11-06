@@ -13,6 +13,9 @@
 #include "Volcano/Renderer/RendererItem/SphereMesh.h"
 #include "Volcano/Renderer/RendererItem/ModelMesh.h"
 #include "Volcano/Renderer/RendererItem/Animator.h"
+#include "Volcano/Renderer/RendererItem/PlaneMesh.h"
+#include "Volcano/Renderer/RendererItem/CylinderMesh.h"
+#include "Volcano/Renderer/RendererItem/CapsuleMesh.h"
 
 namespace Volcano {
 
@@ -101,12 +104,24 @@ namespace Volcano {
 			case MeshType::None:
 				mesh = nullptr;
 				break;
+			case MeshType::Plane:
+				mesh = std::make_shared<PlaneMesh>();
+				mesh->SetEntity(entity);
+				break;
 			case MeshType::Cube:
 				mesh = std::make_shared<CubeMesh>();
 				mesh->SetEntity(entity);
 				break;
 			case MeshType::Sphere:
 				mesh = std::make_shared<SphereMesh>();
+				mesh->SetEntity(entity);
+				break;
+			case MeshType::Cylinder:
+				mesh = std::make_shared<CylinderMesh>();
+				mesh->SetEntity(entity);
+				break;
+			case MeshType::Capsule:
+				mesh = std::make_shared<CapsuleMesh>();
 				mesh->SetEntity(entity);
 				break;
 			case MeshType::Model:
@@ -186,6 +201,7 @@ namespace Volcano {
 
 		AnimatorComponent() = default;
 		AnimatorComponent(const AnimatorComponent&) = default;
+		void Reset() { animator = std::make_shared<Animator>(); }
 	};
 
 	struct AnimationComponent
@@ -246,6 +262,7 @@ namespace Volcano {
 	struct ScriptComponent
 	{
 		std::string ClassName;
+		bool enable = true;
 
 		ScriptComponent() = default;
 		ScriptComponent(const ScriptComponent&) = default;

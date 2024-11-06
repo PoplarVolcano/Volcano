@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Volcano/Core/Timer.h"
 #include "Volcano/Scene/Scene.h"
 #include "Volcano/Scene/Entity.h"
 
@@ -14,6 +15,7 @@ extern "C" {
 	typedef struct _MonoMethod MonoMethod;
 	typedef struct _MonoAssembly MonoAssembly;
 	typedef struct _MonoImage MonoImage;
+	typedef struct _MonoDomain MonoDomain;
 	typedef struct _MonoClassField MonoClassField;
 }
 
@@ -25,6 +27,7 @@ namespace Volcano {
 		Float, Double,
 		Bool, Char, Byte, Short, Int, Long,
 		UByte, UShort, UInt, ULong,
+		String,
 		Vector2, Vector3, Vector4,
 		Quaternion, Matrix4x4,
 		Entity
@@ -37,6 +40,25 @@ namespace Volcano {
 		std::string Name;
 
 		MonoClassField* ClassField;
+	};
+
+	struct ScriptMethod
+	{
+		std::string Name;
+		MonoMethod* ClassMethod;
+	};
+
+	class ScriptInstance;
+
+	struct InvokeDelayedData
+	{
+		UUID id;
+		Ref<ScriptInstance> instance;
+		ScriptMethod method;
+		float time;
+		float repeatRate;
+		Timer timer;
+		bool firstInvoke = false;
 	};
 
 	// ScriptField + data storage
@@ -77,18 +99,25 @@ namespace Volcano {
 	{
 	public:
 		ScriptClass() = default;
-		ScriptClass(const std::string& classNamespace, const std::string& className, bool isCore = false);// 创建一个MonoClass类
+		ScriptClass(const std::string& classNamespace, const std::string& className, bool isCore = false);
+		ScriptClass(MonoClass* monoClass, const std::string& classNamespace, const std::string& className);
+		// 创建一个MonoClass类
 
 		MonoObject* Instantiate();		// 创建一个由MonoClass类构成的mono对象并且初始化
 		MonoMethod* GetMethod(const std::string& name, int parameterCount);                         // 获取类的函数
+		ScriptMethod& GetMethod(const std::string& name);
+		bool HasMethod(const std::string& name);
 		MonoObject* InvokeMethod(MonoObject* instance, MonoMethod* method, void** params = nullptr);// 调用类的函数
-	
+		MonoClass* GetClass() { return m_MonoClass; }
+
 		const std::map<std::string, ScriptField>& GetFields() const { return m_Fields; }
+		const std::map<std::string, ScriptMethod>& GetMethods() const { return m_Methods; }
 	private:
 		std::string m_ClassNamespace;
 		std::string m_ClassName;
 
 		std::map<std::string, ScriptField> m_Fields;
+		std::map<std::string, ScriptMethod> m_Methods;
 
 		MonoClass* m_MonoClass = nullptr;
 
@@ -99,10 +128,16 @@ namespace Volcano {
 	class ScriptInstance
 	{
 	public:
-		ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity);
+		ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity, bool enable = true);
+		ScriptInstance(MonoObject* instance, bool enable = true);
 
-		void InvokeOnCreate();
-		void InvokeOnUpdate(float ts);
+		void InvokeAwake();
+		void InvokeStart();
+		void InvokeUpdate(float ts);
+		void InvokeOnEnable();
+		void InvokeOnDisable();
+
+		void InvokeMethod(MonoMethod* method, void** params = nullptr);
 
 		Ref<ScriptClass> GetScriptClass() { return m_ScriptClass; }
 
@@ -113,7 +148,6 @@ namespace Volcano {
 			bool success = GetFieldValueInternal(name, s_FieldValueBuffer);
 			if (!success)
 				return T();
-
 			return *(T*)s_FieldValueBuffer;
 		}
 
@@ -124,18 +158,37 @@ namespace Volcano {
 			SetFieldValueInternal(name, &value);
 		}
 		MonoObject* GetManagedObject() { return m_Instance; }
+
+		bool GetEnable() { return m_Enable; }
+		void SetEnable(bool enable) 
+		{ 
+			if (enable != m_Enable && enable == true)
+			{
+				InvokeOnEnable();
+			} 
+			else if (enable != m_Enable && enable == false)
+			{
+				InvokeOnDisable();
+			}
+			m_Enable = enable;
+		}
 	private:
 		bool GetFieldValueInternal(const std::string& name, void* buffer);
 		bool SetFieldValueInternal(const std::string& name, const void* value);
 	private:
 		Ref<ScriptClass> m_ScriptClass;
 
-		MonoObject* m_Instance = nullptr;
-		MonoMethod* m_Constructor = nullptr;
-		MonoMethod* m_OnCreateMethod = nullptr;
-		MonoMethod* m_OnUpdateMethod = nullptr;
+		MonoObject* m_Instance        = nullptr;
+		MonoMethod* m_Constructor     = nullptr;
+		MonoMethod* m_AwakeMethod     = nullptr;
+		MonoMethod* m_StartMethod     = nullptr;
+		MonoMethod* m_UpdateMethod    = nullptr;
+		MonoMethod* m_OnEnableMethod  = nullptr;
+		MonoMethod* m_OnDisableMethod = nullptr;
 
 		inline static char s_FieldValueBuffer[16];
+
+		bool m_Enable = true;
 
 		friend class ScriptEngine;
 		friend struct ScriptFieldInstance;
@@ -157,19 +210,39 @@ namespace Volcano {
 		static void OnRuntimeStop();
 
 		static bool EntityClassExists(const std::string& fullClassName);
-		static void OnCreateEntity(Entity entity);
-		static void OnUpdateEntity(Entity entity, Timestep ts);
+		static void CreateEntity(Entity entity, bool enable = true);
+		static void AwakeEntity(Entity entity, Timestep ts);
+		static void OnEnableEntity(Entity entity, Timestep ts);
+		static void StartEntity(Entity entity, Timestep ts);
+		static void UpdateEntity(Entity entity, Timestep ts);
+		static void OnDisableEntity(Entity entity, Timestep ts);
 
 		static Scene* GetSceneContext();
 		static Ref<ScriptInstance> GetEntityScriptInstance(UUID entityID);
 
+		static Ref<ScriptClass> GetEntityClass();
+
 		static Ref<ScriptClass> GetEntityClass(const std::string& name);
 		static std::unordered_map<std::string, Ref<ScriptClass>> GetEntityClasses();
 		static ScriptFieldMap& GetScriptFieldMap(Entity entity);
+		static std::vector<InvokeDelayedData>& GetEntityInvokeDelayedList();
+		//static void SetScriptFieldMap(Entity entity, ScriptFieldMap scriptFieldMap);
 
 		static MonoImage* GetCoreAssemblyImage();
 
+		static MonoImage* GetAppAssemblyImage();
+
+		//static MonoImage* GetMscorlibAssemblyImage();
+
+		static MonoDomain* GetCoreAssemblyDomain();
+
+		static MonoDomain* GetAppAssemblyDomain();
+
 		static MonoObject* GetManagedInstance(UUID uuid);
+
+		static MonoClass* GetClass(ScriptFieldType type);
+
+		static void ProcessMonoClass(MonoClass* monoClass);
 	private:
 		static void InitMono();
 		static void ShutdownMono();
@@ -201,6 +274,7 @@ namespace Volcano {
 			case ScriptFieldType::UShort:     return "UShort";
 			case ScriptFieldType::UInt:       return "UInt";
 			case ScriptFieldType::ULong:      return "ULong";
+			case ScriptFieldType::String:     return "String";
 			case ScriptFieldType::Vector2:    return "Vector2";
 			case ScriptFieldType::Vector3:    return "Vector3";
 			case ScriptFieldType::Vector4:    return "Vector4";
@@ -227,6 +301,7 @@ namespace Volcano {
 			if (fieldType == "UShort")     return ScriptFieldType::UShort;
 			if (fieldType == "UInt")       return ScriptFieldType::UInt;
 			if (fieldType == "ULong")      return ScriptFieldType::ULong;
+			if (fieldType == "String")     return ScriptFieldType::String;
 			if (fieldType == "Vector2")    return ScriptFieldType::Vector2;
 			if (fieldType == "Vector3")    return ScriptFieldType::Vector3;
 			if (fieldType == "Vector4")    return ScriptFieldType::Vector4;

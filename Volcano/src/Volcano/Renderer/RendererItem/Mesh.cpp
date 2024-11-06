@@ -63,13 +63,7 @@ namespace Volcano {
             uint32_t dataSize = (uint32_t)((uint8_t*)vertexBufferPtr - (uint8_t*)vertexBufferBase);
             m_VertexBuffer->SetData(vertexBufferBase, dataSize);
 
-            glm::mat4 transform = m_Entity->GetTransform();
-            Entity* entityParent = m_Entity->GetEntityParent();
-            while (entityParent != nullptr)
-            {
-                transform = entityParent->GetTransform() * transform;
-                entityParent = entityParent->GetEntityParent();
-            }
+            glm::mat4 transform = m_Entity->GetParentTransform() * m_Entity->GetTransform();
             glm::mat4 normalTransform = transpose(inverse(transform));//glm::mat3(transpose(inverse(transform)));
 
             UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&transform, sizeof(glm::mat4));
@@ -334,7 +328,7 @@ namespace Volcano {
         {
             for (uint32_t j = 0; j < m_IndexSize; j++)
                 indicesBuffer[i + j] = offset + m_Indices[j];
-            offset += 36; // +vertexSize
+            offset += m_VertexSize; // +vertexSize
         }
         Ref<IndexBuffer> indexBuffer = IndexBuffer::Create(indicesBuffer, MaxIndices);;
         m_VertexArray->SetIndexBuffer(indexBuffer);

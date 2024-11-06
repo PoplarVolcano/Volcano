@@ -47,7 +47,6 @@ namespace Volcano {
 		m_QuadData->vertexPosition[2] = {  0.5,  0.5, 0.0f, 1.0f };
 		m_QuadData->vertexPosition[3] = { -0.5,  0.5, 0.0f, 1.0f };
 
-		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Quad.glsl");
 		m_QuadData->shader = Renderer::GetShaderLibrary()->Get("Renderer2D_Quad");
 	}
 

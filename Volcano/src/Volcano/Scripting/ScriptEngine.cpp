@@ -16,6 +16,7 @@
 #include "Volcano/Core/Buffer.h"
 #include "Volcano/Core/FileSystem.h"
 #include "Volcano/Project/Project.h"
+#include "Volcano/Scene/Prefab.h"
 
 namespace Volcano {
 
@@ -34,6 +35,7 @@ namespace Volcano {
 		{ "System.UInt16",      ScriptFieldType::UShort     },
 		{ "System.UInt32",      ScriptFieldType::UInt       },
 		{ "System.UInt64",      ScriptFieldType::ULong      },
+		{ "System.String",      ScriptFieldType::String     },
 							  	 					 	    
 		{ "Volcano.Vector2",    ScriptFieldType::Vector2    },
 		{ "Volcano.Vector3",    ScriptFieldType::Vector3    },
@@ -121,6 +123,8 @@ namespace Volcano {
 		MonoDomain* RootDomain = nullptr;
 		// Mono App域
 		MonoDomain* AppDomain = nullptr;
+		// Mono Mscorlib域
+		//MonoDomain* MscorlibDomain = nullptr;
 
 		// Core程序集
 		MonoAssembly* CoreAssembly = nullptr;
@@ -132,6 +136,11 @@ namespace Volcano {
 		// App程序集数据
 		MonoImage* AppAssemblyImage = nullptr;
 
+		// Mscorlib程序集
+		//MonoAssembly* MscorlibAssembly = nullptr;
+		// Mscorlib程序集数据
+		//MonoImage* MscorlibAssemblyImage = nullptr;
+
 		// Core程序集dll文件路径
 		std::filesystem::path CoreAssemblyFilepath;
 		// App程序集dll文件路径
@@ -141,12 +150,22 @@ namespace Volcano {
 		std::unordered_map<UUID, ScriptFieldMap> EntityScriptFields;
 
 		// C#Entity类实例
-		ScriptClass EntityClass;
+		Ref<ScriptClass> EntityClass;
 
 		// C#中的Entity子类，如Player
 		std::unordered_map<std::string, Ref<ScriptClass>> EntityClasses;
 		// ID对应的C#中的Entity子类实例，如Player
 		std::unordered_map<UUID, Ref<ScriptInstance>> EntityInstances;
+
+		// C#Component类实例
+		Ref<ScriptClass> ComponentClass;
+		// C#中的Component子类，如TransformComponent
+		std::unordered_map<std::string, Ref<ScriptClass>> ComponentClasses;
+		// ID对应的C#中的Entity子类实例，如Player
+		std::unordered_map<UUID, Ref<ScriptInstance>> ComponentInstances;
+
+		std::vector<InvokeDelayedData> EntityInvokeDelayedList;
+
 
 		// 文件监管器
 		Scope<filewatch::FileWatch<std::string>> AppAssemblyFileWatcher;
@@ -265,6 +284,14 @@ namespace Volcano {
 		// 得到MonoImage对象
 		s_ScriptEngineData->CoreAssemblyImage = mono_assembly_get_image(s_ScriptEngineData->CoreAssembly);
 		//Utils::PrintAssemblyTypes(s_ScriptEngineData->CoreAssembly);// 打印dll的基本信息
+
+		/*
+		s_ScriptEngineData->MscorlibAssembly = Utils::LoadMonoAssembly("C:/C++Project/engine/Volcano/Volcano/vendor/mono/lib/mono/4.5/mscorlib.dll", s_ScriptEngineData->EnableDebugging);
+		if (s_ScriptEngineData->MscorlibAssembly == nullptr)
+			return false;
+		// 得到MonoImage对象
+		s_ScriptEngineData->MscorlibAssemblyImage = mono_assembly_get_image(s_ScriptEngineData->MscorlibAssembly);
+		*/
 		return true;
 	}
 
@@ -297,6 +324,14 @@ namespace Volcano {
 		//mono_domain_unload(s_ScriptEngineData->AppDomain);
 		//LoadAssembly(s_ScriptEngineData->CoreAssemblyFilepath);
 
+		s_ScriptEngineData->EntityClass = nullptr;
+		s_ScriptEngineData->EntityClasses.clear();
+		s_ScriptEngineData->EntityInstances.clear();
+		s_ScriptEngineData->EntityScriptFields.clear();
+		s_ScriptEngineData->ComponentClass = nullptr;
+		s_ScriptEngineData->ComponentClasses.clear();
+		s_ScriptEngineData->ComponentInstances.clear();
+
 		auto scriptModulePath = Project::GetAssetDirectory() / Project::GetActive()->GetConfig().ScriptModulePath;
 		if (!Project::GetActive()->GetConfig().ScriptModulePath.empty() && std::filesystem::exists(scriptModulePath))
 		{
@@ -308,9 +343,83 @@ namespace Volcano {
 			}
 			LoadAssemblyClasses();
 			ScriptGlue::RegisterComponents();
+
 		    // Retrieve and instantiate class
-		    // 创建加载Entity父类-为了在调用OnCreate函数之前把UUID传给C#Entity的构造函数
-			s_ScriptEngineData->EntityClass = ScriptClass("Volcano", "Entity", true);
+		    // 创建加载Entity父类-为了在调用Start函数之前把UUID传给C#Entity的构造函数
+			s_ScriptEngineData->EntityClass = std::make_shared<ScriptClass>("Volcano", "Entity", true);
+			{
+				// 获取Entity类的字段
+				int fieldCount = mono_class_num_fields(s_ScriptEngineData->EntityClass->GetClass());
+				VOL_CORE_WARN("{}.{} has {} fields:", "Volcano", "Entity", fieldCount);
+				void* iterator = nullptr;
+
+				while (MonoClassField* field = mono_class_get_fields(s_ScriptEngineData->EntityClass->GetClass(), &iterator))
+				{
+					const char* fieldName = mono_field_get_name(field);
+					uint32_t flags = mono_field_get_flags(field);
+					if (flags & MONO_FIELD_ATTR_PUBLIC)
+					{
+						MonoType* type = mono_field_get_type(field);
+						ScriptFieldType fieldType = Utils::MonoTypeToScriptFieldType(type);
+						VOL_CORE_WARN("  {} ({})", fieldName, Utils::ScriptFieldTypeToString(fieldType));
+
+						// 把字段注入mono类的字段map
+						s_ScriptEngineData->EntityClass->m_Fields[fieldName] = { fieldType, fieldName, field };
+					}
+				}
+
+				// 获取Entity类的方法
+				int methodCount = mono_class_num_methods(s_ScriptEngineData->EntityClass->GetClass());
+				VOL_CORE_WARN(" {} methods:", methodCount);
+				void* methodIterator = nullptr;
+
+				while (MonoMethod* method = mono_class_get_methods(s_ScriptEngineData->EntityClass->GetClass(), &methodIterator))
+				{
+					const char* methodName = mono_method_get_name(method);
+					VOL_CORE_WARN("  {}", methodName);
+					// 把字段注入mono类的字段map
+					s_ScriptEngineData->EntityClass->m_Methods[methodName] = { methodName, method };
+				}
+			}
+
+
+			// 创建加载Component类实例
+			s_ScriptEngineData->ComponentClass = std::make_shared<ScriptClass>("Volcano", "Component", true);
+			{
+				// 获取Component类的字段
+				int fieldCount = mono_class_num_fields(s_ScriptEngineData->ComponentClass->GetClass());
+				VOL_CORE_WARN("{}.{} has {} fields:", "Volcano", "Component", fieldCount);
+				void* iterator = nullptr;
+
+				while (MonoClassField* field = mono_class_get_fields(s_ScriptEngineData->ComponentClass->GetClass(), &iterator))
+				{
+					const char* fieldName = mono_field_get_name(field);
+					uint32_t flags = mono_field_get_flags(field);
+					if (flags & MONO_FIELD_ATTR_PUBLIC)
+					{
+						MonoType* type = mono_field_get_type(field);
+						ScriptFieldType fieldType = Utils::MonoTypeToScriptFieldType(type);
+						VOL_CORE_WARN("  {} ({})", fieldName, Utils::ScriptFieldTypeToString(fieldType));
+
+						// 把字段注入mono类的字段map
+						s_ScriptEngineData->ComponentClass->m_Fields[fieldName] = { fieldType, fieldName, field };
+					}
+				}
+
+				// 获取Component类的方法
+				int methodCount = mono_class_num_methods(s_ScriptEngineData->ComponentClass->GetClass());
+				VOL_CORE_WARN(" {} methods:", methodCount);
+				void* methodIterator = nullptr;
+
+				while (MonoMethod* method = mono_class_get_methods(s_ScriptEngineData->ComponentClass->GetClass(), &methodIterator))
+				{
+					const char* methodName = mono_method_get_name(method);
+					VOL_CORE_WARN("  {}", methodName);
+					// 把字段注入mono类的字段map
+					s_ScriptEngineData->ComponentClass->m_Methods[methodName] = { methodName, method };
+				}
+			}
+
 		}
 	}
 
@@ -327,7 +436,7 @@ namespace Volcano {
 	}
 
 	// 对应不同实体id实例化mono的entity子类并注入字段数据
-	void ScriptEngine::OnCreateEntity(Entity entity)
+	void ScriptEngine::CreateEntity(Entity entity, bool enable)
 	{
 		const auto& sc = entity.GetComponent<ScriptComponent>();	// 得到这个实体的脚本组件
 		// LoadAssemblyClasses方法中读取mono类
@@ -335,29 +444,93 @@ namespace Volcano {
 		{
 			UUID entityID = entity.GetUUID();
 			// 实例化类对象
-			Ref<ScriptInstance> instance = CreateRef<ScriptInstance>(s_ScriptEngineData->EntityClasses[sc.ClassName], entity);
+			Ref<ScriptInstance> instance = CreateRef<ScriptInstance>(s_ScriptEngineData->EntityClasses[sc.ClassName], entity, enable);
 			s_ScriptEngineData->EntityInstances[entityID] = instance;// map存储(类对象)
 			
-			// 读取ID对应字段
-			// LoadAssemblyClasses方法中读取mono类的字段并保存进map
+			// 将ScriptFieldInstance中已有的字段数据保存到C#中，SceneHierarchyPanel中会对ScriptFieldInstance进行修改
 			if (s_ScriptEngineData->EntityScriptFields.find(entityID) != s_ScriptEngineData->EntityScriptFields.end())
 			{
-				const ScriptFieldMap& fieldMap = s_ScriptEngineData->EntityScriptFields.at(entityID);
+				auto& fieldIDMap = s_ScriptEngineData->EntityScriptFields;
+				VOL_CORE_ASSERT(fieldIDMap.find(entityID) != fieldIDMap.end());
+				const ScriptFieldMap& fieldMap = fieldIDMap.at(entityID);
 				for (const auto& [name, fieldInstance] : fieldMap)
 					instance->SetFieldValueInternal(name, fieldInstance.m_Buffer);
 			}
-			
-			instance->InvokeOnCreate();	// 调用C#的OnCreate函数
 		}
 	}
 
-	void ScriptEngine::OnUpdateEntity(Entity entity, Timestep ts)
+	void ScriptEngine::AwakeEntity(Entity entity, Timestep ts)
 	{
 		UUID entityUUID = entity.GetUUID();
 		if (s_ScriptEngineData->EntityInstances.find(entityUUID) != s_ScriptEngineData->EntityInstances.end())
 		{
 			Ref<ScriptInstance> instance = s_ScriptEngineData->EntityInstances[entityUUID];
-			instance->InvokeOnUpdate((float)ts);
+			instance->InvokeAwake();	// 调用C#的Awake函数
+		}
+		else
+		{
+			VOL_CORE_ERROR("Could not find ScriptInstance for entity {}", (uint64_t)entityUUID);
+		}
+	}
+
+	void ScriptEngine::OnEnableEntity(Entity entity, Timestep ts)
+	{
+		UUID entityUUID = entity.GetUUID();
+		if (s_ScriptEngineData->EntityInstances.find(entityUUID) != s_ScriptEngineData->EntityInstances.end())
+		{
+			Ref<ScriptInstance> instance = s_ScriptEngineData->EntityInstances[entityUUID];
+			if (instance->GetEnable())
+			{
+				instance->InvokeOnEnable();	// 调用C#的OnEnable函数
+			}
+		}
+		else
+		{
+			VOL_CORE_ERROR("Could not find ScriptInstance for entity {}", (uint64_t)entityUUID);
+		}
+	}
+
+	void ScriptEngine::StartEntity(Entity entity, Timestep ts)
+	{
+		UUID entityUUID = entity.GetUUID();
+		if (s_ScriptEngineData->EntityInstances.find(entityUUID) != s_ScriptEngineData->EntityInstances.end())
+		{
+			Ref<ScriptInstance> instance = s_ScriptEngineData->EntityInstances[entityUUID];
+			if (instance->GetEnable())
+			{
+				instance->InvokeStart();	// 调用C#的Start函数
+			}
+		}
+		else
+		{
+			VOL_CORE_ERROR("Could not find ScriptInstance for entity {}", (uint64_t)entityUUID);
+		}
+	}
+
+	void ScriptEngine::UpdateEntity(Entity entity, Timestep ts)
+	{
+		UUID entityUUID = entity.GetUUID();
+		if (s_ScriptEngineData->EntityInstances.find(entityUUID) != s_ScriptEngineData->EntityInstances.end())
+		{
+			Ref<ScriptInstance> instance = s_ScriptEngineData->EntityInstances[entityUUID];
+			if (instance->GetEnable())
+			{
+			    instance->InvokeUpdate((float)ts);
+			}
+		}
+		else
+		{
+			VOL_CORE_ERROR("Could not find ScriptInstance for entity {}", (uint64_t)entityUUID);
+		}
+	}
+
+	void ScriptEngine::OnDisableEntity(Entity entity, Timestep ts)
+	{
+		UUID entityUUID = entity.GetUUID();
+		if (s_ScriptEngineData->EntityInstances.find(entityUUID) != s_ScriptEngineData->EntityInstances.end())
+		{
+			Ref<ScriptInstance> instance = s_ScriptEngineData->EntityInstances[entityUUID];
+			instance->InvokeOnDisable();	// 调用C#的OnDisable函数
 		}
 		else
 		{
@@ -377,6 +550,11 @@ namespace Volcano {
 			return nullptr;
 
 		return it->second;
+	}
+
+	Ref<ScriptClass> ScriptEngine::GetEntityClass()
+	{
+		return s_ScriptEngineData->EntityClass;
 	}
 
 	Ref<ScriptClass> ScriptEngine::GetEntityClass(const std::string& name)
@@ -407,17 +585,25 @@ namespace Volcano {
 		return s_ScriptEngineData->EntityScriptFields[entityID];
 	}
 
+	std::vector<InvokeDelayedData>& ScriptEngine::GetEntityInvokeDelayedList()
+	{
+		return s_ScriptEngineData->EntityInvokeDelayedList;
+	}
+
 	// 读取C#程序集的类并保存到map
 	void ScriptEngine::LoadAssemblyClasses()
 	{
 		// 初始化map
 		s_ScriptEngineData->EntityClasses.clear();
+		s_ScriptEngineData->ComponentClasses.clear();
 
 		// 获取程序集表
 		const MonoTableInfo* typeDefinitionsTable = mono_image_get_table_info(s_ScriptEngineData->AppAssemblyImage, MONO_TABLE_TYPEDEF);
 		int32_t numTypes = mono_table_info_get_rows(typeDefinitionsTable);
 		// 获取Core程序集中的Entity类
 		MonoClass* entityClass = mono_class_from_name(s_ScriptEngineData->CoreAssemblyImage, "Volcano", "Entity");
+		// 获取Core程序集中的Component类
+		MonoClass* componentClass = mono_class_from_name(s_ScriptEngineData->CoreAssemblyImage, "Volcano", "Component");
 
 		// 遍历程序集表
 		for (int32_t i = 0; i < numTypes; i++)
@@ -437,19 +623,27 @@ namespace Volcano {
 			MonoClass* monoClass = mono_class_from_name(s_ScriptEngineData->AppAssemblyImage, nameSpace, className);
 
 			// 如果获得的类的全类名为Volcano.Entity，则跳过
-			if (monoClass == entityClass)
+			if (monoClass == entityClass || monoClass == componentClass)
+			{
 				continue;
+			}
 			
 			// 找到dll里所有继承Entity的类，表明这是脚本类，得到对应的封装的Mono类，放进Map
 			bool isEntity = mono_class_is_subclass_of(monoClass, entityClass, false);
+			bool isComponent = mono_class_is_subclass_of(monoClass, componentClass, false);
 
-			if (!isEntity)
+			if (!(isEntity || isComponent))
 				continue;
 
 			Ref<ScriptClass> scriptClass = CreateRef<ScriptClass>(nameSpace, className);
+
 			// 把mono类放进data的map里
-			s_ScriptEngineData->EntityClasses[fullName] = scriptClass;
-			
+			if(isEntity)
+			    s_ScriptEngineData->EntityClasses[fullName] = scriptClass;
+			else if(isComponent)
+				s_ScriptEngineData->ComponentClasses[fullName] = scriptClass;
+
+
 			// This routine is an iterator routine for retrieving the fields in a class.
 			// You must pass a gpointer that points to zero and is treated as an opaque handle
 			// to iterate over all of the elements. When no more values are available, the return value is NULL.
@@ -458,12 +652,13 @@ namespace Volcano {
 			//您必须传递一个指向零并被视为不透明句柄的gpointer 
 			//迭代所有元素。当没有更多可用值时，返回值为NULL
 
+			VOL_CORE_WARN("{}.{}:", nameSpace, className);
 			// 获取mono类有多少字段
 			int fieldCount = mono_class_num_fields(monoClass);
-			VOL_CORE_WARN("{}.{} has {} fields:", nameSpace, className, fieldCount);
-			void* iterator = nullptr;
+			VOL_CORE_WARN(" {} fields:", fieldCount);
+			void* fieldIterator = nullptr;
 
-			while (MonoClassField* field = mono_class_get_fields(monoClass, &iterator))
+			while (MonoClassField* field = mono_class_get_fields(monoClass, &fieldIterator))
 			{
 				const char* fieldName = mono_field_get_name(field);
 				uint32_t flags = mono_field_get_flags(field);
@@ -477,9 +672,19 @@ namespace Volcano {
 					scriptClass->m_Fields[fieldName] = { fieldType, fieldName, field };
 				}
 			}
-		}
+			// 获取mono类有多少方法
+			int methodCount = mono_class_num_methods(monoClass);
+			VOL_CORE_WARN(" {} methods:", methodCount);
+			void* methodIterator = nullptr;
 
-		auto& entityClasses = s_ScriptEngineData->EntityClasses;
+			while (MonoMethod* method = mono_class_get_methods(monoClass, &methodIterator))
+			{
+				const char* methodName = mono_method_get_name(method);
+				VOL_CORE_WARN("  {}", methodName);
+				// 把字段注入mono类的字段map
+				scriptClass->m_Methods[methodName] = { methodName, method };
+			}
+		}
 	}
 
 	MonoImage* ScriptEngine::GetCoreAssemblyImage()
@@ -487,10 +692,40 @@ namespace Volcano {
 		return s_ScriptEngineData->CoreAssemblyImage;
 	}
 
+	MonoImage* ScriptEngine::GetAppAssemblyImage()
+	{
+		return s_ScriptEngineData->AppAssemblyImage;
+	}
+	/*
+	MonoImage* ScriptEngine::GetMscorlibAssemblyImage()
+	{
+		return s_ScriptEngineData->MscorlibAssemblyImage;
+	}
+	*/
+	MonoDomain* ScriptEngine::GetCoreAssemblyDomain()
+	{
+		return s_ScriptEngineData->RootDomain;
+	}
+
+	MonoDomain* ScriptEngine::GetAppAssemblyDomain()
+	{
+		return s_ScriptEngineData->AppDomain;
+	}
+
 	MonoObject* ScriptEngine::GetManagedInstance(UUID uuid)
 	{
 		VOL_CORE_ASSERT(s_ScriptEngineData->EntityInstances.find(uuid) != s_ScriptEngineData->EntityInstances.end());
 		return s_ScriptEngineData->EntityInstances.at(uuid)->GetManagedObject();
+	}
+
+	MonoClass* ScriptEngine::GetClass(ScriptFieldType type)
+	{
+		switch (type)
+		{
+		case ScriptFieldType::ULong:
+			return mono_get_uint64_class();
+		}
+		return nullptr;
 	}
 
 	MonoObject* ScriptEngine::InstantiateClass(MonoClass* monoClass)
@@ -508,14 +743,30 @@ namespace Volcano {
 		m_MonoClass = mono_class_from_name(isCore? s_ScriptEngineData->CoreAssemblyImage : s_ScriptEngineData->AppAssemblyImage, classNamespace.c_str(), className.c_str());
 	}
 
+	ScriptClass::ScriptClass(MonoClass* monoClass, const std::string& classNamespace, const std::string& className)
+		: m_ClassNamespace(classNamespace), m_ClassName(className), m_MonoClass(monoClass)
+	{}
+
 	MonoObject* ScriptClass::Instantiate()
 	{
 		return ScriptEngine::InstantiateClass(m_MonoClass);
 	}
 
+	// 方法名，参数数量
 	MonoMethod* ScriptClass::GetMethod(const std::string& name, int parameterCount)
 	{
 		return mono_class_get_method_from_name(m_MonoClass, name.c_str(), parameterCount);
+	}
+
+	ScriptMethod& ScriptClass::GetMethod(const std::string& name)
+	{
+		VOL_CORE_ASSERT(m_Methods.find(name) != m_Methods.end());
+		return m_Methods.at(name);
+	}
+
+	bool ScriptClass::HasMethod(const std::string& name)
+	{
+		return m_Methods.find(name) != m_Methods.end();
 	}
 
 	MonoObject* ScriptClass::InvokeMethod(MonoObject* instance, MonoMethod* method, void** params)
@@ -526,15 +777,18 @@ namespace Volcano {
 
 	//=======================ScriptInstance==========================
 
-	ScriptInstance::ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity)
-		: m_ScriptClass(scriptClass)
+	ScriptInstance::ScriptInstance(Ref<ScriptClass> scriptClass, Entity entity, bool enable)
+		: m_ScriptClass(scriptClass), m_Enable(enable)
 	{
 		// 获取Sandbox Player类构成的MonoObject对象，相当于new Sandbox.Player()
 		m_Instance = scriptClass->Instantiate();
 
-		m_Constructor = s_ScriptEngineData->EntityClass.GetMethod(".ctor", 1);	// 获取C#Entity类的构造函数
-		m_OnCreateMethod = scriptClass->GetMethod("OnCreate", 0);				// 获取并存储Sandbox.Player类的函数
-		m_OnUpdateMethod = scriptClass->GetMethod("OnUpdate", 1);
+		m_Constructor = s_ScriptEngineData->EntityClass->GetMethod(".ctor", 1);	// 获取C#Entity类的构造函数
+		m_AwakeMethod = scriptClass->GetMethod("Awake", 0);				// 获取并存储Sandbox.Player类的函数
+		m_StartMethod = scriptClass->GetMethod("Start", 0);
+		m_UpdateMethod = scriptClass->GetMethod("Update", 1);
+		m_OnEnableMethod = scriptClass->GetMethod("OnEnable", 0);
+		m_OnDisableMethod = scriptClass->GetMethod("OnDisable", 0);
 
 		// Call Entity constructor
 		{
@@ -544,20 +798,50 @@ namespace Volcano {
 		}
 	}
 
-	void ScriptInstance::InvokeOnCreate()
+	ScriptInstance::ScriptInstance(MonoObject* instance, bool enable)
+		: m_Enable(enable)
 	{
-		if (m_OnCreateMethod)
-			m_ScriptClass->InvokeMethod(m_Instance, m_OnCreateMethod);
+		MonoClass* monoClass = mono_object_get_class(instance);
+
+		if (monoClass == s_ScriptEngineData->EntityClass->GetClass())
+			m_ScriptClass = s_ScriptEngineData->EntityClass;
+		else if (mono_class_is_subclass_of(monoClass, s_ScriptEngineData->EntityClass->GetClass(), false))
+		{
+			const char* nameSpace = mono_class_get_namespace(monoClass);
+			const char* className = mono_class_get_name(monoClass);
+			std::string fullName;
+			if (strlen(nameSpace) != 0)
+				fullName = fmt::format("{}.{}", nameSpace, className);
+			else
+				fullName = className;
+			if(s_ScriptEngineData->EntityClasses.find(fullName) != s_ScriptEngineData->EntityClasses.end())
+			    m_ScriptClass = s_ScriptEngineData->EntityClasses.at(fullName);
+		}
+		else if(monoClass == s_ScriptEngineData->ComponentClass->GetClass())
+			m_ScriptClass = s_ScriptEngineData->ComponentClass;
+		else if (mono_class_is_subclass_of(monoClass, s_ScriptEngineData->ComponentClass->GetClass(), false))
+		{
+			const char* nameSpace = mono_class_get_namespace(monoClass);
+			const char* className = mono_class_get_name(monoClass);
+			std::string fullName;
+			if (strlen(nameSpace) != 0)
+				fullName = fmt::format("{}.{}", nameSpace, className);
+			else
+				fullName = className;
+			if (s_ScriptEngineData->ComponentClasses.find(fullName) != s_ScriptEngineData->ComponentClasses.end())
+				m_ScriptClass = s_ScriptEngineData->ComponentClasses.at(fullName);
+		}
+		VOL_CORE_ASSERT(m_ScriptClass != nullptr);
+		m_Instance = instance;
+		m_Constructor = s_ScriptEngineData->EntityClass->GetMethod(".ctor", 1);	// 获取C#Entity类的构造函数
 	}
 
-	void ScriptInstance::InvokeOnUpdate(float ts)
-	{
-		if (m_OnUpdateMethod)
-		{
-			void* param = &ts;
-			m_ScriptClass->InvokeMethod(m_Instance, m_OnUpdateMethod, &param);
-		}
-	}
+	void ScriptInstance::InvokeAwake() { InvokeMethod(m_AwakeMethod); }
+	void ScriptInstance::InvokeStart() { InvokeMethod(m_StartMethod); }
+	void ScriptInstance::InvokeUpdate(float ts) { void* param = &ts; InvokeMethod(m_UpdateMethod, &param); }
+	void ScriptInstance::InvokeOnEnable() { InvokeMethod(m_OnEnableMethod); }
+	void ScriptInstance::InvokeOnDisable() { InvokeMethod(m_OnDisableMethod); }
+	void ScriptInstance::InvokeMethod(MonoMethod* method, void** param) { if (method) m_ScriptClass->InvokeMethod(m_Instance, method, param); }
 
 	// 获取mono类中name字段的值注入buffer
 	bool ScriptInstance::GetFieldValueInternal(const std::string& name, void* buffer)
@@ -568,7 +852,30 @@ namespace Volcano {
 			return false;
 
 		const ScriptField& field = it->second;
-		mono_field_get_value(m_Instance, field.ClassField, buffer);
+		switch (field.Type)
+		{
+		case ScriptFieldType::Entity:
+			// 如果字段为引用类型， buffer返回一个MonoObject*指针
+			MonoObject* field_value;
+			mono_field_get_value(m_Instance, field.ClassField, &field_value);
+			if (field_value == NULL)
+			{
+				uint64_t id = 0;
+				memcpy(buffer, &id, sizeof(id));
+			}
+			else
+			{
+				VOL_CORE_ASSERT(ScriptEngine::GetEntityClass()->GetFields().find("ID") != ScriptEngine::GetEntityClass()->GetFields().end());
+				mono_field_get_value(field_value, ScriptEngine::GetEntityClass()->GetFields().at("ID").ClassField, buffer);
+			}
+			break;
+		case ScriptFieldType::ULong:
+			mono_field_get_value(m_Instance, field.ClassField, buffer);
+			break;
+		case ScriptFieldType::Float:
+			mono_field_get_value(m_Instance, field.ClassField, buffer);
+			break;
+		}
 		return true;
 	}
 
@@ -581,7 +888,31 @@ namespace Volcano {
 			return false;
 
 		const ScriptField& field = it->second;
-		mono_field_set_value(m_Instance, field.ClassField, (void*)value);
+
+		Ref<Entity> entity;
+		switch (field.Type)
+		{
+		case ScriptFieldType::Entity:
+			if(ScriptEngine::GetSceneContext()->GetEntityIDMap().find(*(uint64_t*)value) != ScriptEngine::GetSceneContext()->GetEntityIDMap().end())
+			    entity = ScriptEngine::GetSceneContext()->GetEntityIDMap().at(*(uint64_t*)value);
+			else if (Prefab::GetScene()->GetEntityIDMap().find(*(uint64_t*)value) != Prefab::GetScene()->GetEntityIDMap().end())
+			{
+				entity = Prefab::GetScene()->GetEntityIDMap().at(*(uint64_t*)value);
+			}
+			if (entity != nullptr)
+			{
+				//ScriptInstance scriptInstanceTemp = ScriptInstance(ScriptEngine::GetEntityClass(), *entity.get());
+				//scriptInstanceTemp.SetFieldValue("ID", *(uint64_t*)value);
+				mono_field_set_value(m_Instance, field.ClassField, ScriptInstance(ScriptEngine::GetEntityClass(), *entity.get()).GetManagedObject());
+			}
+			break;
+		case ScriptFieldType::ULong:
+			mono_field_set_value(m_Instance, field.ClassField, (void*)value);
+			break;
+		case ScriptFieldType::Float:
+			mono_field_set_value(m_Instance, field.ClassField, (void*)value);
+			break;
+		}
 		return true;
 	}
 }

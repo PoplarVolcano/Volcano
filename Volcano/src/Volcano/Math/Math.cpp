@@ -6,7 +6,7 @@
 
 namespace Volcano::Math {
 
-	// 分解transform为translation，rotation，scale，用于防止万向节死锁
+	// 分解transform为translation，rotation(弧度)，scale，用于防止万向节死锁
 	bool DecomposeTransform(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale)
 	{
 		//From glm::decompose in matrix_decompose.inl

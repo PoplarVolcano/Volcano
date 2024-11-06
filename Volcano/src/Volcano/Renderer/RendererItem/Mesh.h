@@ -29,8 +29,11 @@ namespace Volcano {
 		Quad,
 		Circle,
 		Line,
+		Plane,
 		Cube,
 		Sphere,
+		Cylinder,
+		Capsule,
 		Model
 	};
 

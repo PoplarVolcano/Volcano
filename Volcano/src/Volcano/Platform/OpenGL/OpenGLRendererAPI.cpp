@@ -55,7 +55,6 @@ namespace Volcano {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &caps.MaxAnisotropy);
 		glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, &caps.MaxTextureUnits);
 
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
 
 	void RendererAPI::SetViewport(uint32_t x, uint32_t y, uint32_t width, uint32_t height)
@@ -174,5 +173,14 @@ namespace Volcano {
 	void RendererAPI::SetCullFaceFunc(CullFaceFunc func)
 	{
 		glCullFace(VolcanoToOpenGLCullFaceFunc(func));
+	}
+
+	void RendererAPI::SetPolygonMode(bool type)
+	{
+		// 使用线框模式绘制
+		if(type)
+		    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		else
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 }

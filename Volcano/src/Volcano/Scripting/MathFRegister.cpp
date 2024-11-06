@@ -15,9 +15,40 @@ namespace Volcano {
 		*outRotate = glm::rotate(q, v);
 	}
 
-	static void Math_Quaternion(glm::vec3 Euler, glm::quat* outQuaternion)
+	static void Math_QuaternionFromEuler(glm::vec3 euler, glm::quat* outQuaternion)
 	{
-		*outQuaternion = glm::quat(Euler);
+		*outQuaternion = glm::quat(euler);
+	}
+
+	static void Math_QuaternionFromToRotation(glm::vec3 fromDirection, glm::vec3 toDirection, glm::quat* outQuaternion)
+	{
+		glm::vec3 fromDir = glm::normalize(fromDirection);
+		glm::vec3 toDir = glm::normalize(toDirection);
+		glm::vec3 axis = glm::cross(fromDir, toDir);
+		float angle = acos(glm::dot(fromDir, toDir));
+
+		// 如果两个方向向量相同或者相反，则不需要旋转
+		if (angle == 0.0f) {
+			*outQuaternion = glm::quat();
+			return;
+		}
+
+		*outQuaternion = glm::rotate(glm::mat4(1.0f), angle, axis);
+	}
+
+	static void Math_QuaternionLookRotation(glm::vec3 forward, glm::vec3 upwards, glm::quat* outQuaternion)
+	{
+		*outQuaternion = glm::lookAt(glm::vec3(0.0f), forward, upwards);
+	}
+
+	static void Math_QuaternionInverse(glm::quat quaternion, glm::quat* outQuaternion)
+	{
+		*outQuaternion = glm::inverse(quaternion);
+	}
+
+	static void Math_EulerFromQuaternion(glm::quat quaternion, glm::vec3* outEuler)
+	{
+		*outEuler = glm::eulerAngles(quaternion);
 	}
 
 	static void Math_Inverse(glm::mat4 mat4, glm::mat4* outMat4)
@@ -45,13 +76,24 @@ namespace Volcano {
 		*cross = glm::cross(v1, v2);
 	}
 
+	static void Math_LookAt(glm::vec3 eye, glm::vec3 center, glm::vec3 up, glm::mat4* lookAt)
+	{
+		*lookAt = glm::lookAt(eye, center, up);
+	}
+
 	void MathFRegister::MathF_RegisterFunctions()
 	{
 		VOL_ADD_INTERNAL_CALL(Math_Rotate);
-		VOL_ADD_INTERNAL_CALL(Math_Quaternion);
+		VOL_ADD_INTERNAL_CALL(Math_QuaternionFromEuler);
+		VOL_ADD_INTERNAL_CALL(Math_QuaternionFromToRotation);
+		VOL_ADD_INTERNAL_CALL(Math_QuaternionLookRotation);
+		VOL_ADD_INTERNAL_CALL(Math_QuaternionInverse);
+		VOL_ADD_INTERNAL_CALL(Math_EulerFromQuaternion);
 		VOL_ADD_INTERNAL_CALL(Math_Inverse);
 		VOL_ADD_INTERNAL_CALL(Math_Transpose);
 		VOL_ADD_INTERNAL_CALL(Math_TRS);
 		VOL_ADD_INTERNAL_CALL(Math_Perspective);
+		VOL_ADD_INTERNAL_CALL(Math_Cross);
+		VOL_ADD_INTERNAL_CALL(Math_LookAt);
 	}
 }

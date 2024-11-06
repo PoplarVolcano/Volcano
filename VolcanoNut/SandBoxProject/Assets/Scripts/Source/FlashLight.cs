@@ -21,9 +21,9 @@ namespace Sandbox
         {
             if (m_Camera != null)
             {
-                Vector3 translation = m_Camera.transform.translation;
-                //translation.y -= 1;
-                transform.translation = translation;
+                Vector3 localPosition = m_Camera.transform.localPosition;
+                //localPosition.y -= 1;
+                transform.localPosition = localPosition;
                 transform.rotation = m_Camera.transform.rotation;
             }
 

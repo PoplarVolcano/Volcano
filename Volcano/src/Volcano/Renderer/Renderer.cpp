@@ -2,7 +2,6 @@
 #include "Renderer.h"
 #include "Renderer2D.h"
 #include "RendererItem/Skybox.h"
-#include "RendererItem/Shadow.h"
 #include "Volcano/Renderer/UniformBuffer.h"
 
 
@@ -29,6 +28,10 @@ namespace Volcano {
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Prefilter.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/BRDF.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Skybox.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/ShadowMappingDepth.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/PointShadowsDepth.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/SpotShadowDepth.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Quad.glsl");
 
 		// 初始化OpenGL配置
 		RendererAPI::Init(); 
@@ -36,7 +39,6 @@ namespace Volcano {
 		// 初始化2D Shader
 		Renderer2D::Init();
 		Skybox::Init();
-		Shadow::Init();
 		Mesh::Init();
 
 
