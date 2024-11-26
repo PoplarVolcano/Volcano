@@ -63,11 +63,9 @@ namespace  Volcano {
 		UUID& GetUUID() { return GetComponent<IDComponent>().ID; }
 		const std::string& GetName() { return GetComponent<TagComponent>().Tag; }
 		void SetName(std::string name) { GetComponent<TagComponent>().Tag = name; }
-		std::string& GetPrefabPath() { return m_PrefabPath; }
-		void SetPrefabPath(std::string prefabPath) { m_PrefabPath = prefabPath; }
 		const entt::entity& GetEntityHandle() { return m_EntityHandle; }
 
-		std::map<std::string, Ref<Entity>>& GetEntityChildren() { return m_Children; }
+		std::vector<Ref<Entity>>& GetEntityChildren() { return m_Children; }
 		Scene* GetScene() { return m_Scene; }
 		Entity* GetEntityParent() { return m_Parent; }
 
@@ -88,20 +86,24 @@ namespace  Volcano {
 			return !(*this == other);
 		}
 
-		glm::mat4 GetTransform() { return m_Transform; }
-		void SetTransform(glm::mat4 transform) { m_Transform = transform; }
-		glm::mat4 GetParentTransform() { return m_ParentTransform; }
-		void SetParentTransform(glm::mat4 transform) { m_ParentTransform = transform; }
+		glm::mat4 GetTransform();// { return m_Transform; }
+		//void SetTransform(glm::mat4 transform);// { m_Transform = transform; }
+		glm::mat4 GetParentTransform();// { return m_ParentTransform; }
+		//void SetParentTransform(glm::mat4 transform);// { m_ParentTransform = transform; }
+		bool& GetActive() { return m_Active; }
+		void SetActive(bool active) { m_Active = active; }
 
+		void SetPosition(const glm::vec3& position, bool isWorldSpace = true);
+		void SetRotation(const glm::vec3& rotation, bool isWorldSpace = true);
 	private:
+		bool m_Active = true;
 		Entity* m_Parent = nullptr;
-		std::map<std::string, Ref<Entity>> m_Children;
+		std::vector<Ref<Entity>> m_Children;
 		entt::entity m_EntityHandle{ entt::null };
 		Scene* m_Scene = nullptr;
-		std::string m_PrefabPath;
 
-		glm::mat4 m_Transform;
-		glm::mat4 m_ParentTransform;
+		//glm::mat4 m_Transform;
+		//glm::mat4 m_ParentTransform;
 
 	};
 }

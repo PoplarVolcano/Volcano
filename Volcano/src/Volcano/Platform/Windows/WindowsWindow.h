@@ -28,6 +28,7 @@ namespace Volcano {
         virtual void SetMouseActive(bool mouseActive) override;
         virtual void SetViewport(float width, float height) override;
         virtual void ResetViewport() override;
+        virtual void ClearConsole() override;
     private:
         virtual void Init(const WindowProps& props);
         virtual void Shutdown();

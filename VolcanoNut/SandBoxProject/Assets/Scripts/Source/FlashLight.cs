@@ -1,5 +1,4 @@
-﻿using SandBox;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,12 +8,12 @@ using Volcano;
 
 namespace Sandbox
 {
-    internal class FlashLight : Entity
+    internal class FlashLight : MonoBehaviour
     {
-        private Entity m_Camera;
+        private GameObject m_Camera;
         void OnCreate()
         {
-            m_Camera = FindEntityByName("Camera");
+            m_Camera = GameObject.Find("Camera");
         }
 
         void OnUpdate(float ts)

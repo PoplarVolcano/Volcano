@@ -7,11 +7,13 @@
 #include <filesystem>
 #include <string>
 #include <map>
+#include <queue>
 
 // 如果不引入头文件，必须外部声明，但这些都是在c文件定义的结构，所以需要extern"C"
 extern "C" {
 	typedef struct _MonoClass MonoClass;
 	typedef struct _MonoObject MonoObject;
+	typedef struct _MonoType MonoType;
 	typedef struct _MonoMethod MonoMethod;
 	typedef struct _MonoAssembly MonoAssembly;
 	typedef struct _MonoImage MonoImage;
@@ -30,7 +32,7 @@ namespace Volcano {
 		String,
 		Vector2, Vector3, Vector4,
 		Quaternion, Matrix4x4,
-		Entity
+		Entity, GameObject, Component, Transform, Behaviour, MonoBehaviour, Collider, Rigidbody
 	};
 
 	// C#字段：类型，字段名，字段数据
@@ -58,7 +60,19 @@ namespace Volcano {
 		float time;
 		float repeatRate;
 		Timer timer;
-		bool firstInvoke = false;
+		bool firstInvoke = true;
+	};
+
+	enum class EntityUpdateType
+	{
+		ADD, DESTROY, MOVE
+	};
+
+	struct EntityUpdateBuffer
+	{
+		EntityUpdateType type;
+		UUID srcID = 0;
+		UUID disID = 0;
 	};
 
 	// ScriptField + data storage
@@ -100,7 +114,7 @@ namespace Volcano {
 	public:
 		ScriptClass() = default;
 		ScriptClass(const std::string& classNamespace, const std::string& className, bool isCore = false);
-		ScriptClass(MonoClass* monoClass, const std::string& classNamespace, const std::string& className);
+		ScriptClass(MonoClass* monoClass, const std::string& classNamespace, const std::string& className, bool isCore);
 		// 创建一个MonoClass类
 
 		MonoObject* Instantiate();		// 创建一个由MonoClass类构成的mono对象并且初始化
@@ -112,6 +126,8 @@ namespace Volcano {
 
 		const std::map<std::string, ScriptField>& GetFields() const { return m_Fields; }
 		const std::map<std::string, ScriptMethod>& GetMethods() const { return m_Methods; }
+
+		bool IsCore() { return m_IsCore; }
 	private:
 		std::string m_ClassNamespace;
 		std::string m_ClassName;
@@ -120,6 +136,8 @@ namespace Volcano {
 		std::map<std::string, ScriptMethod> m_Methods;
 
 		MonoClass* m_MonoClass = nullptr;
+
+		bool m_IsCore;
 
 		friend class ScriptEngine;
 	};
@@ -136,7 +154,8 @@ namespace Volcano {
 		void InvokeUpdate(float ts);
 		void InvokeOnEnable();
 		void InvokeOnDisable();
-
+		void InvokeOnDestroy();
+		void InvokeOnTriggerEnter(MonoObject* collider);
 		void InvokeMethod(MonoMethod* method, void** params = nullptr);
 
 		Ref<ScriptClass> GetScriptClass() { return m_ScriptClass; }
@@ -159,19 +178,20 @@ namespace Volcano {
 		}
 		MonoObject* GetManagedObject() { return m_Instance; }
 
-		bool GetEnable() { return m_Enable; }
-		void SetEnable(bool enable) 
+		bool GetEnable() { return m_Enabled; }
+		void SetEnabled(bool enabled) 
 		{ 
-			if (enable != m_Enable && enable == true)
+			if (enabled != m_Enabled && enabled == true)
 			{
 				InvokeOnEnable();
 			} 
-			else if (enable != m_Enable && enable == false)
+			else if (enabled != m_Enabled && enabled == false)
 			{
 				InvokeOnDisable();
 			}
-			m_Enable = enable;
+			m_Enabled = enabled;
 		}
+		void ResetStart() { m_Start = false; }
 	private:
 		bool GetFieldValueInternal(const std::string& name, void* buffer);
 		bool SetFieldValueInternal(const std::string& name, const void* value);
@@ -185,10 +205,13 @@ namespace Volcano {
 		MonoMethod* m_UpdateMethod    = nullptr;
 		MonoMethod* m_OnEnableMethod  = nullptr;
 		MonoMethod* m_OnDisableMethod = nullptr;
+		MonoMethod* m_OnDestroyMethod = nullptr;
+		MonoMethod* m_OnTriggerEnterMethod = nullptr;
 
 		inline static char s_FieldValueBuffer[16];
 
-		bool m_Enable = true;
+		bool m_Enabled = true;
+		bool m_Start = false;
 
 		friend class ScriptEngine;
 		friend struct ScriptFieldInstance;
@@ -209,47 +232,60 @@ namespace Volcano {
 		static void OnRuntimeStart(Scene* scene);
 		static void OnRuntimeStop();
 
-		static bool EntityClassExists(const std::string& fullClassName);
-		static void CreateEntity(Entity entity, bool enable = true);
-		static void AwakeEntity(Entity entity, Timestep ts);
-		static void OnEnableEntity(Entity entity, Timestep ts);
-		static void StartEntity(Entity entity, Timestep ts);
+		static bool ClassExists(const std::string& fullClassName);
+		static void CreateEntity(Entity entity);
+		static void AwakeEntity(Entity entity);
+		static void OnEnableEntity(Entity entity);
+		static void StartEntity(Entity entity);
 		static void UpdateEntity(Entity entity, Timestep ts);
-		static void OnDisableEntity(Entity entity, Timestep ts);
+		static void OnDisableEntity(Entity entity);
+		static void OnDestroyEntity(Entity entity);
 
 		static Scene* GetSceneContext();
 		static Ref<ScriptInstance> GetEntityScriptInstance(UUID entityID);
+		static std::unordered_map<UUID, Ref<ScriptInstance>>& GetEntityScriptInstances();
 
 		static Ref<ScriptClass> GetEntityClass();
+		static Ref<ScriptClass> GetGameObjectClass();
+		static Ref<ScriptClass> GetColliderClass();
+		static Ref<ScriptClass> GetRigidbodyClass();
+		static Ref<ScriptClass> GetMonoBehaviourClass();
 
-		static Ref<ScriptClass> GetEntityClass(const std::string& name);
-		static std::unordered_map<std::string, Ref<ScriptClass>> GetEntityClasses();
+		static Ref<ScriptClass> GetClass(const std::string& fullClassName);
+		static std::unordered_map<std::string, Ref<ScriptClass>>& GetClasses();
 		static ScriptFieldMap& GetScriptFieldMap(Entity entity);
+		static std::vector<InvokeDelayedData>& GetEntityInvokeDelayedListBuffer();
 		static std::vector<InvokeDelayedData>& GetEntityInvokeDelayedList();
+		static void RemoveEntityInvokeDelayed(UUID entityID, std::string methodName);
+		static void RemoveEntityInvokeDelayed(std::string methodName);
+		static void RemoveEntityInvokeDelayed(UUID entityID);
+
+		static std::queue<EntityUpdateBuffer>& GetEntityUpdateList();
 		//static void SetScriptFieldMap(Entity entity, ScriptFieldMap scriptFieldMap);
 
 		static MonoImage* GetCoreAssemblyImage();
-
 		static MonoImage* GetAppAssemblyImage();
-
 		//static MonoImage* GetMscorlibAssemblyImage();
-
 		static MonoDomain* GetCoreAssemblyDomain();
-
 		static MonoDomain* GetAppAssemblyDomain();
 
 		static MonoObject* GetManagedInstance(UUID uuid);
 
 		static MonoClass* GetClass(ScriptFieldType type);
 
-		static void ProcessMonoClass(MonoClass* monoClass);
+		static MonoObject* CreateInstance(MonoClass* monoClass, UUID& entityID);
+
+		static std::string MonoToString(MonoObject* monoObject);
+
+		//static void ProcessMonoClass(MonoClass* monoClass);
 	private:
 		static void InitMono();
 		static void ShutdownMono();
 
 		static MonoObject* InstantiateClass(MonoClass* monoClass);
 
-		static void LoadAssemblyClasses();
+		static void LoadAssamblyClass(const char* nameSpace, const char* className, bool isCore);
+		//static void LoadAssemblyClasses();
 
 		friend class ScriptClass;
 		friend class ScriptGlue;
@@ -261,26 +297,33 @@ namespace Volcano {
 		{
 			switch (fieldType)
 			{
-			case ScriptFieldType::None:       return "None";
-			case ScriptFieldType::Float:      return "Float";
-			case ScriptFieldType::Double:     return "Double";
-			case ScriptFieldType::Bool:       return "Bool";
-			case ScriptFieldType::Char:       return "Char";
-			case ScriptFieldType::Byte:       return "Byte";
-			case ScriptFieldType::Short:      return "Short";
-			case ScriptFieldType::Int:        return "Int";
-			case ScriptFieldType::Long:       return "Long";
-			case ScriptFieldType::UByte:      return "UByte";
-			case ScriptFieldType::UShort:     return "UShort";
-			case ScriptFieldType::UInt:       return "UInt";
-			case ScriptFieldType::ULong:      return "ULong";
-			case ScriptFieldType::String:     return "String";
-			case ScriptFieldType::Vector2:    return "Vector2";
-			case ScriptFieldType::Vector3:    return "Vector3";
-			case ScriptFieldType::Vector4:    return "Vector4";
-			case ScriptFieldType::Quaternion: return "Quaternion";
-			case ScriptFieldType::Matrix4x4:  return "Matrix4x4";
-			case ScriptFieldType::Entity:     return "Entity";
+			case ScriptFieldType::None:          return "None";
+			case ScriptFieldType::Float:         return "System.Float";
+			case ScriptFieldType::Double:        return "System.Double";
+			case ScriptFieldType::Bool:          return "System.Bool";
+			case ScriptFieldType::Char:          return "System.Char";
+			case ScriptFieldType::Byte:          return "System.Byte";
+			case ScriptFieldType::Short:         return "System.Short";
+			case ScriptFieldType::Int:           return "System.Int";
+			case ScriptFieldType::Long:          return "System.Long";
+			case ScriptFieldType::UByte:         return "System.UByte";
+			case ScriptFieldType::UShort:        return "System.UShort";
+			case ScriptFieldType::UInt:          return "System.UInt";
+			case ScriptFieldType::ULong:         return "System.ULong";
+			case ScriptFieldType::String:        return "System.String";
+			case ScriptFieldType::Vector2:       return "Volcano.Vector2";
+			case ScriptFieldType::Vector3:       return "Volcano.Vector3";
+			case ScriptFieldType::Vector4:       return "Volcano.Vector4";
+			case ScriptFieldType::Quaternion:    return "Volcano.Quaternion";
+			case ScriptFieldType::Matrix4x4:     return "Volcano.Matrix4x4";
+			case ScriptFieldType::Entity:        return "Volcano.Entity";
+			case ScriptFieldType::GameObject:    return "Volcano.GameObject";
+			case ScriptFieldType::Component:     return "Volcano.Component";
+			case ScriptFieldType::Transform:     return "Volcano.Transform";
+			case ScriptFieldType::Behaviour:     return "Volcano.Behaviour";
+			case ScriptFieldType::MonoBehaviour: return "Volcano.MonoBehaviour";
+			case ScriptFieldType::Collider:      return "Volcano.Collider";
+			case ScriptFieldType::Rigidbody:     return "Volcano.Rigidbody";
 			}
 			VOL_CORE_ASSERT(false, "Unknown ScriptFieldType");
 			return "None";
@@ -288,28 +331,35 @@ namespace Volcano {
 
 		inline ScriptFieldType ScriptFieldTypeFromString(std::string_view fieldType)
 		{
-			if (fieldType == "None")       return ScriptFieldType::None;
-			if (fieldType == "Float")      return ScriptFieldType::Float;
-			if (fieldType == "Double")     return ScriptFieldType::Double;
-			if (fieldType == "Bool")       return ScriptFieldType::Bool;
-			if (fieldType == "Char")       return ScriptFieldType::Char;
-			if (fieldType == "Byte")       return ScriptFieldType::Byte;
-			if (fieldType == "Short")      return ScriptFieldType::Short;
-			if (fieldType == "Int")        return ScriptFieldType::Int;
-			if (fieldType == "Long")       return ScriptFieldType::Long;
-			if (fieldType == "UByte")      return ScriptFieldType::UByte;
-			if (fieldType == "UShort")     return ScriptFieldType::UShort;
-			if (fieldType == "UInt")       return ScriptFieldType::UInt;
-			if (fieldType == "ULong")      return ScriptFieldType::ULong;
-			if (fieldType == "String")     return ScriptFieldType::String;
-			if (fieldType == "Vector2")    return ScriptFieldType::Vector2;
-			if (fieldType == "Vector3")    return ScriptFieldType::Vector3;
-			if (fieldType == "Vector4")    return ScriptFieldType::Vector4;
-			if (fieldType == "Quaternion") return ScriptFieldType::Quaternion;
-			if (fieldType == "Matrix4x4")  return ScriptFieldType::Matrix4x4;
-			if (fieldType == "Entity")     return ScriptFieldType::Entity;
+			if (fieldType == "None")                  return ScriptFieldType::None;
+			if (fieldType == "System.Float")          return ScriptFieldType::Float;
+			if (fieldType == "System.Double")         return ScriptFieldType::Double;
+			if (fieldType == "System.Bool")           return ScriptFieldType::Bool;
+			if (fieldType == "System.Char")           return ScriptFieldType::Char;
+			if (fieldType == "System.Byte")           return ScriptFieldType::Byte;
+			if (fieldType == "System.Short")          return ScriptFieldType::Short;
+			if (fieldType == "System.Int")            return ScriptFieldType::Int;
+			if (fieldType == "System.Long")           return ScriptFieldType::Long;
+			if (fieldType == "System.UByte")          return ScriptFieldType::UByte;
+			if (fieldType == "System.UShort")         return ScriptFieldType::UShort;
+			if (fieldType == "System.UInt")           return ScriptFieldType::UInt;
+			if (fieldType == "System.ULong")          return ScriptFieldType::ULong;
+			if (fieldType == "System.String")         return ScriptFieldType::String;
+			if (fieldType == "Volcano.Vector2")       return ScriptFieldType::Vector2;
+			if (fieldType == "Volcano.Vector3")       return ScriptFieldType::Vector3;
+			if (fieldType == "Volcano.Vector4")       return ScriptFieldType::Vector4;
+			if (fieldType == "Volcano.Quaternion")    return ScriptFieldType::Quaternion;
+			if (fieldType == "Volcano.Matrix4x4")     return ScriptFieldType::Matrix4x4;
+			if (fieldType == "Volcano.Entity")        return ScriptFieldType::Entity;
+			if (fieldType == "Volcano.GameObject")    return ScriptFieldType::GameObject;
+			if (fieldType == "Volcano.Component")     return ScriptFieldType::Component;
+			if (fieldType == "Volcano.Transform")     return ScriptFieldType::Transform;
+			if (fieldType == "Volcano.Behaviour")     return ScriptFieldType::Behaviour;
+			if (fieldType == "Volcano.MonoBehaviour") return ScriptFieldType::MonoBehaviour;
+			if (fieldType == "Volcano.Collider")      return ScriptFieldType::Collider;
+			if (fieldType == "Volcano.Rigidbody")     return ScriptFieldType::Rigidbody;
 
-			VOL_CORE_ASSERT(false, "Unknown ScriptFieldType");
+			//VOL_CORE_ASSERT(false, "Unknown ScriptFieldType");
 			return ScriptFieldType::None;
 		}
 

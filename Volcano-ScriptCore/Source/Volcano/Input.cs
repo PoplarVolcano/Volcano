@@ -4,6 +4,16 @@ namespace Volcano
 {
     public class Input
     {
+        public static bool IsKeyClicked(KeyCode keycode)
+        {
+            return Input_IsKeyClicked(keycode);
+        }
+
+        public static bool IsMouseButtonClicked(MouseCode mouseButton)
+        {
+            return Input_IsMouseButtonClicked(mouseButton);
+        }
+
         public static bool IsKeyPressed(KeyCode keycode)
         {
             return Input_IsKeyPressed(keycode);
@@ -32,6 +42,10 @@ namespace Volcano
             return result;
         }
 
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static bool Input_IsKeyClicked(KeyCode keycode);
+        [MethodImplAttribute(MethodImplOptions.InternalCall)]
+        internal extern static bool Input_IsMouseButtonClicked(MouseCode mouseButton);
         [MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal extern static bool Input_IsKeyPressed(KeyCode keycode);
         [MethodImplAttribute(MethodImplOptions.InternalCall)]

@@ -240,6 +240,9 @@ namespace Volcano {
         case RenderType::DEFERRED_SHADING:
             Renderer::GetShaderLibrary()->Get("DeferredShading")->Bind();
             break;
+        case RenderType::COLLIDER:
+            Renderer::GetShaderLibrary()->Get("Collider")->Bind();
+            break;
         case RenderType::NORMAL:
             break;
         default:
@@ -254,13 +257,13 @@ namespace Volcano {
 
     void Mesh::SetBoneID(int vertexIndex1, int vertexIndex2, int boneIndex, float weight)
     {
-        if (vertexIndex1 < 0 || vertexIndex1 >= m_VertexSize || vertexIndex1 > vertexIndex2 ||
-            vertexIndex2 < 0 || vertexIndex2 >= m_VertexSize || boneIndex < 0 || weight < 0)
+        if (vertexIndex1 < 0 || (uint32_t)vertexIndex1 >= m_VertexSize || vertexIndex1 > vertexIndex2 ||
+            vertexIndex2 < 0 || (uint32_t)vertexIndex2 >= m_VertexSize || boneIndex < 0 || weight < 0)
             return;
 
-        for (uint32_t i = vertexIndex1; i < vertexIndex2 + 1; i++)
+        for (int i = vertexIndex1; i < vertexIndex2 + 1; i++)
         {
-            for (uint32_t j = 0; j < MAX_BONE_INFLUENCE; j++)
+            for (int j = 0; j < MAX_BONE_INFLUENCE; j++)
                 if (m_Vertices[i].BoneIDs[j] == -1 || m_Vertices[i].BoneIDs[j] == boneIndex)
                 {
                     m_Vertices[i].BoneIDs[j] = boneIndex;

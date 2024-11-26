@@ -6,16 +6,16 @@ using System.Threading.Tasks;
 
 using Volcano;
 
-namespace SandBox
+namespace Sandbox
 {
-    internal class Camera : Entity
+    internal class Camera : MonoBehaviour
     {
         public float DistanceFromPlayer = 5.0f;
-        private Entity m_Player;
+        private GameObject m_Player;
 
         void Start()
         {
-            m_Player = FindEntityByName("Player");
+            m_Player = GameObject.Find("Player");
             if(m_Player != null)
                 transform.LookAt(m_Player.transform);
         }
@@ -24,7 +24,7 @@ namespace SandBox
         {
             Mouse.Instance.OnActive = Input.IsKeyPressed(KeyCode.LeftAlt) || Input.IsKeyPressed(KeyCode.RightAlt);
 
-            TransformComponent tc = GetComponent<TransformComponent>();
+            Transform tc = GetComponent<Transform>();
             if (m_Player != null)
                 transform.localPosition = new Vector3(m_Player.transform.localPosition.XY, DistanceFromPlayer);
 

@@ -1,7 +1,23 @@
 #include "volpch.h"
 #include "CubeMesh.h"
+#include "Volcano/Renderer/Renderer.h"
 
 namespace Volcano {
+
+
+	std::once_flag CubeMesh::init_flag;
+	Scope<CubeMesh> CubeMesh::m_instance;
+
+	Scope<CubeMesh>& CubeMesh::GetInstance()
+	{
+		std::call_once(init_flag, []() { m_instance.reset(new CubeMesh()); });
+		return m_instance;
+	}
+
+	Ref<CubeMesh> CubeMesh::CloneRef()
+	{
+		return std::make_shared<CubeMesh>(*GetInstance().get());
+	}
 
 
 	CubeMesh::CubeMesh()
@@ -115,6 +131,20 @@ namespace Volcano {
 
 		SetupMesh();
     }
+
+	void CubeMesh::DrawCube(glm::mat4 transform)
+	{
+		if (m_IndexCount)
+		{
+			// 不加uint8_t转化会得到元素数量, 加uint8_t返回以char为单位占用多少元素
+			uint32_t dataSize = (uint32_t)((uint8_t*)vertexBufferPtr - (uint8_t*)vertexBufferBase);
+			m_VertexBuffer->SetData(vertexBufferBase, dataSize);
+
+			UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&transform, sizeof(glm::mat4));
+		}
+
+		Renderer::DrawIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
+	}
 
 
 

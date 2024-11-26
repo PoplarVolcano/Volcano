@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 using Volcano;
 
-namespace SandBox
+namespace Sandbox
 {
-    public class Player : Entity
+    public class Player : MonoBehaviour
     {
-        private TransformComponent m_Transform;
-        private Rigidbody2DComponent m_Rigidbody;
+        private Transform m_Transform;
+        private Rigidbody2D m_Rigidbody;
 
         // c#类被C++读取后会重新赋值并默认为0
         public float Speed;
@@ -21,8 +21,8 @@ namespace SandBox
         {
             Console.WriteLine($"Player.OnCreate - {ID}");
 
-            m_Transform = GetComponent<TransformComponent>();
-            m_Rigidbody = GetComponent<Rigidbody2DComponent>();
+            m_Transform = GetComponent<Transform>();
+            m_Rigidbody = GetComponent<Rigidbody2D>();
         }
 
         void Update(float ts)
@@ -43,12 +43,12 @@ namespace SandBox
             else if (Input.IsKeyPressed(KeyCode.D))
                 velocity.x = 1.0f;
 
-            Entity cameraEntity = FindEntityByName("Camera");
+            GameObject cameraEntity = GameObject.Find("Camera");
             
             if (cameraEntity != null)
             {
                 // 如果没有camera实体调用camera脚本，则无法获得camera实体而报错
-                Camera camera = cameraEntity.As<Camera>();
+                Camera camera = cameraEntity.GetComponent<Camera>();
 
                 if (Input.IsKeyPressed(KeyCode.Q))
                     camera.DistanceFromPlayer += speed * 2.0f * ts;

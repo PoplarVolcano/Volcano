@@ -4,6 +4,19 @@
 
 namespace Volcano {
 
+	std::once_flag SphereMesh::init_flag;
+	Scope<SphereMesh> SphereMesh::m_instance;
+
+	Scope<SphereMesh>& SphereMesh::GetInstance()
+	{
+		std::call_once(init_flag, []() { m_instance.reset(new SphereMesh()); });
+		return m_instance;
+	}
+
+	Ref<SphereMesh> SphereMesh::CloneRef()
+	{
+		return std::make_shared<SphereMesh>(*GetInstance().get());
+	}
 
 	SphereMesh::SphereMesh()
 	{
@@ -81,6 +94,19 @@ namespace Volcano {
 		Renderer::DrawStripIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
 	}
 
+	void SphereMesh::DrawSphere(glm::mat4 transform)
+	{
+		if (m_IndexCount)
+		{
+			// 不加uint8_t转化会得到元素数量, 加uint8_t返回以char为单位占用多少元素
+			uint32_t dataSize = (uint32_t)((uint8_t*)vertexBufferPtr - (uint8_t*)vertexBufferBase);
+			m_VertexBuffer->SetData(vertexBufferBase, dataSize);
+
+			UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&transform, sizeof(glm::mat4));
+		}
+
+		Renderer::DrawStripIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
+	}
 
 
 }

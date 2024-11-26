@@ -2,9 +2,9 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
-#include "Volcano/Scene/SceneCamera.h"
 #include "Volcano/Renderer/Texture.h"
 #include "Volcano/Core/UUID.h"
+#include "Volcano/Scene/SceneCamera.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/quaternion.hpp>
@@ -16,6 +16,8 @@
 #include "Volcano/Renderer/RendererItem/PlaneMesh.h"
 #include "Volcano/Renderer/RendererItem/CylinderMesh.h"
 #include "Volcano/Renderer/RendererItem/CapsuleMesh.h"
+
+#include "Volcano/Scene/PhysicsMaterial.h"
 
 namespace Volcano {
 
@@ -109,11 +111,11 @@ namespace Volcano {
 				mesh->SetEntity(entity);
 				break;
 			case MeshType::Cube:
-				mesh = std::make_shared<CubeMesh>();
+				mesh = CubeMesh::CloneRef();//std::make_shared<CubeMesh>();
 				mesh->SetEntity(entity);
 				break;
 			case MeshType::Sphere:
-				mesh = std::make_shared<SphereMesh>();
+				mesh = SphereMesh::CloneRef();//std::make_shared<SphereMesh>();
 				mesh->SetEntity(entity);
 				break;
 			case MeshType::Cylinder:
@@ -145,6 +147,9 @@ namespace Volcano {
 	struct MeshRendererComponent
 	{
 		std::vector<std::pair<ImageType, Ref<Texture>>> Textures;
+
+		bool enabled = true;
+
 		MeshRendererComponent() = default;
 		MeshRendererComponent(const MeshRendererComponent&) = default;
 		void SetTexture(ImageType type, Ref<Texture> texture, uint32_t index) { Textures[index] = { type, texture }; }
@@ -191,6 +196,8 @@ namespace Volcano {
 		float Thickness = 1.0f;
 		float Fade = 0.005f;
 
+		bool enabled = true;
+
 		CircleRendererComponent() = default;
 		CircleRendererComponent(const CircleRendererComponent&) = default;
 	};
@@ -198,6 +205,8 @@ namespace Volcano {
 	struct AnimatorComponent
 	{
 		Ref<Animator> animator = std::make_shared<Animator>();
+
+		bool enabled = true;
 
 		AnimatorComponent() = default;
 		AnimatorComponent(const AnimatorComponent&) = default;
@@ -208,7 +217,9 @@ namespace Volcano {
 	{
 		Ref<Animation> animation = std::make_shared<Animation>();
 		int key;  //当前关键帧
-		
+
+		bool enabled = true;
+
 		int boneIDBuffer;
 		std::string boneNameBuffer;
 		AssimpNodeData* newBoneNodeParent;
@@ -236,6 +247,8 @@ namespace Volcano {
 		float     CutOff 	  = glm::cos(glm::radians(12.5f));
 		float     OuterCutOff = glm::cos(glm::radians(17.5f));
 
+		bool enabled = true;
+
 		LightComponent() = default;
 		LightComponent(const LightComponent&) = default;
 	};
@@ -246,6 +259,8 @@ namespace Volcano {
 		bool Primary = true;
 		bool FixedAspectRatio = true;
 
+		bool enabled = true;
+
 		CameraComponent() = default;
 		CameraComponent(const CameraComponent&) = default;
 	};
@@ -255,6 +270,8 @@ namespace Volcano {
 		Ref<TextureCube> texture = TextureCube::Create(TextureFormat::RGB16F, 512, 512);
 		bool Primary = false;
 
+		bool enabled = true;
+
 		SkyboxComponent() = default;
 		SkyboxComponent(const SkyboxComponent&) = default;
 	};
@@ -262,7 +279,8 @@ namespace Volcano {
 	struct ScriptComponent
 	{
 		std::string ClassName;
-		bool enable = true;
+
+		bool enabled = true;
 
 		ScriptComponent() = default;
 		ScriptComponent(const ScriptComponent&) = default;
@@ -344,6 +362,59 @@ namespace Volcano {
 		CircleCollider2DComponent(const CircleCollider2DComponent&) = default;
 	};
 
+
+	struct RigidbodyComponent
+	{
+		// 静态，动态，刚体
+		enum class BodyType { Static = 0, Dynamic, Kinematic };
+		BodyType Type = BodyType::Static;
+		bool FixedRotation = false;
+
+		// 储存运行时物体的物理对象
+		// Storage for runtime
+		void* RuntimeBody = nullptr;
+
+		RigidbodyComponent() = default;
+		RigidbodyComponent(const RigidbodyComponent&) = default;
+	};
+
+	struct ColliderComponent
+	{
+		bool enabled = true;
+		bool showCollider = false;
+
+		bool isTrigger = false;
+
+		glm::vec3 center = { 0.0f, 0.0f, 0.0f };
+
+		PhysicsMaterial material;
+
+
+		// 运行时候由于物理，每一帧的上述参数可能会变，所以保存为对象,但未使用
+		// Storage for runtime
+		void* RuntimeFixture = nullptr;
+
+	};
+
+	struct BoxColliderComponent : public ColliderComponent
+	{
+		glm::vec3 size = { 1.0f, 1.0f, 1.0f };
+
+		BoxColliderComponent() = default;
+		BoxColliderComponent(const BoxColliderComponent&) = default;
+	};
+
+	struct SphereColliderComponent : public ColliderComponent
+	{
+		float radius = 1.0f;
+
+		SphereColliderComponent() = default;
+		SphereColliderComponent(const SphereColliderComponent&) = default;
+	};
+
+
+
+
 	template<typename... Component>
 	struct ComponentGroup
 	{
@@ -365,6 +436,9 @@ namespace Volcano {
 								NativeScriptComponent,
 								Rigidbody2DComponent, 
 								BoxCollider2DComponent, 
-								CircleCollider2DComponent>;
+								CircleCollider2DComponent,
+								RigidbodyComponent, 
+								BoxColliderComponent, 
+								SphereColliderComponent>;
 
 }

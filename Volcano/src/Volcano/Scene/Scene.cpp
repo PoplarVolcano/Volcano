@@ -1,6 +1,6 @@
 #include "volpch.h"
-#include "Scene.h"
 
+#include "Scene.h"
 #include "Components.h"
 #include "ScriptableEntity.h"
 #include "Volcano/Scripting/ScriptEngine.h"
@@ -24,20 +24,23 @@
 #include "box2d/b2_fixture.h"
 #include "box2d/b2_polygon_shape.h"
 #include "box2d/b2_circle_shape.h"
+
+
+// Box3D
+#include "Volcano/Physics/Physic/b3_World.h"
+#include "Volcano/Physics/Physic/b3_Body.h"
+#include "Volcano/Physics/Physic/b3_Fixture.h"
+#include "Volcano/Physics/Physic/b3_Contact.h"
+#include "Volcano/Physics/Physic/Collision/b3_SphereShape.h"
+#include "Volcano/Physics/Physic/Collision/b3_BoxShape.h"
+#include "Volcano/Physics/Physic/Physic3D.h"
+#include "Volcano/Physics/Physic/b3_Math.h"
+
 #include <Volcano/Renderer/Light.h>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Volcano {
 
-	void UpdateTransform(Ref<Entity> entity, glm::mat4 parentTransform)
-	{
-		glm::mat4 transform = entity->GetComponent<TransformComponent>().GetTransform();
-		glm::mat4 parentTransformTemp = parentTransform * transform;
-		entity->SetTransform(transform);
-		entity->SetParentTransform(parentTransform);
-		for (auto& [name, child] : entity->GetEntityChildren())
-			UpdateTransform(child, parentTransformTemp);
-	}
 
 	Scene::Scene()
 	{
@@ -46,12 +49,6 @@ namespace Volcano {
 
 	Scene::~Scene()
 	{
-		for(auto& [id, entity] : m_EntityIDMap)
-			if (!entity->GetPrefabPath().empty())
-			{
-				Prefab::RemovePrefabTarget(entity);
-				entity->SetPrefabPath("");
-			}
 		delete m_PhysicsWorld;
 	}
 
@@ -104,22 +101,27 @@ namespace Volcano {
 		CopyComponentIfExists<Component...>(dst, src);
 	}
 
+
+	/*
 	void CopyEntityChildren(Ref<Entity>& srcEntity, Ref<Entity>& dstEntity, std::unordered_map<UUID, Ref<Entity>>& entityIDMap, std::unordered_map<entt::entity, Ref<Entity>>& entityEnttMap)
 	{
 		if (!srcEntity->GetEntityChildren().empty())
 		{
 			auto& dstEntityChildren = dstEntity->GetEntityChildren();
-			for (auto& [name, entityChild] : srcEntity->GetEntityChildren())
+			for (auto& entityChild : srcEntity->GetEntityChildren())
 			{
 				Ref<Entity> entity = Entity::Create(*dstEntity->GetScene(), entityChild->GetUUID(), entityChild->GetName());
+				entity->SetActive(entityChild->GetActive());
 				entity->SetEntityParent(srcEntity.get());
 				entityIDMap[entity->GetUUID()] = entity;
 				entityEnttMap[entity->GetEntityHandle()] = entity;
-				dstEntityChildren[entityChild->GetName()] = entity;
+				dstEntityChildren.push_back(entity);
+
 				CopyEntityChildren(entityChild, entity, entityIDMap, entityEnttMap);
 			}
 		}
 	}
+	*/
 
 	Ref<Scene> Scene::Copy(Ref<Scene> other)
 	{
@@ -132,24 +134,27 @@ namespace Volcano {
 		auto& dstSceneRegistry = newScene->m_Registry;
 		auto& entityIDMap   = newScene->GetEntityIDMap();
 		auto& entityEnttMap = newScene->GetEntityEnttMap();
-		auto& entityNameMap = newScene->GetEntityNameMap();
+		auto& entityList = newScene->GetEntityList();
 
-		for (auto& [name, entityChild] : other->GetEntityNameMap())
+		for (auto& child : other->GetEntityList())
 		{
-			Ref<Entity> entity = Entity::Create(*newScene.get(), entityChild->GetUUID(), entityChild->GetName());
-			entity->SetPrefabPath(entityChild->GetPrefabPath());
-			Prefab::AddPrefabTarget(entity->GetPrefabPath(), entity);
-			entityIDMap[entity->GetUUID()] = entity;
-			entityEnttMap[entity->GetEntityHandle()] = entity;
-			entityNameMap[entity->GetName()] = entity;
-			CopyEntityChildren(entityChild, entity, entityIDMap, entityEnttMap);
+			/*
+			Ref<Entity> newEntity = Entity::Create(*newScene.get(), entityChild->GetUUID(), entityChild->GetName());
+			newEntity->SetActive(entityChild->GetActive());
+			entityIDMap[newEntity->GetUUID()] = newEntity;
+			entityEnttMap[newEntity->GetEntityHandle()] = newEntity;
+			entityList.push_back(newEntity);
+			CopyEntityChildren(entityChild, newEntity, entityIDMap, entityEnttMap);
+			*/
+			newScene->DuplicateEntity(child, nullptr, child->GetUUID());
 		}
 
 		// 获取旧实体的所有组件，然后用API，复制旧实体的所有组件给新实体，复制组件会包括复制组件的属性值
 		// Copy components (except IDComponent and TagComponent)
-		CopyComponent(AllComponents{}, dstSceneRegistry, srcSceneRegistry, entityIDMap);
+		//CopyComponent(AllComponents{}, dstSceneRegistry, srcSceneRegistry, entityIDMap);
 
 		// MeshComponent的Mesh指针复制后还是绑定旧mesh，旧mesh绑定旧Entity，需要单独遍历一遍重新声明新mesh并绑定新Entity
+		/*
 		auto view = dstSceneRegistry.view<MeshComponent>();
 		for (auto entity : view)
 		{
@@ -160,53 +165,46 @@ namespace Volcano {
 			mc.modelPath = modelPath;
 			mc.vertexBone = vertexBone;
 		}
-
-		for (auto& [name, child] : entityNameMap)
-		{
-			UpdateTransform(child, glm::mat4(1.0f));
-		}
+		*/
 		return newScene;
 	}
 
-	Ref<Entity> Scene::CreateEntity(const std::string& name, Ref<Entity> entity)
+	Ref<Entity> Scene::CreateEntity(const std::string& name, Entity* parent)
 	{
-		return CreateEntityWithUUID(UUID(), name, entity);
+		return CreateEntityWithUUID(UUID(), name, parent);
 	}
 
-	std::string Scene::NewName(std::map<std::string, Ref<Entity>> entityNameMap, std::string name)
+	std::string Scene::NewName(std::vector<Ref<Entity>>& entityList, std::string name)
 	{
 		std::string newName = name;
-		if (entityNameMap.find(newName) != entityNameMap.end())
+		int i = 0;
+		while (FindIteratorInList(newName, entityList) != entityList.end())
 		{
-			int i = 0;
-			do
-			{
-				newName = name + "(" + std::to_string(i) + ")";
-				i++;
-			} while (entityNameMap.find(newName) != entityNameMap.end());
+			newName = name + "(" + std::to_string(i) + ")";
+			i++;
 		}
 
 		return newName;
 	}
 
-	Ref<Entity> Scene::CreateEntityWithUUID(UUID uuid, const std::string& name, Ref<Entity> entity)
+	Ref<Entity> Scene::CreateEntityWithUUID(UUID uuid, const std::string& name, Entity* parent)
 	{
 		Ref<Entity> entityTemp;
 
-		if (entity != nullptr)
+		if (parent != nullptr)
 		{
-			entityTemp = entity->AddEntityChild(uuid, name);
+			entityTemp = parent->AddEntityChild(uuid, name);
 			m_EntityIDMap[entityTemp->GetUUID()] = entityTemp;
 			m_EntityEnttMap[entityTemp->GetEntityHandle()] = entityTemp;
 			return entityTemp;
 		}
 
-		std::string newName = NewName(m_EntityNameMap, name);
+		std::string newName = NewName(m_EntityList, name);
 
 		entityTemp = Entity::Create(*this, uuid, newName);
 		m_EntityIDMap[entityTemp->GetUUID()] = entityTemp;
 		m_EntityEnttMap[entityTemp->GetEntityHandle()] = entityTemp;
-		m_EntityNameMap[entityTemp->GetName()] = entityTemp;
+		m_EntityList.push_back(entityTemp);
 
 		return entityTemp;
 	}
@@ -214,125 +212,312 @@ namespace Volcano {
 
 	void Scene::DestroyEntityChild(Ref<Entity> entity)
 	{
-		auto entityChildren = entity->GetEntityChildren();
-		for (auto& [name, entityChild] : entityChildren)
+		auto& entityChildren = entity->GetEntityChildren();
+		while (!entityChildren.empty())
 		{
-			auto& entityChildrenRef = entity->GetEntityChildren();
-			entityChildrenRef.erase(entityChild->GetName());
-			DestroyEntityChild(entityChild);
+			auto it = entityChildren.end() - 1;
+			DestroyEntityChild(*it);
+			m_EntityIDMap.erase((*it)->GetUUID());
+			m_EntityEnttMap.erase((*it)->GetEntityHandle());
+			entityChildren.erase(it);
+			m_Registry.destroy((*it)->GetEntityHandle());
 		}
-		m_EntityIDMap.erase(entity->GetUUID());
-		m_EntityEnttMap.erase(entity->GetEntityHandle());
-		entity->GetEntityParent()->GetEntityChildren().erase(entity->GetName());
-		m_Registry.destroy(*entity.get());
 	}
+
+	// 销毁实体
 	void Scene::DestroyEntity(Ref<Entity> entity)
 	{
-		if (!entity->GetPrefabPath().empty())
-		{
-			if (m_Name == "Prefab")
-			{
-				std::string& prefabPath = entity->GetPrefabPath();
-				for (auto& [id, entity] : Prefab::GetTargetEntityPathMap()[prefabPath])
-					entity->SetPrefabPath("");
-				Prefab::GetTargetEntityPathMap().erase(prefabPath);
-				Prefab::GetEntityPathMap().erase(prefabPath);
-			}
-			else
-			    Prefab::RemovePrefabTarget(entity);
-		}
+		if (m_Name == "Prefab")
+			Prefab::RemovePrefab(entity);
+		else
+		    Prefab::RemovePrefabTarget(entity);
 
-		auto entityChildren = entity->GetEntityChildren();
-		for (auto& [name, entityChild] : entityChildren)
-		{
-			auto& entityChildrenRef = entity->GetEntityChildren();
-			entityChildrenRef.erase(entityChild->GetName());
-			DestroyEntityChild(entityChild);
-		}
+		// 清理所有子节点
+		DestroyEntityChild(entity);
+
 		m_EntityIDMap.erase(entity->GetUUID());
 		m_EntityEnttMap.erase(entity->GetEntityHandle());
-		m_EntityNameMap.erase(entity->GetName());
-		m_Registry.destroy(*entity.get());
+		// 从父节点中移除自己
+		Entity* entityParent = entity->GetEntityParent();
+		if (entityParent == nullptr)
+		{
+			Scene::RemoveEntityFromList(entity, m_EntityList);
+		}
+		else
+		{
+			Scene::RemoveEntityFromList(entity, entityParent->GetEntityChildren());
+		}
+		m_Registry.destroy(entity->GetEntityHandle());
+	}
+
+	// 遍历Active的entity，Scene.Destroy方法会把entity的父节点的子节点列表清除， TraverseEntity不会继续递归
+	void TraverseEntity(std::vector<Ref<Entity>> entityList, const std::function<void(Ref<Entity>)>& function)
+	{
+
+		std::stack<Ref<Entity>> entityStack;
+		for (auto& entity : entityList)
+		{
+			entityStack.push(entity);
+		}
+
+		while (!entityStack.empty())
+		{
+			Ref<Entity> entity = entityStack.top();
+			entityStack.pop();
+
+			if (entity->GetActive())
+			{
+				function(entity);
+
+				for (auto& child : entity->GetEntityChildren())
+				{
+					entityStack.push(child);
+				}
+			}
+		}
 	}
 
 	void Scene::OnRuntimeStart()
 	{
 		OnPhysics2DStart();
+		OnPhysics3DStart();
 
 		// 脚本初始化Scripting
 		{
 			ScriptEngine::OnRuntimeStart(this);
 			// Instantiate all script entities
-			auto view = m_Registry.view<ScriptComponent>();
-			for (auto e : view)
-			{
-				ScriptEngine::CreateEntity(*m_EntityEnttMap[e].get(), view.get<ScriptComponent>(e).enable);
-			}
-			for (auto e : view)
-			{
-				ScriptEngine::AwakeEntity(*m_EntityEnttMap[e].get(), view.get<ScriptComponent>(e).enable);
-			}
-			for (auto e : view)
-			{
-				ScriptEngine::OnEnableEntity(*m_EntityEnttMap[e].get(), view.get<ScriptComponent>(e).enable);
-			}
-			for (auto e : view)
-			{
-				ScriptEngine::OnEnableEntity(*m_EntityEnttMap[e].get(), view.get<ScriptComponent>(e).enable);
-			}
-			for (auto e : view)
-			{
-				ScriptEngine::StartEntity(*m_EntityEnttMap[e].get(), view.get<ScriptComponent>(e).enable);
-			}
+
+			TraverseEntity(m_EntityList, [](Ref<Entity> entity) { if (entity->HasComponent<ScriptComponent>() && !entity->GetComponent<ScriptComponent>().ClassName.empty()) ScriptEngine::CreateEntity(*entity.get());   });
+			TraverseEntity(m_EntityList, [](Ref<Entity> entity) { if (entity->HasComponent<ScriptComponent>() && !entity->GetComponent<ScriptComponent>().ClassName.empty()) ScriptEngine::AwakeEntity(*entity.get());    });
+			TraverseEntity(m_EntityList, [](Ref<Entity> entity) { if (entity->HasComponent<ScriptComponent>() && !entity->GetComponent<ScriptComponent>().ClassName.empty()) ScriptEngine::OnEnableEntity(*entity.get()); });
+			TraverseEntity(m_EntityList, [](Ref<Entity> entity) { if (entity->HasComponent<ScriptComponent>() && !entity->GetComponent<ScriptComponent>().ClassName.empty()) ScriptEngine::StartEntity(*entity.get());    });
 		}
 	}
 
 	void Scene::OnRuntimeStop()
 	{
 		OnPhysics2DStop();
-		auto view = m_Registry.view<ScriptComponent>();
-		for (auto e : view)
-		{
-			ScriptEngine::OnDisableEntity(*m_EntityEnttMap[e].get(), view.get<ScriptComponent>(e).enable);
-		}
+		//OnPhysics3DStop();
+
+		TraverseEntity(m_EntityList, [](Ref<Entity> entity) { if (entity->HasComponent<ScriptComponent>() && !entity->GetComponent<ScriptComponent>().ClassName.empty()) ScriptEngine::OnDisableEntity(*entity.get()); });
 		ScriptEngine::OnRuntimeStop();
 	}
 
 	void Scene::OnSimulationStart()
 	{
 		OnPhysics2DStart();
+		OnPhysics3DStart();
 	}
 
 	void Scene::OnSimulationStop()
 	{
 		OnPhysics2DStop();
+		//OnPhysics3DStop();
+
 	}
 
-	void Scene::Physics(Timestep ts)
+	void Scene::OnPhysics2DStart()
 	{
-		// 脚本影响pyhsic然后渲染，当前帧得到结果
-		// 迭代速度：使用更少的迭代可以提高性能，但准确性会受到影响。使用更多迭代会降低性能但会提高模拟质量
-		// Physics
-		const int32_t velocityIterations = 6;
-		const int32_t positionIterations = 2;
-		m_PhysicsWorld->Step(ts, velocityIterations, positionIterations);
+		// 创建一个物体世界/环境
+		// 重力加速度向下
+		m_PhysicsWorld = new b2World({ 0.0f, -9.8f });
 
-		// Retrieve transform from Box2D
+		// 为当前场景所有具有物理组件的实体创建b2Body
 		auto view = m_Registry.view<Rigidbody2DComponent>();
 		for (auto e : view)
 		{
-			//Entity entity = { e, this };
-			auto& transform = m_EntityEnttMap[e]->GetComponent<TransformComponent>();
-			auto& rb2d = m_EntityEnttMap[e]->GetComponent<Rigidbody2DComponent>();
+			Ref<Entity> entity = m_EntityEnttMap[e];
+			auto& transform = entity->GetComponent<TransformComponent>();
+			auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
 
-			// 获取物理模拟计算后的主体
-			b2Body* body = (b2Body*)rb2d.RuntimeBody;
+			// 主体定义用来指定动态类型和参数
+			b2BodyDef bodyDef;
+			bodyDef.type = Utils::Rigidbody2DTypeToBox2DBody(rb2d.Type);
+			bodyDef.position.Set(transform.Translation.x, transform.Translation.y);
+			// 绕着z轴旋转
+			bodyDef.angle = transform.Rotation.z;
 
-			// 将计算后的值赋予实体
-			const auto& position = body->GetPosition();
-			transform.Translation.x = position.x;
-			transform.Translation.y = position.y;
-			transform.Rotation.z = body->GetAngle();
+			// 由b2BodyDef创建主体
+			b2Body* body = m_PhysicsWorld->CreateBody(&bodyDef);
+			// 是否固定旋转
+			body->SetFixedRotation(rb2d.FixedRotation);
+			rb2d.RuntimeBody = body;
+
+			if (entity->HasComponent<BoxCollider2DComponent>())
+			{
+				auto& bc2d = entity->GetComponent<BoxCollider2DComponent>();
+				// 定义盒子包围盒
+				b2PolygonShape boxShape;
+				boxShape.SetAsBox(bc2d.Size.x * transform.Scale.x, bc2d.Size.y * transform.Scale.y);
+
+				// 定义fixture，fixture包含定义的包围盒
+				b2FixtureDef fixtureDef;
+				fixtureDef.shape = &boxShape;
+				fixtureDef.density = bc2d.Density;
+				fixtureDef.friction = bc2d.Friction;
+				fixtureDef.restitution = bc2d.Restitution;
+				fixtureDef.restitutionThreshold = bc2d.RestitutionThreshold;
+				// 定义主体的fixture
+				body->CreateFixture(&fixtureDef);
+			}
+
+			if (entity->HasComponent<CircleCollider2DComponent>())
+			{
+				auto& cc2d = entity->GetComponent<CircleCollider2DComponent>();
+
+				b2CircleShape circleShape;
+				circleShape.m_p.Set(cc2d.Offset.x, cc2d.Offset.y);
+				circleShape.m_radius = transform.Scale.x * cc2d.Radius;
+
+				b2FixtureDef fixtureDef;
+				fixtureDef.shape = &circleShape;
+				fixtureDef.density = cc2d.Density;
+				fixtureDef.friction = cc2d.Friction;
+				fixtureDef.restitution = cc2d.Restitution;
+				fixtureDef.restitutionThreshold = cc2d.RestitutionThreshold;
+				body->CreateFixture(&fixtureDef);
+			}
+		}
+	}
+
+	void Scene::OnPhysics2DStop()
+	{
+		delete m_PhysicsWorld;
+		m_PhysicsWorld = nullptr;
+	}
+
+	void Scene::OnPhysics3DStart()
+	{
+		// 创建一个物体世界/环境
+		// 重力加速度向下
+		m_Physics3DWorld = new b3_World({ 0.0f, -9.8f, 0.0f });
+		//m_physic3DListener = Listener(this);
+		//m_Physics3DWorld->SetContactListener(&m_physic3DListener);
+		// 为当前场景所有具有物理组件的实体创建b3_Body
+		auto view = m_Registry.view<RigidbodyComponent>();
+		TraverseEntity(m_EntityList, [&](Ref<Entity> entity)
+			{
+				if (entity->HasComponent<RigidbodyComponent>())
+				{
+					auto& transform = entity->GetComponent<TransformComponent>();
+					auto& rb = entity->GetComponent<RigidbodyComponent>();
+
+					b3_BodyDef bodyDef;
+					bodyDef.type = Utils::RigidbodyTypeToBody(rb.Type);
+					bodyDef.position = entity->GetParentTransform() * glm::vec4(transform.Translation, 1.0f);
+					bodyDef.rotation = entity->GetParentTransform() * glm::vec4(transform.Rotation, 1.0f);
+					bodyDef.userData.pointer = entity->GetUUID();
+
+					b3_Body* body = m_Physics3DWorld->CreateBody(&bodyDef);
+					// 是否固定旋转
+					body->SetFixedRotation(rb.FixedRotation);
+					rb.RuntimeBody = body;
+
+
+					if (entity->HasComponent<BoxColliderComponent>() && entity->GetComponent<BoxColliderComponent>().enabled)
+					{
+						auto& bc = entity->GetComponent<BoxColliderComponent>();
+						// 定义盒子包围盒
+
+						b3_BoxShape boxShape;
+						glm::vec3 size = bc.size / 2.0f * transform.Scale;
+						boxShape.Set(&size);
+
+						// 定义fixture，fixture包含定义的包围盒
+						b3_FixtureDef fixtureDef;
+						fixtureDef.shape = &boxShape;
+						fixtureDef.density = bc.material.density;
+						fixtureDef.friction = bc.material.staticFriction;
+						fixtureDef.restitution = bc.material.bounciness;
+						fixtureDef.restitutionThreshold = bc.material.restitutionThreshold;
+						// 定义主体的fixture
+						body->CreateFixture(&fixtureDef);
+					}
+
+					if (entity->HasComponent<SphereColliderComponent>() && entity->GetComponent<SphereColliderComponent>().enabled)
+					{
+						auto& ccd = entity->GetComponent<SphereColliderComponent>();
+
+						b3_SphereShape sphereShape;
+						sphereShape.m_position = { ccd.center.x, ccd.center.y, ccd.center.z };
+						sphereShape.m_radius = transform.Scale.x * ccd.radius;
+
+						b3_FixtureDef fixtureDef;
+						fixtureDef.shape = &sphereShape;
+						fixtureDef.density = ccd.material.density;
+						fixtureDef.friction = ccd.material.staticFriction;
+						fixtureDef.restitution = ccd.material.bounciness;
+						fixtureDef.restitutionThreshold = ccd.material.restitutionThreshold;
+						fixtureDef.userData.pointer = entity->GetUUID();
+						body->CreateFixture(&fixtureDef);
+					}
+				}
+			});
+	}
+	void Scene::OnPhysics3DStop()
+	{
+		delete m_Physics3DWorld;
+		m_Physics3DWorld = nullptr;
+	}
+
+
+
+	void Scene::Physics(Timestep ts)
+	{
+		// Physic2D
+		{
+			// 脚本影响pyhsic然后渲染，当前帧得到结果
+			// 迭代速度：使用更少的迭代可以提高性能，但准确性会受到影响。使用更多迭代会降低性能但会提高模拟质量
+			const int32_t velocityIterations = 6;
+			const int32_t positionIterations = 2;
+			m_PhysicsWorld->Step(ts, velocityIterations, positionIterations);
+
+			// Retrieve transform from Box2D
+			auto view = m_Registry.view<Rigidbody2DComponent>();
+			for (auto e : view)
+			{
+				//Entity entity = { e, this };
+				auto& transform = m_EntityEnttMap[e]->GetComponent<TransformComponent>();
+				auto& rb2d = m_EntityEnttMap[e]->GetComponent<Rigidbody2DComponent>();
+
+				// 获取物理模拟计算后的body
+				b2Body* body = (b2Body*)rb2d.RuntimeBody;
+
+				// 将计算后的值赋予实体
+				const auto& position = body->GetPosition();
+				transform.Translation.x = position.x;
+				transform.Translation.y = position.y;
+				transform.Rotation.z = body->GetAngle();
+			}
+		}
+
+		// Physic3D
+		{
+			
+			TraverseEntity(m_EntityList, [&](Ref<Entity> entity)
+				{
+					if (entity->HasComponent<RigidbodyComponent>())
+					{
+						auto& transform = entity->GetComponent<TransformComponent>();
+						b3_Body* body = (b3_Body*)entity->GetComponent<RigidbodyComponent>().RuntimeBody;
+						body->SetTransform(transform.Translation, transform.Rotation);
+					}
+				});
+				
+			const int velocityIterations = 1;
+			const int positionIterations = 2;
+			// 从Box3D检索变换(Retrieve transform)
+			m_Physics3DWorld->Step(ts, velocityIterations, positionIterations);
+
+			TraverseEntity(m_EntityList, [&](Ref<Entity> entity)
+				{
+					if (entity->HasComponent<RigidbodyComponent>())
+					{
+						b3_Body* body = (b3_Body*)entity->GetComponent<RigidbodyComponent>().RuntimeBody;
+						entity->SetPosition(body->GetPosition(), false);
+						entity->SetRotation(body->GetRotation(), false);
+					}
+				});
 		}
 	}
 
@@ -342,17 +527,17 @@ namespace Volcano {
 		{
 			//Update scripts
 			{
-				// C# Entity OnUpdate
-				auto view = m_Registry.view<ScriptComponent>();
-				for (auto e : view)
-				{
-					//Entity entity = { e, this };
-					ScriptEngine::UpdateEntity(*m_EntityEnttMap[e].get(), ts);
-				}
+				// MonoBehaviour.Update(ts)
+				TraverseEntity(m_EntityList, [ts](Ref<Entity> entity) { if (entity->HasComponent<ScriptComponent>() && !entity->GetComponent<ScriptComponent>().ClassName.empty()) ScriptEngine::UpdateEntity(*entity.get(), ts); });
 
-				// InvokeDelayed
-				auto& entityInvokeDelayedList = ScriptEngine::GetEntityInvokeDelayedList();
-				for (auto it = entityInvokeDelayedList.begin(); it != entityInvokeDelayedList.end(); )
+				// InvokeDelayed, InvokeDelayed获取后，即使关闭Entity和ScriptComponent，InvokeDelayed也会执行。
+				auto& invokeListBuffer = ScriptEngine::GetEntityInvokeDelayedListBuffer();
+				auto& invokeList = ScriptEngine::GetEntityInvokeDelayedList();
+				for (auto& invoke : invokeListBuffer)
+					invokeList.push_back(invoke);
+				invokeListBuffer.clear();
+
+				for (auto it = invokeList.begin(); it != invokeList.end(); )
 				{
 					float time = it->timer.Elapsed();
 					auto scriptClass = it->instance->GetScriptClass();
@@ -361,7 +546,7 @@ namespace Volcano {
 						if (time >= it->time)
 						{
 							scriptClass->InvokeMethod(it->instance->GetManagedObject(), it->method.ClassMethod);
-							it = entityInvokeDelayedList.erase(it);
+							it = invokeList.erase(it);
 						}
 						else
 							it++;
@@ -374,6 +559,7 @@ namespace Volcano {
 							{
 								scriptClass->InvokeMethod(it->instance->GetManagedObject(), it->method.ClassMethod);
 								it->timer.Reset();
+								it->firstInvoke = false;
 							}
 						}
 						else
@@ -386,17 +572,36 @@ namespace Volcano {
 					}
 				}
 
-				m_Registry.view<NativeScriptComponent>().each([=](auto entity, auto& nsc)
-					{
-						if (!nsc.Instance)
-						{
-							nsc.Instance = nsc.InstantiateScript();
-							nsc.Instance->m_Entity = Entity{ entity, this };
-							nsc.Instance->OnCreate();
-						}
-						nsc.Instance->OnUpdate(ts);
-					});
 			}
+
+
+			// Destroy
+			auto& updateList = ScriptEngine::GetEntityUpdateList();
+			while (!updateList.empty())
+			{
+				EntityUpdateBuffer& buffer = updateList.front();
+				updateList.pop();
+
+				Ref<Entity> srcEntity = this->GetEntityByUUID(buffer.srcID);
+				switch (buffer.type)
+				{
+				case EntityUpdateType::ADD:
+					break;
+				case EntityUpdateType::DESTROY:
+					if (srcEntity != nullptr)
+					{
+						ScriptEngine::OnDisableEntity(*srcEntity.get());
+						ScriptEngine::OnDestroyEntity(*srcEntity.get());
+						ScriptEngine::RemoveEntityInvokeDelayed(buffer.srcID);
+						srcEntity->GetScene()->DestroyEntity(srcEntity);
+					}
+					break;
+				case EntityUpdateType::MOVE:
+					Scene::UpdateEntityParent(srcEntity, this->GetEntityByUUID(buffer.disID).get());
+					break;
+				}
+			}
+
 			// Script - Physic - Render顺序
 			Physics(ts);
 		}
@@ -481,12 +686,12 @@ namespace Volcano {
 	}
 
 	// parent为空时，在Scene目录下克隆entity
-	Ref<Entity> Scene::DuplicateEntity(Ref<Entity> entity, Ref<Entity> parent, UUID id)
+	Ref<Entity> Scene::DuplicateEntity(Ref<Entity> entity, Entity* parent, UUID id)
 	{
 		// Copy name because we're going to modify component data structure
 		std::string name = entity->GetName();
 		Ref<Entity> newEntity = CreateEntityWithUUID(id, name, parent);
-		newEntity->SetPrefabPath(entity->GetPrefabPath());
+		newEntity->SetActive(entity->GetActive());
 		CopyComponentIfExists(AllComponents{}, newEntity, entity);
 
 		// MeshComponent的Mesh指针复制后还是绑定旧mesh，旧mesh绑定旧Entity，需要单独遍历一遍重新声明新mesh并绑定新Entity
@@ -506,11 +711,17 @@ namespace Volcano {
 			auto& ac = newEntity->GetComponent<AnimatorComponent>();
 			ac.Reset();
 		}
+		if (id == 0)
+		{
+			for (auto& child : entity->GetEntityChildren())
+				DuplicateEntity(child, newEntity.get());
+		}
+		else
+		{
+			for (auto& child : entity->GetEntityChildren())
+				DuplicateEntity(child, newEntity.get(), child->GetUUID());
+		}
 
-		UpdateTransform(newEntity, glm::mat4(1.0f));
-
-		for (auto& [name, child] : entity->GetEntityChildren())
-			DuplicateEntity(child, newEntity);
 		return newEntity;
 	}
 
@@ -519,9 +730,12 @@ namespace Volcano {
 		auto view = m_Registry.view<CameraComponent>();
 		for (auto entity : view)
 		{
-			auto camera = view.get<CameraComponent>(entity);
-			if (camera.Primary)
-				return m_EntityEnttMap[entity];
+			if (m_EntityEnttMap[entity]->GetActive())
+			{
+				auto camera = view.get<CameraComponent>(entity);
+				if (camera.Primary)
+					return m_EntityEnttMap[entity];
+			}
 		}
 		return {};
 	}
@@ -532,21 +746,12 @@ namespace Volcano {
 		auto view = m_Registry.view<LightComponent>();
 		for (auto entity : view)
 		{
-			auto light = view.get<LightComponent>(entity);
-			if (light.Type == LightComponent::LightType::DirectionalLight)
-				return m_EntityEnttMap[entity];
-		}
-		return {};
-	}
-
-	Ref<Entity> Scene::GetPrimarySkyboxEntity()
-	{
-		auto view = m_Registry.view<SkyboxComponent>();
-		for (auto entity : view)
-		{
-			auto skybox = view.get<SkyboxComponent>(entity);
-			if (skybox.Primary)
-				return m_EntityEnttMap[entity];
+			if (m_EntityEnttMap[entity]->GetActive())
+			{
+				auto& lightComponent = view.get<LightComponent>(entity);
+				if (lightComponent.enabled && lightComponent.Type == LightComponent::LightType::DirectionalLight)
+					return m_EntityEnttMap[entity];
+			}
 		}
 		return {};
 	}
@@ -557,9 +762,12 @@ namespace Volcano {
 		auto view = m_Registry.view<LightComponent>();
 		for (auto entity : view)
 		{
-			auto light = view.get<LightComponent>(entity);
-			if (light.Type == LightComponent::LightType::PointLight)
-				pointLights.push_back(m_EntityEnttMap[entity]);// entt是从后往前遍历，得到的vector是倒序的
+			if (m_EntityEnttMap[entity]->GetActive())
+			{
+				auto& lightComponent = view.get<LightComponent>(entity);
+				if (lightComponent.enabled && lightComponent.Type == LightComponent::LightType::PointLight)
+					pointLights.push_back(m_EntityEnttMap[entity]);// entt是从后往前遍历，得到的vector是倒序的
+			}
 		}
 		return pointLights;
 
@@ -570,104 +778,139 @@ namespace Volcano {
 		auto view = m_Registry.view<LightComponent>();
 		for (auto entity : view)
 		{
-			auto light = view.get<LightComponent>(entity);
-			if (light.Type == LightComponent::LightType::SpotLight)
-				spotLights.push_back(m_EntityEnttMap[entity]);
+			if (m_EntityEnttMap[entity]->GetActive())
+			{
+				auto& lightComponent = view.get<LightComponent>(entity);
+				if (lightComponent.enabled && lightComponent.Type == LightComponent::LightType::SpotLight)
+					spotLights.push_back(m_EntityEnttMap[entity]);
+			}
 		}
 		return spotLights;
 	}
 
-	Ref<Entity> Scene::FindEntityByName(std::string_view name)
+	Ref<Entity> Scene::GetPrimarySkyboxEntity()
 	{
-		auto view = m_Registry.view<TagComponent>();
+		auto view = m_Registry.view<SkyboxComponent>();
 		for (auto entity : view)
 		{
-			const TagComponent& tc = view.get<TagComponent>(entity);
-			if (tc.Tag == name)
-				return m_EntityEnttMap[entity];
+			if (m_EntityEnttMap[entity]->GetActive())
+			{
+				auto& skyboxComponent = view.get<SkyboxComponent>(entity);
+				if (skyboxComponent.enabled && skyboxComponent.Primary)
+					return m_EntityEnttMap[entity];
+			}
 		}
 		return {};
 	}
 
+	Ref<Entity> Scene::Find(std::string name, std::vector<Ref<Entity>>& entityList)
+	{
+		// 将name按路径分割，可根据路径查找实体
+		std::vector<std::string> result;
+		std::filesystem::path fs_path(name);
+		for (auto& piece : fs_path)
+			result.push_back(piece.string());
+
+		auto currentName = result.begin();
+		std::stack<Ref<Entity>> entityStack;
+		for (auto& entity : entityList)
+		{
+			entityStack.push(entity);
+		}
+
+		while (!entityStack.empty())
+		{
+			Ref<Entity> entity = entityStack.top();
+			entityStack.pop();
+
+			if (entity->GetName() == *currentName)
+				if (currentName == result.end() - 1)
+					return entity;
+				else
+					currentName++;
+
+			for (auto& child : entity->GetEntityChildren())
+			{
+				entityStack.push(child);
+			}
+		}
+
+		return nullptr;
+	}
+
+	void Scene::RemoveEntityFromList(Ref<Entity> entity, std::vector<Ref<Entity>>& entityList)
+	{
+		auto it = std::find_if(entityList.begin(), entityList.end(), [&](Ref<Entity>& entityTemp) { return entityTemp->GetUUID() == entity->GetUUID(); });
+		if (it != entityList.end())
+			entityList.erase(it);
+	}
+
+	// parent为空，targetScene非空 => 将entity移动到targetScene的scene路径下
+	// parent为空，entity有父节点  => 将entity移动到自己的scene路径下
+	// parent非空                  => 将entity移动到parent下
+	void Scene::UpdateEntityParent(Ref<Entity> entity, Entity* parent, Scene* targetScene)
+	{
+		if (entity == nullptr)
+			return;
+
+		if (parent == nullptr && targetScene != nullptr)
+		{
+			if (entity->GetScene() == targetScene)
+				return;
+			targetScene->DuplicateEntity(entity);
+			entity->GetScene()->DestroyEntity(entity);
+			return;
+		}
+
+		if (parent == nullptr && targetScene == nullptr && entity->GetEntityParent() != nullptr)
+		{
+			Scene::RemoveEntityFromList(entity, entity->GetEntityParent()->GetEntityChildren());
+			entity->SetName(Scene::NewName(entity->GetScene()->GetEntityList(), entity->GetName()));
+			entity->GetScene()->GetEntityList().push_back(entity);
+			entity->SetEntityParent(nullptr);
+			return;
+		}
+
+		if (parent != nullptr)
+		{
+			if (entity->GetScene() == parent->GetScene())
+			{
+				if (entity->GetEntityParent() != nullptr)
+					Scene::RemoveEntityFromList(entity, entity->GetEntityParent()->GetEntityChildren());
+				else
+				{
+					Scene::RemoveEntityFromList(entity, entity->GetScene()->GetEntityList());
+				}
+				entity->SetName(Scene::NewName(parent->GetEntityChildren(), entity->GetName()));
+				parent->GetEntityChildren().push_back(entity);
+				entity->SetEntityParent(parent);
+			}
+			else
+			{
+				parent->GetScene()->DuplicateEntity(entity, parent);
+				entity->GetScene()->DestroyEntity(entity);
+			}
+			return;
+		}
+	}
+
+	std::vector<Ref<Entity>>::iterator Scene::FindIteratorInList(std::string name, std::vector<Ref<Entity>>& entityList)
+	{
+		for (auto it = entityList.begin(); it != entityList.end(); it++)
+			if (it->get()->GetName() == name)
+				return it;
+		return entityList.end();
+	}
+
 	Ref<Entity> Scene::GetEntityByUUID(UUID uuid)
 	{
+		// 若本场景找不到，尝试从Prefab场景找
 		if (m_EntityIDMap.find(uuid) != m_EntityIDMap.end())
 			return m_EntityIDMap[uuid];
 		else if (Prefab::GetScene()->GetEntityIDMap().find(uuid) != Prefab::GetScene()->GetEntityIDMap().end())
 			return Prefab::GetScene()->GetEntityIDMap()[uuid];
 		return {};
 	}
-
-	void Scene::OnPhysics2DStart()
-	{
-		// 创建一个物体世界/环境
-		// 重力加速度向下
-		m_PhysicsWorld = new b2World({ 0.0f, -9.8f });
-
-		// 为当前场景所有具有物理组件的实体创建b2Body
-		auto view = m_Registry.view<Rigidbody2DComponent>();
-		for (auto e : view)
-		{
-			Ref<Entity> entity = m_EntityEnttMap[e];
-			auto& transform = entity->GetComponent<TransformComponent>();
-			auto& rb2d = entity->GetComponent<Rigidbody2DComponent>();
-
-			// 主体定义用来指定动态类型和参数
-			b2BodyDef bodyDef;
-			bodyDef.type = Utils::Rigidbody2DTypeToBox2DBody(rb2d.Type);
-			bodyDef.position.Set(transform.Translation.x, transform.Translation.y);
-			// 绕着z轴旋转
-			bodyDef.angle = transform.Rotation.z;
-
-			// 由b2BodyDef创建主体
-			b2Body* body = m_PhysicsWorld->CreateBody(&bodyDef);
-			// 是否固定旋转
-			body->SetFixedRotation(rb2d.FixedRotation);
-			rb2d.RuntimeBody = body;
-
-			if (entity->HasComponent<BoxCollider2DComponent>())
-			{
-				auto& bc2d = entity->GetComponent<BoxCollider2DComponent>();
-				// 定义盒子包围盒
-				b2PolygonShape boxShape;
-				boxShape.SetAsBox(bc2d.Size.x * transform.Scale.x, bc2d.Size.y * transform.Scale.y);
-
-				// 定义fixture，fixture包含定义的包围盒
-				b2FixtureDef fixtureDef;
-				fixtureDef.shape = &boxShape;
-				fixtureDef.density = bc2d.Density;
-				fixtureDef.friction = bc2d.Friction;
-				fixtureDef.restitution = bc2d.Restitution;
-				fixtureDef.restitutionThreshold = bc2d.RestitutionThreshold;
-				// 定义主体的fixture
-				body->CreateFixture(&fixtureDef);
-			}
-
-			if (entity->HasComponent<CircleCollider2DComponent>())
-			{
-				auto& cc2d = entity->GetComponent<CircleCollider2DComponent>();
-
-				b2CircleShape circleShape;
-				circleShape.m_p.Set(cc2d.Offset.x, cc2d.Offset.y);
-				circleShape.m_radius = transform.Scale.x * cc2d.Radius;
-
-				b2FixtureDef fixtureDef;
-				fixtureDef.shape = &circleShape;
-				fixtureDef.density = cc2d.Density;
-				fixtureDef.friction = cc2d.Friction;
-				fixtureDef.restitution = cc2d.Restitution;
-				fixtureDef.restitutionThreshold = cc2d.RestitutionThreshold;
-				body->CreateFixture(&fixtureDef);
-			}
-		}
-	}
-
-	void Scene::OnPhysics2DStop()
-	{
-		delete m_PhysicsWorld;
-		m_PhysicsWorld = nullptr;
-	}
-
 
 	void Scene::UpdateScene(Timestep ts)
 	{
@@ -677,37 +920,22 @@ namespace Volcano {
 			Skybox::SetTexture(skyboxEntity->GetComponent<SkyboxComponent>().texture);
 
 		// Update Animator
-		{
-			auto view = m_Registry.view<AnimatorComponent, AnimationComponent>();
-			for (auto entity : view)
+		TraverseEntity(m_EntityList, [ts](Ref<Entity> entity) {
+
+			if (entity->HasComponent<AnimatorComponent>() && entity->HasComponent<AnimationComponent>() && entity->GetComponent<AnimatorComponent>().enabled && entity->GetComponent<AnimationComponent>().enabled)
 			{
-				auto animator = view.get<AnimatorComponent>(entity).animator;
-				auto animation = view.get<AnimationComponent>(entity).animation;
-				if (animation != nullptr)
+				auto& animatorComponent = entity->GetComponent<AnimatorComponent>();
+				auto& animationComponent = entity->GetComponent<AnimationComponent>();
+				if (animationComponent.animation != nullptr)
 				{
-					animator->SetAnimation(animation.get());
-					animator->UpdateAnimation(ts);
+					animatorComponent.animator->SetAnimation(animationComponent.animation.get());
+					animatorComponent.animator->UpdateAnimation(ts);
 				}
 			}
-		}
 
-		// Update Transform
-		{
-			for (auto& [name, child] : m_EntityNameMap)
-			{
-				UpdateTransform(child, glm::mat4(1.0f));
-			}
-		}
-		/*
-		{
-			auto view = m_Registry.view<TransformComponent>();
-			for (auto entity : view)
-			{
-				auto transform = view.get<TransformComponent>(entity);
-				m_EntityEnttMap[entity]->SetTransform(transform.GetTransform());
-			}
-		}
-		*/
+			});
+
+
 		// Update Mesh
 		{
 			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
@@ -715,70 +943,85 @@ namespace Volcano {
 
 			for (auto entity : view)
 			{
-				auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
-				Entity* entityNode;
-				switch (mesh.meshType)
+				if (m_EntityEnttMap[entity]->GetActive())
 				{
-				case MeshType::None:
-					break;
-				case MeshType::Plane:
-				case MeshType::Cube:
-				case MeshType::Sphere:
-				case MeshType::Cylinder:
-				case MeshType::Capsule:
-					mesh.mesh->StartBatch();
-
-					if (!mesh.vertexBone.empty())
+					auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
+					Entity* entityNode;
+					switch (mesh.meshType)
 					{
-						mesh.mesh->SetVertexBoneDataToDefault();
-						for (auto& vertexBone : mesh.vertexBone)
-							mesh.mesh->SetBoneID(vertexBone.vertexIndex1, vertexBone.vertexIndex2, vertexBone.boneIndex, vertexBone.weight);
-
-						entityNode = m_EntityEnttMap[entity].get();
-						do
-						{
-							if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
-							{
-								auto& animator = entityNode->GetComponent<AnimatorComponent>().animator;
-								mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
-								break;
-							}
-							else
-								entityNode = entityNode->GetEntityParent();
-						} while (entityNode != nullptr);
-
-						if (entityNode == nullptr)
-							mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
-					}
-					else
-						mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
-					break;
-				case MeshType::Model:
-					if (mesh.mesh != nullptr)
-					{
+					case MeshType::None:
+						break;
+					case MeshType::Plane:
+					case MeshType::Cube:
+					case MeshType::Sphere:
+					case MeshType::Cylinder:
+					case MeshType::Capsule:
 						mesh.mesh->StartBatch();
-						entityNode = m_EntityEnttMap[entity].get();
-						do
-						{
-							if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
-							{
-								auto& animator = entityNode->GetComponent<AnimatorComponent>().animator;
-								mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
-								break;
-							}
-							else
-								entityNode = entityNode->GetEntityParent();
-						} while (entityNode != nullptr);
 
-						if (entityNode == nullptr)
+						if (!mesh.vertexBone.empty())
 						{
+							mesh.mesh->SetVertexBoneDataToDefault();
+							for (auto& vertexBone : mesh.vertexBone)
+								mesh.mesh->SetBoneID(vertexBone.vertexIndex1, vertexBone.vertexIndex2, vertexBone.boneIndex, vertexBone.weight);
+
+							/*
+							entityNode = m_EntityEnttMap[entity].get();
+							do
+							{
+								if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
+								{
+									auto& animator = entityNode->GetComponent<AnimatorComponent>().animator;
+									mesh.mesh->DrawMesh((int)entity, animator->GetFinalBoneMatrices());
+									break;
+								}
+								else
+									entityNode = entityNode->GetEntityParent();
+							} while (entityNode != nullptr);
+
+							if (entityNode == nullptr)
+								mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+							*/
 							mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
 						}
+						else
+							mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+						break;
+					case MeshType::Model:
+						if (mesh.mesh != nullptr)
+						{
+							mesh.mesh->StartBatch();
+							/*
+							entityNode = m_EntityEnttMap[entity].get();
+							do
+							{
+								if (entityNode->HasComponent<AnimationComponent>() && entityNode->HasComponent<AnimatorComponent>())
+								{
+									auto& animatorComponent = entityNode->GetComponent<AnimatorComponent>();
+									auto& animationComponent = entityNode->GetComponent<AnimationComponent>();
+									if (animatorComponent.enabled && animationComponent.enabled)
+									{
+										mesh.mesh->DrawMesh((int)entity, animatorComponent.animator->GetFinalBoneMatrices());
+										break;
+									}
+									else
+										entityNode = entityNode->GetEntityParent();
+								}
+								else
+									entityNode = entityNode->GetEntityParent();
+							} while (entityNode != nullptr);
+
+							if (entityNode == nullptr)
+							{
+								mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+							}
+							*/
+							mesh.mesh->DrawMesh((int)entity, finalBoneMatrices);
+						}
+						break;
+					default:
+						VOL_TRACE("错误MeshType");
+						break;
 					}
-					break;
-				default:
-					VOL_TRACE("错误MeshType");
-					break;
 				}
 			}
 		}
@@ -857,6 +1100,75 @@ namespace Volcano {
 
 		}
 
+		if (m_RenderType == RenderType::COLLIDER)
+		{
+			RendererAPI::SetPolygonMode(true);
+			RendererAPI::SetDepthTest(false);
+			TraverseEntity(m_EntityList, [&](Ref<Entity> entity) {
+
+				if (!entity->HasComponent<RigidbodyComponent>())
+					return;
+				std::vector<glm::mat4> finalBoneMatrices;
+				if (entity->HasComponent<SphereColliderComponent>())
+				{
+					auto& sphereColliderComponent = entity->GetComponent<SphereColliderComponent>();
+					if (sphereColliderComponent.enabled && sphereColliderComponent.showCollider)
+					{
+						auto& transformComponent = entity->GetComponent<TransformComponent>();
+						SphereMesh::GetInstance()->BeginScene(camera, transform, position);
+						SphereMesh::GetInstance()->StartBatch();
+						SphereMesh::GetInstance()->DrawMesh(entity->GetUUID(), finalBoneMatrices);
+						SphereMesh::GetInstance()->BindShader(m_RenderType);
+						b3_Body* body = (b3_Body*)entity->GetComponent<RigidbodyComponent>().RuntimeBody;
+						if (body != nullptr)
+						{
+							glm::mat4 transform = body->GetTransform().Transform() * 
+								glm::mat4(transformComponent.Scale.x * sphereColliderComponent.radius);
+							SphereMesh::GetInstance()->DrawSphere(transform);
+						}
+						else
+						{
+							glm::mat4 transform = glm::translate(glm::mat4(1.0f), transformComponent.Translation) * 
+								glm::toMat4(glm::quat(transformComponent.Rotation)) * 
+								glm::mat4(transformComponent.Scale.x * sphereColliderComponent.radius);
+							SphereMesh::GetInstance()->DrawSphere(transform);
+						}
+					}
+
+				}
+				if (entity->HasComponent<BoxColliderComponent>())
+				{
+					auto& boxColliderComponent = entity->GetComponent<BoxColliderComponent>();
+					if (boxColliderComponent.enabled && boxColliderComponent.showCollider)
+					{
+						auto& transformComponent = entity->GetComponent<TransformComponent>();
+						CubeMesh::GetInstance()->BeginScene(camera, transform, position);
+						CubeMesh::GetInstance()->StartBatch();
+						CubeMesh::GetInstance()->DrawMesh(entity->GetUUID(), finalBoneMatrices);
+						CubeMesh::GetInstance()->BindShader(m_RenderType);
+						b3_Body* body = (b3_Body*)entity->GetComponent<RigidbodyComponent>().RuntimeBody;
+						if (body != nullptr)
+						{
+							glm::mat4 transform = body->GetTransform().Transform() *
+								glm::scale(glm::mat4(1.0f), transformComponent.Scale * boxColliderComponent.size);
+							CubeMesh::GetInstance()->DrawCube(transform);
+						}
+						else
+						{
+							glm::mat4 transform = glm::translate(glm::mat4(1.0f), transformComponent.Translation) * 
+								glm::toMat4(glm::quat(transformComponent.Rotation)) * 
+								glm::scale(glm::mat4(1.0f), transformComponent.Scale * boxColliderComponent.size);
+							CubeMesh::GetInstance()->DrawCube(transform);
+						}
+					}
+				}
+				});
+			RendererAPI::SetPolygonMode(false);
+			RendererAPI::SetDepthTest(true);
+			return;
+
+		}
+
 		Renderer2D::BeginScene(camera, transform);
 
 		// Draw sprites
@@ -864,8 +1176,11 @@ namespace Volcano {
 			auto group = m_Registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
 			for (auto entity : group)
 			{
-				auto [transform, sprite] = group.get<TransformComponent, SpriteRendererComponent>(entity);
-				Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+				if (m_EntityEnttMap[entity]->GetActive())
+				{
+					auto [transform, sprite] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+					Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+				}
 			}
 		}
 
@@ -874,22 +1189,25 @@ namespace Volcano {
 			auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
 			for (auto entity : view)
 			{
-				auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-				Renderer2D::DrawCircle(transform.GetTransform(), circle.Color, circle.Thickness, circle.Fade, (int)entity);
+				if (m_EntityEnttMap[entity]->GetActive())
+				{
+					auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
+					Renderer2D::DrawCircle(transform.GetTransform(), circle.Color, circle.Thickness, circle.Fade, (int)entity);
+				}
 			}
 		}
 		Renderer2D::EndScene();
 
-
 		//Draw Mesh
-		{
-			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
+		TraverseEntity(m_EntityList, [&](Ref<Entity> entity) {
 
-			for (auto entity : view)
+			if (entity->HasComponent<MeshComponent>() && entity->HasComponent<MeshRendererComponent>() && entity->GetComponent<MeshRendererComponent>().enabled)
 			{
-				auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
+				auto& transformComponent    = entity->GetComponent<TransformComponent>();
+				auto& meshComponent         = entity->GetComponent<MeshComponent>();
+				auto& meshRendererComponent = entity->GetComponent<MeshRendererComponent>();
 
-				switch (mesh.meshType)
+				switch (meshComponent.meshType)
 				{
 				case MeshType::None:
 					break;
@@ -898,18 +1216,18 @@ namespace Volcano {
 				case MeshType::Sphere:
 				case MeshType::Cylinder:
 				case MeshType::Capsule:
-					mesh.mesh->BeginScene(camera, transform, position);
-					mesh.mesh->BindTextures(renderer.Textures);
-					mesh.mesh->BindShader(m_RenderType);
-					mesh.mesh->EndScene();
+					meshComponent.mesh->BeginScene(camera, transform, position);
+					meshComponent.mesh->BindTextures(meshRendererComponent.Textures);
+					meshComponent.mesh->BindShader(m_RenderType);
+					meshComponent.mesh->EndScene();
 					break;
 				case MeshType::Model:
-					if (mesh.mesh != nullptr)
+					if (meshComponent.mesh != nullptr)
 					{
-						mesh.mesh->BeginScene(camera, transform, position);
-						mesh.mesh->BindTextures(renderer.Textures);
-						mesh.mesh->BindShader(m_RenderType);
-						mesh.mesh->EndScene();
+						meshComponent.mesh->BeginScene(camera, transform, position);
+						meshComponent.mesh->BindTextures(meshRendererComponent.Textures);
+						meshComponent.mesh->BindShader(m_RenderType);
+						meshComponent.mesh->EndScene();
 					}
 					break;
 				default:
@@ -917,8 +1235,49 @@ namespace Volcano {
 					break;
 				}
 			}
+
+			});
+		/*
+		{
+			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
+
+			for (auto entity : view)
+			{
+				if (m_EntityEnttMap[entity]->GetActive())
+				{
+					auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
+
+					switch (mesh.meshType)
+					{
+					case MeshType::None:
+						break;
+					case MeshType::Plane:
+					case MeshType::Cube:
+					case MeshType::Sphere:
+					case MeshType::Cylinder:
+					case MeshType::Capsule:
+						mesh.mesh->BeginScene(camera, transform, position);
+						mesh.mesh->BindTextures(renderer.Textures);
+						mesh.mesh->BindShader(m_RenderType);
+						mesh.mesh->EndScene();
+						break;
+					case MeshType::Model:
+						if (mesh.mesh != nullptr)
+						{
+							mesh.mesh->BeginScene(camera, transform, position);
+							mesh.mesh->BindTextures(renderer.Textures);
+							mesh.mesh->BindShader(m_RenderType);
+							mesh.mesh->EndScene();
+						}
+						break;
+					default:
+						VOL_TRACE("错误MeshType");
+						break;
+					}
+				}
+			}
 		}
-		
+		*/
 
 		// draw skybox as last
 		
@@ -1175,7 +1534,43 @@ namespace Volcano {
 	}
 
 	template<>
+	void Scene::OnComponentAdded<RigidbodyComponent>(Entity& entity, RigidbodyComponent& component)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<BoxColliderComponent>(Entity& entity, BoxColliderComponent& component)
+	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<SphereColliderComponent>(Entity& entity, SphereColliderComponent& component)
+	{
+	}
+
+	template<>
 	void Scene::OnComponentAdded<SkyboxComponent>(Entity& entity, SkyboxComponent& component)
 	{
+	}
+
+	void Listener::BeginContact(b3_Contact* contact)
+	{
+		VOL_TRACE("Listener1");
+		if (m_scene != nullptr)
+		{
+			VOL_TRACE("Listener1");
+			UUID uuid = contact->GetFixtureA()->GetBody()->GetUserData().pointer;
+			Ref<Entity> entity = m_scene->GetEntityByUUID(uuid);
+			if (entity && entity->HasComponent<ScriptComponent>() && entity->GetComponent<ScriptComponent>().enabled)
+			{
+				VOL_TRACE("Listener2");
+				auto instance = ScriptEngine::GetEntityScriptInstance(uuid);
+				if (instance)
+				{
+					VOL_TRACE("Listener3");
+					instance->InvokeOnTriggerEnter(ScriptEngine::CreateInstance(ScriptEngine::GetColliderClass()->GetClass(), uuid));
+				}
+			}
+		}
 	}
 }

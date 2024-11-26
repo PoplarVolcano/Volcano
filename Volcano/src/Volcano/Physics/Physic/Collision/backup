@@ -1,0 +1,728 @@
+
+/*
+
+	// 顶点在轴上的投影的最小值和最大值
+	// @param vertexs 顶点
+	// @param axis 分离轴
+	std::pair<float, float> VertexProject(const glm::vec3 vertices[], const glm::vec3 axis)
+	{
+		std::pair<float, float> range = { FLT_MAX, FLT_MIN };
+		for (int i = 0; i < sizeof(vertices) / sizeof(vertices[0]); ++i)
+		{
+			glm::vec3 vertex = vertices[i];
+			float dot = glm::dot(vertex, axis);
+			range.first = glm::min(range.first, dot);
+			range.second = glm::max(range.second, dot);
+		}
+		return range;
+	}
+
+	// OBB 在 axis 轴上没有相交
+	// @param vertexs1 OBB1 的所有顶点
+	// @param vertexs2 OBB2 的所有顶点
+	// @param axis 分离轴
+	bool IsNotIntersectInAxis(const glm::vec3 vertexs1[], const glm::vec3 vertexs2[], const glm::vec3 axis)
+	{
+		auto range1 = VertexProject(vertexs1, axis);
+		auto range2 = VertexProject(vertexs2, axis);
+		return range1.first > range2.second || range2.first > range1.second;
+	}
+
+
+	// 通过boxA的法线获取boxA和boxB的间隔
+	static float b3_FindMaxSeparation(int* vertexIndex,
+		const b3_BoxShape* boxA, const b3_Transform& transform1,
+		const b3_BoxShape* boxB, const b3_Transform& transform2)
+	{
+		int count1 = boxA->m_count;
+		int count2 = boxB->m_count;
+		const glm::vec3* normalsA = boxA->m_normals;
+		const glm::vec3* verticesA = boxA->m_vertices;
+		const glm::vec3* verticesB = boxB->m_vertices;
+		b3_Transform transform = b3_MultiplyT(transform2, transform1);
+
+		int bestIndex = 0;
+		float maxSeparation = -FLT_MAX;
+		// 遍历boxA的顶点，获取投影最大的点
+		for (int i = 0; i < count1; ++i)
+		{
+			// 在帧2中获取box1法线。 Get box1 normal in frame2.
+			glm::vec3 nromal = b3_Multiply(transform.rotation, normalsA[i]);
+			glm::vec3 vertexA = b3_Multiply(transform, verticesA[i]);
+
+			// 找到法线i的最深点。 Find deepest point for normal i.
+			float si = FLT_MAX;
+			for (int j = 0; j < count2; ++j)
+			{
+				// 向量顶点A->B在对应法线上的投影，遍历boxB的顶点获取投影最小的点的投影
+				float sij = glm::dot(nromal, verticesB[j] - vertexA);
+				if (sij < si)
+				{
+					si = sij;
+				}
+			}
+
+			if (si > maxSeparation)
+			{
+				maxSeparation = si;
+				bestIndex = i;
+			}
+		}
+
+		*vertexIndex = bestIndex;
+		return maxSeparation;
+	}
+
+*/
+
+
+/*
+// 通过boxA的法线获取boxA和boxB的间隔
+static float b3_FindMaxSeparation(int* vertexIndex,
+	const b3_BoxShape* boxA, const b3_Transform& transform1,
+	const b3_BoxShape* boxB, const b3_Transform& transform2)
+{
+	int count1 = boxA->m_count;
+	int count2 = boxB->m_count;
+	const glm::vec3* normalsA = boxA->m_normals;
+	const glm::vec3* verticesA = boxA->m_vertices;
+	const glm::vec3* verticesB = boxB->m_vertices;
+	b3_Transform transform = b3_MultiplyT(transform2, transform1);
+
+	int bestIndex = 0;
+	float maxSeparation = -FLT_MAX;
+	// 遍历boxA的顶点，获取投影最大的点
+	for (int i = 0; i < count1; ++i)
+	{
+		// 在帧2中获取box1法线。 Get box1 normal in frame2.
+		glm::vec3 nromal = b3_Multiply(transform.rotation, normalsA[i]);
+		glm::vec3 vertexA = b3_Multiply(transform, verticesA[i]);
+
+		// 找到法线i的最深点。 Find deepest point for normal i.
+		float si = FLT_MAX;
+		for (int j = 0; j < count2; ++j)
+		{
+			// 向量顶点A->B在对应法线上的投影，遍历boxB的顶点获取投影最小的点的投影
+			float sij = glm::dot(nromal, verticesB[j] - vertexA);
+			if (sij < si)
+			{
+				si = sij;
+			}
+		}
+
+		if (si > maxSeparation)
+		{
+			maxSeparation = si;
+			bestIndex = i;
+		}
+	}
+
+	*vertexIndex = bestIndex;
+	return maxSeparation;
+}
+
+//获取碰撞边，将顶点注入clipVertex
+static void b3_FindIncidentVertex(b3_ClipVertex clipVertex,
+	const b3_BoxShape* boxA, const b3_Transform& transformA, int vertex1,
+	const b3_BoxShape* boxB, const b3_Transform& transformB)
+{
+	const glm::vec3* normalsA = boxA->m_normals;
+
+	int count2 = boxB->m_count;
+	const glm::vec3* verticesB = boxB->m_vertices;
+	const glm::vec3* normalsB = boxB->m_normals;
+
+	assert(0 <= vertex1 && vertex1 < boxA->m_count);
+
+	// 获取boxB坐标系中参考法线点的法线
+	glm::vec3 normalA = b3_MultiplyT(transformB.rotation, b3_Multiply(transformA.rotation, normalsA[vertex1]));
+
+	// 在boxB上找到碰撞法线点
+	int index = 0;
+	float minDot = FLT_MAX;
+	// 遍历boxB的法线，找到与normalA夹角最接近-PI的法线
+	for (int i = 0; i < count2; ++i)
+	{
+		float dot = glm::dot(normalA, normalsB[i]);
+		if (dot < minDot)
+		{
+			minDot = dot;
+			index = i;
+		}
+	}
+
+	// 为碰撞边构建交点。 Build the clip vertices for the incident edge.
+	//int i1 = index;
+	//int i2 = i1 + 1 < count2 ? i1 + 1 : 0;
+
+	clipVertex.vertex = b3_Multiply(transformB, verticesB[index]);
+	clipVertex.id.cf.indexA = (unsigned char)vertex1;
+	clipVertex.id.cf.indexB = (unsigned char)index;
+	clipVertex.id.cf.typeA = b3_ContactFeature::e_face;
+	clipVertex.id.cf.typeB = b3_ContactFeature::e_vertex;
+}
+
+// 萨瑟兰·霍奇曼剪辑。 Sutherland-Hodgman clipping.
+// normal: 被碰撞边向量
+int b3_ClipSegmentToLine(b3_ClipVertex vOut[2], const b3_ClipVertex vertexIn[2],
+	const glm::vec3& normal, float offset, int vertexIndexA)
+{
+	// Start with no output points
+	int count = 0;
+
+	// 计算端点到直线的距离 Calculate the distance of end points to the line
+	float distance0 = glm::dot(normal, vertexIn[0].vertex) - offset;
+	float distance1 = glm::dot(normal, vertexIn[1].vertex) - offset;
+
+	// 如果这些点在平面后面 If the points are behind the plane
+	if (distance0 <= 0.0f) vOut[count++] = vertexIn[0];
+	if (distance1 <= 0.0f) vOut[count++] = vertexIn[1];
+
+	// 如果这些点位于平面的不同侧面 If the points are on different sides of the plane
+	if (distance0 * distance1 < 0.0f)
+	{
+		// 找到边和平面的交点 Find intersection point of edge and plane
+		float interp = distance0 / (distance0 - distance1);
+		vOut[count].vertex = vertexIn[0].vertex + interp * (vertexIn[1].vertex - vertexIn[0].vertex);
+
+		// 顶点A碰到边B。 VertexA is hitting edgeB.
+		vOut[count].id.cf.indexA = static_cast<unsigned char>(vertexIndexA);
+		vOut[count].id.cf.indexB = vertexIn[0].id.cf.indexB;
+		vOut[count].id.cf.typeA = b3_ContactFeature::e_vertex;
+		vOut[count].id.cf.typeB = b3_ContactFeature::e_face;
+		++count;
+
+		assert(count == 2);
+	}
+
+	return count;
+}
+
+
+*/
+void b3_CollideBoxs(b3_Manifold* manifold, const b3_BoxShape* boxA, const b3_Transform& transformA, const b3_BoxShape* boxB, const b3_Transform& transformB)
+{
+	/*
+	manifold->pointCount = 0;
+
+	float totalRadius = boxA->m_radius + boxB->m_radius;
+
+	int vertexA = 0;
+	float separationA = b3_FindMaxSeparation(&vertexA, boxA, transformA, boxB, transformB);
+	if (separationA > totalRadius)
+		return;
+
+	int vertexB = 0;
+	float separationB = b3_FindMaxSeparation(&vertexB, boxB, transformB, boxA, transformA);
+	if (separationB > totalRadius)
+		return;
+
+	const b3_BoxShape* boxRef;	// 参考系box reference box
+	const b3_BoxShape* boxInc;	// 碰撞体box incident box
+	b3_Transform xfA, xfB;
+	int vertex1;					// 参考系交点
+	bool flip;
+	const float k_tol = 0.1f * b3_LinearSlop; // 公差
+
+	if (separationB > separationA + k_tol)
+	{
+		boxRef = boxB;
+		boxInc = boxA;
+		xfA = transformB;
+		xfB = transformA;
+		vertex1 = vertexB;
+		manifold->type = b3_Manifold::e_faceB;
+		flip = 1;
+	}
+	else
+	{
+		boxRef = boxA;
+		boxInc = boxB;
+		xfA = transformA;
+		xfB = transformB;
+		vertex1 = vertexA;
+		manifold->type = b3_Manifold::e_faceA;
+		flip = 0;
+	}
+
+	b3_ClipVertex incidentVertex;
+	b3_FindIncidentVertex(incidentVertex, boxRef, xfA, vertex1, boxInc, xfB);
+
+	int count1 = boxRef->m_count;
+	const glm::vec3* verticesRef = boxRef->m_vertices;
+	const glm::vec3* normalsRef = boxRef->m_normals;
+
+	int indexVertex1 = vertex1;
+
+	glm::vec3 vertexRef = verticesRef[indexVertex1];
+	glm::vec3 normalRef = normalsRef[indexVertex1]; // 参考系碰撞点，局部坐标
+
+	glm::vec3 localTangent = b3_Tangent(normalRef);
+	localTangent = glm::normalize(localTangent); // 切向量，局部坐标
+
+	glm::vec3 localNormal = normalRef;//b3_Tangent(localTangent); // 法向量，局部坐标
+	glm::vec3 planePoint = vertexRef;// 交点，局部坐标
+
+	//glm::vec3 tangent = b3_Multiply(xfA.rotation, localTangent);// 切向量，世界坐标
+	glm::vec3 normal = b3_Multiply(xfA.rotation, localNormal);// 法向量，世界坐标
+
+	//vertexRef = b3_Multiply(xfA, vertexRef); // 参考系碰撞点，世界坐标
+
+	// 正面偏移 Face offset.
+	float frontOffset = glm::dot(normal, vertexRef); // 参考系box vertexRef在法线上的投影
+	*/
+	/*
+
+	// 侧面偏移，由多面体蒙皮厚度延伸。 Side offsets, extended by polytope skin thickness.
+	float sideOffset = -glm::dot(tangent, vertexRef) + totalRadius;
+
+
+	// 将碰撞(incident)边卡(Clip)在被碰撞(extruded)边edge1侧边。
+	b3_ClipVertex clipPoints1[2];
+	b3_ClipVertex clipPoints2[2];
+	int np;
+
+	// Clip to box side 1
+	np = b3_ClipSegmentToLine(clipPoints1, incidentNormalPoint, -tangent, sideOffset, indexVertex1);
+
+	if (np < 2)
+		return;
+
+	// Clip to negative box side 1
+	np = b3_ClipSegmentToLine(clipPoints2, clipPoints1, tangent, sideOffset2, indexVertex2);
+
+	if (np < 2)
+	{
+		return;
+	}
+	*/
+	/*
+	glm::vec3 vertexInc = boxInc->m_vertices[incidentVertex.id.cf.indexA];
+	unsigned short refType = 0, incType = 0;
+	if (vertexRef.x != 0.0f) refType++;
+	if (vertexRef.y != 0.0f) refType++;
+	if (vertexRef.z != 0.0f) refType++;
+	if (vertexInc.x != 0.0f) incType++;
+	if (vertexInc.y != 0.0f) incType++;
+	if (vertexInc.z != 0.0f) incType++;
+
+	if (!boxA->TestPoint(transformA, incidentVertex.vertex))
+		return;
+
+	manifold->localNormal = localNormal;
+	manifold->localPoint = planePoint;
+
+
+	int pointCount = 0;
+	for (int i = 0; i < b3_MaxManifoldPoints; ++i)
+	{
+		float separation = glm::dot(normal, incidentVertex.vertex) - frontOffset;
+
+		if (separation <= totalRadius)
+		{
+			b3_ManifoldPoint* cp = manifold->points + pointCount;
+			cp->localPoint = b3_MultiplyT(xfB, incidentVertex.vertex);
+			cp->id = incidentVertex.id;
+			if (flip)
+			{
+				// Swap features
+				b3_ContactFeature cf = cp->id.cf;
+				cp->id.cf.indexA = cf.indexB;
+				cp->id.cf.indexB = cf.indexA;
+				cp->id.cf.typeA = cf.typeB;
+				cp->id.cf.typeB = cf.typeA;
+			}
+			++pointCount;
+		}
+	}
+
+	manifold->pointCount = pointCount;
+	*/
+
+
+
+
+
+
+	/*
+	manifold->pointCount = 0;
+
+	glm::mat4 invTxA = glm::inverse(transformA.Transform());
+	glm::mat4 txB = transformB.Transform();
+	glm::mat4 invTxAMulTxB = invTxA * txB;
+
+	glm::vec3 cB = b3_Multiply(transformB, boxB->m_position);
+	glm::vec3 cBLocalA = invTxA * glm::vec4(cB, 1.0f);//b3_MultiplyT(transformA, cB);
+	glm::vec3 cA = b3_Multiply(transformA, boxA->m_position);
+	glm::vec3 cALocalB = b3_MultiplyT(transformB, cA);  // A在B局部空间坐标
+
+	if (boxA->TestPoint(transformA, cB) || boxB->TestPoint(transformB, cA))
+		return;
+
+	glm::vec3 boxA_axisX = { 1.0f, 0.0f, 0.0f };
+	glm::vec3 boxA_axisY = { 0.0f, 1.0f, 0.0f };
+	glm::vec3 boxA_axisZ = { 0.0f, 0.0f, 1.0f };
+
+	glm::vec3 boxBVertices[8];
+	for(int i = 0; i < boxB->m_count; i++)
+		boxBVertices[i] = invTxAMulTxB * glm::vec4(boxB->m_vertices[i], 1.0f);
+
+	glm::vec3 boxB_axisX = b3_MultiplyT(transformA.rotation, b3_Multiply(transformB.rotation, { 1.0f, 0.0f, 0.0f }));
+	glm::vec3 boxB_axisY = b3_MultiplyT(transformA.rotation, b3_Multiply(transformB.rotation, { 0.0f, 1.0f, 0.0f }));
+	glm::vec3 boxB_axisZ = b3_MultiplyT(transformA.rotation, b3_Multiply(transformB.rotation, { 0.0f, 0.0f, 1.0f }));
+
+	glm::vec3 cross1 = glm::cross(boxA_axisX, boxB_axisX);
+	glm::vec3 cross2 = glm::cross(boxA_axisX, boxB_axisY);
+	glm::vec3 cross3 = glm::cross(boxA_axisX, boxB_axisZ);
+	glm::vec3 cross4 = glm::cross(boxA_axisY, boxB_axisX);
+	glm::vec3 cross5 = glm::cross(boxA_axisY, boxB_axisY);
+	glm::vec3 cross6 = glm::cross(boxA_axisY, boxB_axisZ);
+	glm::vec3 cross7 = glm::cross(boxA_axisZ, boxB_axisX);
+	glm::vec3 cross8 = glm::cross(boxA_axisZ, boxB_axisY);
+	glm::vec3 cross9 = glm::cross(boxA_axisZ, boxB_axisZ);
+
+	// 如果有一个分离轴上不相交，则OBB1 和 OBb3_ 不相交
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, boxA_axisX)) return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, boxA_axisY)) return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, boxA_axisZ)) return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, boxB_axisX)) return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, boxB_axisY)) return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, boxB_axisZ)) return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross1))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross2))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross3))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross4))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross5))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross6))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross7))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross8))	  return;
+	if (IsNotIntersectInAxis(boxA->m_vertices, boxBVertices, cross9))	  return;
+
+
+
+
+	manifold->type = b3_Manifold::e_faceA;
+	manifold->localPoint = cA;
+
+	manifold->localNormal = glm::vec3(1.0f);
+	manifold->pointCount = 1;
+
+	manifold->points[0].localPoint = boxB->m_position;
+	manifold->points[0].id.key = 0;
+	*/
+
+
+
+manifold->pointCount = 0;
+
+glm::vec3 cB = b3_Multiply(transformB, boxB->m_position);
+if (boxA->TestPoint(transformA, cB))
+{
+	manifold->type = b3_Manifold::e_faceA;
+
+	manifold->localPoint = b3_MultiplyT(transformA, cB);
+	manifold->localNormal = glm::normalize(manifold->localPoint);
+	manifold->pointCount = 1;
+
+	manifold->points[0].localPoint = boxB->m_position;
+	manifold->points[0].id.key = 0;
+	return;
+}
+
+glm::vec3 verticesB[8];  // boxB顶点世界坐标
+std::vector<std::pair<glm::vec3, int>> verticesBIncident;
+for (int i = 0; i < 8; i++)
+{
+	verticesB[i] = b3_Multiply(transformB, boxB->m_vertices[i]);
+	if (boxA->TestPoint(transformA, verticesB[i]))
+		verticesBIncident.push_back({ verticesB[i], i });
+
+}
+
+
+if (verticesBIncident.size() == 1)
+{
+	std::vector<glm::ivec2> edges;
+
+	for (int i = 0; i < 12 && edges.size() < 3; i++)
+	{
+		if (boxA->m_edges[i].x == verticesBIncident[0].second)
+			edges.push_back(boxA->m_edges[i]);
+		else if (boxA->m_edges[i].y == verticesBIncident[0].second)
+			edges.push_back({ boxA->m_edges[i].y, boxA->m_edges[i].x });
+	}
+	manifold->type = b3_Manifold::e_faceA;
+
+	manifold->localPoint = b3_MultiplyT(transformA, verticesBIncident[0].first);
+	manifold->localNormal = glm::normalize(manifold->localPoint);
+	manifold->pointCount = 1;
+
+	manifold->points[0].localPoint = boxB->m_position;
+	manifold->points[0].id.key = 0;
+	return;
+}
+else
+return;
+
+for (int i = 0; i < 12; i++)
+{
+	b3_RayCastInput input;
+	input.p1 = verticesB[boxB->m_edges[i].x];
+	input.p2 = verticesB[boxB->m_edges[i].y];
+	input.maxFraction = 1.0f;
+	b3_RayCastOutput output;
+	if (boxA->RayCast(&output, input, transformA, 0))
+	{
+		manifold->type = b3_Manifold::e_faceA;
+
+		manifold->localNormal = output.normal;
+		manifold->localPoint = input.p1 + output.fraction * (input.p2 - input.p1);
+		manifold->pointCount = 1;
+
+		manifold->points[0].localPoint = boxB->m_position;
+		manifold->points[0].id.key = 0;
+		return;
+	}
+}
+
+glm::vec3 verticesA[8];  // boxA顶点世界坐标
+for (int i = 0; i < 8; i++)
+{
+	verticesA[i] = b3_Multiply(transformA, boxA->m_vertices[i]);
+	if (boxB->TestPoint(transformB, verticesA[i]))
+	{
+		manifold->type = b3_Manifold::e_faceA;
+
+		manifold->localNormal = { 0.0f, 0.0f, 1.0f };
+		manifold->localPoint = boxA->m_position;
+		manifold->pointCount = 1;
+
+		manifold->points[0].localPoint = boxB->m_position;
+		manifold->points[0].id.key = 0;
+		return;
+	}
+
+}
+for (int i = 0; i < 12; i++)
+{
+	b3_RayCastInput input;
+	input.p1 = verticesA[boxA->m_edges[i].x];
+	input.p2 = verticesA[boxA->m_edges[i].y];
+	input.maxFraction = 1.0f;
+	b3_RayCastOutput output;
+	if (boxB->RayCast(&output, input, transformB, 0))
+	{
+		manifold->type = b3_Manifold::e_faceA;
+
+		manifold->localNormal = output.normal;
+		manifold->localPoint = input.p1 + output.fraction * (input.p2 - input.p1);
+		manifold->pointCount = 1;
+
+		manifold->points[0].localPoint = boxB->m_position;
+		manifold->points[0].id.key = 0;
+		return;
+	}
+}
+
+/*
+for (int i = 0; i < 8; i++)
+{
+	if (boxB->TestPoint(transformB, b3_Multiply(transformA, boxA->m_vertices[i])))
+	{
+		manifold->type = b3_Manifold::e_faceA;
+
+		manifold->localNormal = { 0.0f, 0.0f, 1.0f };
+		manifold->localPoint = boxA->m_position;
+		manifold->pointCount = 1;
+
+		manifold->points[0].localPoint = boxB->m_position;
+		manifold->points[0].id.key = 0;
+		return;
+	}
+
+}
+*/
+
+
+
+/*
+if(pointCount != 6)
+	break;
+b3_VelocityConstraintPoint* constraintPoint1 = velocityConstraint->points + 0;
+b3_VelocityConstraintPoint* constraintPoint2 = velocityConstraint->points + 1;
+b3_VelocityConstraintPoint* constraintPoint3 = velocityConstraint->points + 2;
+
+glm::vec3 a(constraintPoint1->normalImpulse, constraintPoint2->normalImpulse, constraintPoint3->normalImpulse);
+assert(a.x >= 0.0f && a.y >= 0.0f);
+
+// 相对速度
+glm::vec3 dv1 = vB + glm::cross(wB, constraintPoint1->rB) - vA - glm::cross(wA, constraintPoint1->rA);
+glm::vec3 dv2 = vB + glm::cross(wB, constraintPoint2->rB) - vA - glm::cross(wA, constraintPoint2->rA);
+glm::vec3 dv3 = vB + glm::cross(wB, constraintPoint3->rB) - vA - glm::cross(wA, constraintPoint3->rA);
+
+// 计算法向速度
+float vn1 = glm::dot(dv1, normal);
+float vn2 = glm::dot(dv2, normal);
+float vn3 = glm::dot(dv3, normal);
+
+glm::vec3 b;
+b.x = vn1 - constraintPoint1->velocityBias;
+b.y = vn2 - constraintPoint2->velocityBias;
+b.z = vn3 - constraintPoint3->velocityBias;
+
+// Compute b'
+b -= velocityConstraint->K * a;
+
+const float k_errorTol = 1e-3f;
+(void)(k_errorTol);  // not used
+
+for (;;)
+{
+	//
+	// Case 1: vn = 0
+	//
+	// 0 = A * x + b'
+	//
+	// Solve for x:
+	//
+	// x = - inv(A) * b'
+	//
+	glm::vec3 x = -(velocityConstraint->normalMass * b);
+
+	if (x.x >= 0.0f && x.y >= 0.0f)
+	{
+		// Get the incremental impulse
+		glm::vec3 d = x - a;
+
+		// Apply incremental impulse
+		glm::vec3 P1 = d.x * normal;
+		glm::vec3 P2 = d.y * normal;
+		glm::vec3 P3 = d.z * normal;
+		vA -= mA * (P1 + P2 + P3);
+		wA -= iA * (glm::cross(constraintPoint1->rA, P1) + glm::cross(constraintPoint2->rA, P2) + glm::cross(constraintPoint3->rA, P3));
+
+		vB += mB * (P1 + P2 + P3);
+		wB += iB * (glm::cross(constraintPoint1->rB, P1) + glm::cross(constraintPoint2->rB, P2) + glm::cross(constraintPoint3->rB, P3));
+
+		// Accumulate
+		constraintPoint1->normalImpulse = x.x;
+		constraintPoint2->normalImpulse = x.y;
+		constraintPoint3->normalImpulse = x.z;
+
+		break;
+	}
+
+	//
+	// Case 2: vn1 = 0 and x2 = 0
+	//
+	//   0 = a11 * x1 + a12 * 0 + b1'
+	// vn2 = a21 * x1 + a22 * 0 + b3_'
+	//
+	x.x = -constraintPoint1->normalMass * b.x;
+	x.y = 0.0f;
+	x.z = 0.0f;
+	vn1 = 0.0f;
+	vn2 = velocityConstraint->K[0].y * x.x + b.y;
+	if (x.x >= 0.0f && vn2 >= 0.0f)
+	{
+		// Get the incremental impulse
+		glm::vec3 d = x - a;
+
+		// Apply incremental impulse
+		glm::vec3 P1 = d.x * normal;
+		glm::vec3 P2 = d.y * normal;
+		glm::vec3 P3 = d.z * normal;
+		vA -= mA * (P1 + P2 + P3);
+		wA -= iA * (glm::cross(constraintPoint1->rA, P1) + glm::cross(constraintPoint2->rA, P2)) + glm::cross(constraintPoint3->rA, P3);
+
+		vB += mB * (P1 + P2 + P3);
+		wB += iB * (glm::cross(constraintPoint1->rB, P1) + glm::cross(constraintPoint2->rB, P2)) + glm::cross(constraintPoint3->rB, P3);
+
+		// Accumulate
+		constraintPoint1->normalImpulse = x.x;
+		constraintPoint2->normalImpulse = x.y;
+		constraintPoint3->normalImpulse = x.z;
+
+		break;
+	}
+
+
+	//
+	// Case 3: vn2 = 0 and x1 = 0
+	//
+	// vn1 = a11 * 0 + a12 * x2 + b1'
+	//   0 = a21 * 0 + a22 * x2 + b3_'
+	//
+	x.x = 0.0f;
+	x.y = -constraintPoint2->normalMass * b.y;
+	x.z = 0.0f;
+	vn1 = velocityConstraint->K[1].x * x.y + b.x;
+	vn2 = 0.0f;
+
+	if (x.y >= 0.0f && vn1 >= 0.0f)
+	{
+		// Resubstitute for the incremental impulse
+		glm::vec3 d = x - a;
+
+		// Apply incremental impulse
+		glm::vec3 P1 = d.x * normal;
+		glm::vec3 P2 = d.y * normal;
+		glm::vec3 P3 = d.z * normal;
+		vA -= mA * (P1 + P2 + P3);
+		wA -= iA * (glm::cross(constraintPoint1->rA, P1) + glm::cross(constraintPoint2->rA, P2) + glm::cross(constraintPoint3->rA, P3));
+
+		vB += mB * (P1 + P2 + P3);
+		wB += iB * (glm::cross(constraintPoint1->rB, P1) + glm::cross(constraintPoint2->rB, P2) + glm::cross(constraintPoint3->rB, P3));
+
+		// Accumulate
+		constraintPoint1->normalImpulse = x.x;
+		constraintPoint2->normalImpulse = x.y;
+		constraintPoint2->normalImpulse = x.z;
+
+		break;
+	}
+
+	//
+	// Case 4: x1 = 0 and x2 = 0
+	//
+	// vn1 = b1
+	// vn2 = b3_;
+	x.x = 0.0f;
+	x.y = 0.0f;
+	x.z = 0.0f;
+	vn1 = b.x;
+	vn2 = b.y;
+	vn3 = b.z;
+
+	if (vn1 >= 0.0f && vn2 >= 0.0f)
+	{
+		// Resubstitute for the incremental impulse
+		glm::vec2 d = x - a;
+
+		// Apply incremental impulse
+		glm::vec3 P1 = d.x * normal;
+		glm::vec3 P2 = d.y * normal;
+		glm::vec3 P3 = d.y * normal;
+		vA -= mA * (P1 + P2 + P3);
+		wA -= iA * (glm::cross(constraintPoint1->rA, P1) + glm::cross(constraintPoint2->rA, P2) + glm::cross(constraintPoint3->rA, P3));
+
+		vB += mB * (P1 + P2 + P3);
+		wB += iB * (glm::cross(constraintPoint1->rB, P1) + glm::cross(constraintPoint2->rB, P2) + glm::cross(constraintPoint3->rB, P3));
+
+		// Accumulate
+		constraintPoint1->normalImpulse = x.x;
+		constraintPoint2->normalImpulse = x.y;
+		constraintPoint3->normalImpulse = x.z;
+
+		break;
+	}
+
+	// 没有解决办法，放弃。这有时会被击中，但似乎并不重要。
+	// No solution, give up. This is hit sometimes, but it doesn't seem to matter.
+	break;
+}
+*/
+
+
+
+}

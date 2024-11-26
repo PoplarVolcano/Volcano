@@ -27,6 +27,7 @@ namespace Volcano {
 			if(s_ActiveProject)
 				return s_ActiveProject->m_ProjectDirectory;
 			VOL_CORE_TRACE("GetProjectDirectory::bug");
+			return {};
 		}
 
 		static std::filesystem::path GetAssetDirectory()
@@ -34,6 +35,7 @@ namespace Volcano {
 			if (s_ActiveProject)
 				return GetProjectDirectory() / s_ActiveProject->m_Config.AssetDirectory;
 			VOL_CORE_TRACE("GetAssetDirectory::bug");
+			return {};
 		}
 
 		// 资源目录相对路径
@@ -42,6 +44,7 @@ namespace Volcano {
 			if (s_ActiveProject)
 				return std::filesystem::relative(path, GetAssetDirectory());
 			VOL_CORE_TRACE("GetRelativeAssetDirectory::bug");
+			return {};
 		}
 
 		// 资源目录绝对路径
@@ -51,6 +54,7 @@ namespace Volcano {
 			if (s_ActiveProject)
 				return GetAssetDirectory() / path;
 			VOL_CORE_TRACE("GetAssetFileSystemPath::bug");
+			return {};
 		}
 
 		ProjectConfig& GetConfig() { return m_Config; }

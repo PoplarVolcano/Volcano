@@ -233,15 +233,21 @@ namespace Volcano{
             ImGui::Begin("NewProject", &m_NewProject, flags);
             static std::string newProjectName = "Project1";
             ImGui::Text((const char*)u8"项目名称");
-            ImGui::InputText("##NewProjectName", newProjectName.data(), 64);
+            char buffer[MAX_PATH];
+            memset(buffer, 0, sizeof(buffer));
+            strncpy_s(buffer, sizeof(buffer), newProjectName.c_str(), sizeof(buffer));
+            if (ImGui::InputText("##NewProjectName", buffer, sizeof(buffer)))
+            {
+                newProjectName = buffer;
+            }
             static std::string newProjectPath = FileDialogs::GetProjectPath().append("Projects").string();
             ImGui::Text((const char*)u8"位置(如果路径不存在，将新建路径。)");
-            ImGui::InputText("##newProjectPath", newProjectPath.data(), 256);
+            ImGui::InputText("##newProjectPath", newProjectPath.data(), MAX_PATH);
             ImGui::SameLine();
             if(ImGui::Button("..."))
                 newProjectPath = FileDialogs::OpenFolder(newProjectPath);
 
-            std::filesystem::path projectPath = std::filesystem::path(newProjectPath).append(newProjectName);
+            std::filesystem::path projectPath = std::filesystem::path(newProjectPath) / std::filesystem::path(newProjectName);
             ImGui::Text(((const char*)u8"项目将在" + projectPath.string() + (const char*)u8"中创建").c_str());
             if (ImGui::Button("Create Project"))
             {
@@ -503,7 +509,7 @@ namespace Volcano{
                     break;
                 }
 
-                ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+                ImGui::Image((ImTextureID)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
                 ImGui::End();
             }
@@ -528,7 +534,7 @@ namespace Volcano{
             // 在视图显示帧缓冲画面
             //uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
             uint32_t textureID = m_Framebuffer->GetColorAttachmentRendererID();
-            ImGui::Image((void*)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+            ImGui::Image((ImTextureID)textureID, ImVec2{ m_ViewportSize.x, m_ViewportSize.y }, ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
 
 
             // 接收在此视口拖放过来的值，On target candidates，拖放目标
@@ -651,8 +657,8 @@ namespace Volcano{
         for (auto& result : m_ProfileResults)
         {
             char label[50];
-            strcpy(label, "%.3fms  ");
-            strcat(label, result.Name);
+            strcpy_s(label, "%.3fms  ");
+            strcat_s(label, result.Name);
             ImGui::Text(label, result.Time);
         }
         m_ProfileResults.clear();
@@ -776,6 +782,11 @@ namespace Volcano{
         ImGui::End();
     }
 
+    void ExampleLayer::ClearConsole()
+    {
+        Application::Get().ClearConsole();
+    }
+
     void ExampleLayer::OnEvent(Event& event)
     {
         if (m_SceneState == SceneState::Edit)
@@ -808,6 +819,8 @@ namespace Volcano{
 
     bool ExampleLayer::OnKeyPressed(KeyPressedEvent& e)
     {
+        Input::Click(e.GetKeyCode());
+
         if (e.IsRepeat()) 
         {
             return false;
@@ -815,6 +828,7 @@ namespace Volcano{
 
         bool control = Input::IsKeyPressed(Key::LeftControl) || Input::IsKeyPressed(Key::RightControl);
         bool shift = Input::IsKeyPressed(Key::LeftShift) || Input::IsKeyPressed(Key::RightShift);
+        bool alt = Input::IsKeyPressed(Key::LeftAlt) || Input::IsKeyPressed(Key::RightAlt);
 
         switch (e.GetKeyCode())
         {
@@ -837,6 +851,10 @@ namespace Volcano{
         if (!Project::GetActive()->GetPlayGame())
             switch (e.GetKeyCode()) 
             {
+            case Key::C:
+                if (alt)
+                    ClearConsole();
+                break;
             case Key::N:
                 if (control)
                     NewScene();
@@ -898,6 +916,8 @@ namespace Volcano{
 
     bool ExampleLayer::OnMouseButtonPressed(MouseButtonPressedEvent& e)
     {
+        Input::Click(e.GetMouseButton());
+
         if (e.GetMouseButton() == Mouse::ButtonLeft)
         {
             // 鼠标悬浮，没按Alt
@@ -1032,6 +1052,10 @@ namespace Volcano{
         std::string filepath = FileDialogs::OpenFile("Volcano Project (*.hproj)\0*.hproj\0", FileDialogs::GetProjectPath().string());
         if (filepath.empty())
             return false;
+
+        Prefab::Reset();
+        Animation::GetAnimationLibrary()->GetAnimations().clear();
+        Mesh::GetMeshLibrary()->GetMeshes().clear();
 
         OpenProject(filepath);
         return true;

@@ -52,10 +52,10 @@ namespace Volcano {
 				ImGui::EndPopup();
 			}
 
-			auto entityNameMap = m_Context->GetEntityNameMap();
-			for (auto itr = entityNameMap.begin(); itr != entityNameMap.end(); itr++)
+			auto entityList = m_Context->GetEntityList();
+			for (auto it = entityList.begin(); it != entityList.end(); it++)
 			{
-				DrawEntityNode(itr->second);
+				DrawEntityNode(*it);
 			}
 
 			// 若是被点击标记为选中状态|有下一级
@@ -70,18 +70,22 @@ namespace Volcano {
 					auto& entityIDMap = m_Context->GetEntityIDMap();
 					VOL_CORE_ASSERT(entityIDMap.find(*entityID) != entityIDMap.end());
 					Ref<Entity> srcEntity = entityIDMap.at(*entityID);
+					Scene::UpdateEntityParent(srcEntity, nullptr);
+					/*
 					Entity* entityParent = srcEntity->GetEntityParent();
 					if (entityParent != nullptr)
 					{
-						entityParent->GetEntityChildren().erase(srcEntity->GetName());
+						entityParent->GetEntityChildren().erase(std::find(entityParent->GetEntityChildren().begin(), entityParent->GetEntityChildren().end(), srcEntity));
 
-						std::string newName = Scene::NewName(m_Context->GetEntityNameMap(), srcEntity->GetName());
+						std::string newName = Scene::NewName(m_Context->GetEntityList(), srcEntity->GetName());
 						srcEntity->SetName(newName);
 						srcEntity->SetEntityParent(nullptr);
-						m_Context->GetEntityNameMap()[newName] = srcEntity;
+						m_Context->GetEntityList().push_back(srcEntity);
 					}
+					*/
 				}
 
+				// 在Scene目录下新建Prefan实体
 				if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
 				{
 					const wchar_t* path = (const wchar_t*)payload->Data;
@@ -90,13 +94,14 @@ namespace Volcano {
 					if (prefabPath.extension() == ".prefab" && m_Context->GetName() != "Prefab")
 					{
 						auto& prefabScene = Prefab::GetScene();
-						Ref<Entity> targetEntity = Prefab::Get(Project::GetRelativeAssetDirectory(prefabPath).string());
+						std::string prefabPathTemp = Project::GetRelativeAssetDirectory(prefabPath).string();
+						Ref<Entity> targetEntity = Prefab::Get(prefabPathTemp);
 						if (targetEntity == nullptr)
 						{
 							targetEntity = Prefab::Load(prefabPath);
 						}
 						Ref<Entity> resultEntity = m_Context->DuplicateEntity(targetEntity);
-						Prefab::GetTargetEntityPathMap()[resultEntity->GetPrefabPath()][resultEntity->GetUUID()] = resultEntity;
+						Prefab::GetEntityPrefabMap()[resultEntity->GetUUID()] = prefabPathTemp;
 					}
 				}
 
@@ -131,7 +136,7 @@ namespace Volcano {
 		flags |= ImGuiTreeNodeFlags_SpanAvailWidth;
 		bool opened = false;
 
-		if (!entity->GetPrefabPath().empty())
+		if (!Prefab::GetPrefabPath(entity).empty())
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.84f, 0.99f, 1.0f));//ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(127.0f / 255.0f, 214.0f / 255.0f, 252.0f / 255.0f, 1.0f);
 		
 		if (entity->GetEntityChildren().empty())
@@ -145,7 +150,7 @@ namespace Volcano {
 			opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity.get(), flags, tag.c_str());
 		}
 
-		if (!entity->GetPrefabPath().empty())
+		if (!Prefab::GetPrefabPath(entity).empty())
 			ImGui::PopStyleColor();
 
 		if (ImGui::BeginDragDropSource())
@@ -155,6 +160,8 @@ namespace Volcano {
 			ImGui::SetDragDropPayload("SCENE_HIERARCHY_NODE", &entityID, sizeof(entityID));
 			ImGui::EndDragDropSource();
 		}
+
+		// 拖拽实体改变路径
 		if (ImGui::BeginDragDropTarget())
 		{
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCENE_HIERARCHY_NODE"))
@@ -164,14 +171,22 @@ namespace Volcano {
 				auto& entityIDMap = m_Context->GetEntityIDMap();
 				VOL_CORE_ASSERT(entityIDMap.find(*entityID) != entityIDMap.end());
 				Ref<Entity> srcEntity = entityIDMap.at(*entityID);
+				Scene::UpdateEntityParent(srcEntity, entity.get());
+				/*
+				Scene* scene = entity->GetScene();
+				auto& entityIDMap = m_Context->GetEntityIDMap();
+				VOL_CORE_ASSERT(entityIDMap.find(*entityID) != entityIDMap.end());
+				Ref<Entity> srcEntity = entityIDMap.at(*entityID);
 				Entity* entityParent = srcEntity->GetEntityParent();
 				if(entityParent != nullptr)
-					entityParent->GetEntityChildren().erase(srcEntity->GetName());
+					entityParent->GetEntityChildren().erase(std::find(entityParent->GetEntityChildren().begin(), entityParent->GetEntityChildren().end(), srcEntity));
 				else
-					scene->GetEntityNameMap().erase(srcEntity->GetName());
+					scene->GetEntityList().erase(std::find(scene->GetEntityList().begin(), scene->GetEntityList().end(), srcEntity));
 				entity->AddEntityChild(srcEntity);
+				*/
 			}
 
+			// 在结点下创建一个Prefab实体
 			if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
 			{
 				const wchar_t* path = (const wchar_t*)payload->Data;
@@ -180,13 +195,14 @@ namespace Volcano {
 				if (prefabPath.extension() == ".prefab" && m_Context->GetName() != "Prefab")
 				{
 					auto& prefabScene = Prefab::GetScene();
-					auto targetEntity = Prefab::Get(Project::GetRelativeAssetDirectory(prefabPath).string());
+					std::string prefabPathTemp = Project::GetRelativeAssetDirectory(prefabPath).string();
+					auto targetEntity = Prefab::Get(prefabPathTemp);
 					if (targetEntity == nullptr)
 					{
 						targetEntity = Prefab::Load(prefabPath);
 					}
-					Ref<Entity> resultEntity = m_Context->DuplicateEntity(targetEntity);
-					Prefab::GetTargetEntityPathMap()[resultEntity->GetPrefabPath()][resultEntity->GetUUID()] = resultEntity;
+					Ref<Entity> resultEntity = m_Context->DuplicateEntity(targetEntity, entity.get());
+					Prefab::GetEntityPrefabMap()[resultEntity->GetUUID()] = prefabPathTemp;
 				}
 			}
 
@@ -204,7 +220,7 @@ namespace Volcano {
 		{
 			if (ImGui::MenuItem("Create Empty Entity"))
 			{
-				m_Context->CreateEntity("Empty Entity", entity);
+				m_Context->CreateEntity("Empty Entity", entity.get());
 			}
 			if (ImGui::MenuItem("Delete Entity"))
 				entityDeleted = true;
@@ -214,7 +230,7 @@ namespace Volcano {
 		if (opened)
 		{
 			auto entityChildren = entity->GetEntityChildren();
-			for (auto& [name, entityChild] : entityChildren)
+			for (auto& entityChild : entityChildren)
 			{
 				DrawEntityNode(entityChild);
 			}
@@ -225,10 +241,8 @@ namespace Volcano {
 		{
 			if (m_SelectionContext == entity)
 				m_SelectionContext = {};
-			if(entity->GetEntityParent())
-			    m_Context->DestroyEntityChild(entity);
-			else
-				m_Context->DestroyEntity(entity);
+
+			m_Context->DestroyEntity(entity);
 		}
 
 	}
@@ -351,13 +365,13 @@ namespace Volcano {
 
 	void ModelLoading(Ref<ModelNode> modelNode, Ref<Model> model, Ref<Entity> entity)
 	{
-		auto entityNode = entity->GetScene()->CreateEntity(modelNode->name, entity);
+		auto entityNode = entity->GetScene()->CreateEntity(modelNode->name, entity.get());
 		auto transform = entityNode->GetComponent<TransformComponent>();
 		Math::DecomposeTransform(modelNode->transform, transform.Translation, transform.Rotation, transform.Scale);
 		for (uint32_t i = 0; i < modelNode->numMeshes; i++)
 		{
-		    auto entityMesh = entity->GetScene()->CreateEntity(modelNode->name, entityNode);
-		    auto& mesh = model->GetMeshes()[modelNode->meshes[i]];
+		    auto entityMesh = entity->GetScene()->CreateEntity(modelNode->name, entityNode.get());
+			auto& mesh = model->GetMeshes()[i];//modelNode->meshes[i]];
 			auto& mc = entityMesh->AddComponent<MeshComponent>();
 			mc.SetMesh(MeshType::Model, entityMesh.get(), std::make_shared<Mesh>(*mesh->mesh.get()));
 
@@ -539,29 +553,29 @@ namespace Volcano {
 			for (const auto& entry : std::filesystem::directory_iterator(folder_path))
 			{
 				if (std::filesystem::is_regular_file(entry.status()) && entry.path().extension() == ".prefab") {
-					std::string path = Project::GetRelativeAssetDirectory(entry.path()).string();
-					bool isSelected = entity->GetPrefabPath() == path;
-					if (ImGui::Selectable(path.c_str(), isSelected))
+					std::string prefabPath = Project::GetRelativeAssetDirectory(entry.path()).string();
+					bool isSelected = Prefab::GetPrefabPath(entity) == prefabPath;
+					if (ImGui::Selectable(prefabPath.c_str(), isSelected))
 					{
 						if (!isSelected)
 						{
 							auto& prefabScene = Prefab::GetScene();
-							Ref<Entity> targetEntity = Prefab::Get(path);
-							if (targetEntity == nullptr)
-							{
-								targetEntity = Prefab::Load(entry.path());
-							}
+
+							Ref<Entity> prefabEntity = Prefab::Get(prefabPath);
+							if (prefabEntity == nullptr)
+								prefabEntity = Prefab::Load(entry.path());
+
 							Ref<Entity> parent;
 							if (entity->GetEntityParent() != nullptr)
 								parent = m_Context->GetEntityByUUID(entity->GetEntityParent()->GetUUID());
-							else
-								parent = nullptr;
+
 							UUID id = entity->GetUUID();
+
 							m_Context->DestroyEntity(entity);
+
 							// 修改Entity的Prefab目标不需要修改ID
-							Ref<Entity> resultEntity = m_Context->DuplicateEntity(targetEntity, parent, id);
-							Prefab::GetTargetEntityPathMap()[resultEntity->GetPrefabPath()][resultEntity->GetUUID()] = resultEntity;
-							m_SelectionContext = resultEntity;
+							m_Context->DuplicateEntity(prefabEntity, parent.get(), id);
+							Prefab::GetEntityPrefabMap()[id] = prefabPath;
 
 							stopDraw = true;
 						}
@@ -590,6 +604,54 @@ namespace Volcano {
 
 		if (entity->HasComponent<TagComponent>())
 		{
+			if (ImGui::Checkbox("##EntityActive", &entity->GetActive()))
+			{
+				if (m_Context->IsRunning())
+				{
+					if (entity->GetActive() == true)
+					{
+						if (entity->HasComponent<ScriptComponent>())
+						{
+							auto& sc = entity->GetComponent<ScriptComponent>();
+							if (!sc.ClassName.empty())
+							{
+								auto instance = ScriptEngine::GetEntityScriptInstance(entity->GetUUID());
+								if (instance == nullptr)
+								{
+									ScriptEngine::CreateEntity(*entity.get());
+									ScriptEngine::AwakeEntity(*entity.get());
+								}
+								else
+									instance->SetEnabled(sc.enabled);
+								ScriptEngine::OnEnableEntity(*entity.get());
+								ScriptEngine::StartEntity(*entity.get());
+							}
+						}
+					}
+					else
+					{
+						if (entity->HasComponent<ScriptComponent>())
+						{
+							auto& sc = entity->GetComponent<ScriptComponent>();
+							if (!sc.ClassName.empty())
+							{
+								auto instance = ScriptEngine::GetEntityScriptInstance(entity->GetUUID());
+								if (instance == nullptr)
+								{
+									ScriptEngine::CreateEntity(*entity.get());
+									ScriptEngine::AwakeEntity(*entity.get());
+								}
+								else
+									instance->SetEnabled(sc.enabled);
+								ScriptEngine::OnDisableEntity(*entity.get());
+							}
+						}
+					}
+				}
+			}
+
+			ImGui::SameLine();
+
 			auto& tag = entity->GetComponent<TagComponent>().Tag;
 			char buffer[256];
 			memset(buffer, 0, sizeof(buffer));
@@ -601,33 +663,18 @@ namespace Volcano {
 			if (ImGui::InputText("##Tag", buffer, sizeof(buffer), flags))
 			{
 				Entity* entityParent = entity->GetEntityParent();
-				if (entityParent)
-				{
-					auto& entityMap = entityParent->GetEntityChildren();
-					Ref<Entity> entityTemp = entityMap[tag];
-					entityMap.erase(tag);
-					std::string newName = Scene::NewName(entityMap, buffer);
-					entityMap[newName] = entityTemp;
-					tag = std::string(newName);
-
-				}
+				if(entityParent == nullptr)
+					tag = Scene::NewName(entity->GetScene()->GetEntityList(), buffer);
 				else
-				{
-					auto& entityMap = m_Context->GetEntityNameMap();
-					Ref<Entity> entityTemp = entityMap[tag];
-					entityMap.erase(tag);
-					std::string newName = Scene::NewName(entityMap, buffer);
-					entityMap[newName] = entityTemp;
-					tag = std::string(newName);
-				}
+					tag = Scene::NewName(entityParent->GetEntityChildren(), buffer);
 			}
 
 			// PrefabList
-			if (entity->GetPrefabPath() != std::string())
+			if (!Prefab::GetPrefabPath(entity).empty())
 			{
 				if (m_Context->GetName() != "Prefab")
 				{
-					if (ImGui::BeginCombo("Prefab", entity->GetPrefabPath().c_str()))
+					if (ImGui::BeginCombo("Prefab", Prefab::GetPrefabPath(entity).c_str()))
 					{
 						try {
 							DrawPrefabCombo(Project::GetAssetDirectory(), entity, stopDraw);
@@ -644,17 +691,15 @@ namespace Volcano {
 					// 重置Entity
 					if (ImGui::Button("Reset"))
 					{
-						Ref<Entity> prefabEntity = Prefab::Get(entity->GetPrefabPath());
-						Prefab::ReloadPrefabTarget(prefabEntity, entity);
+						Ref<Entity> prefabEntity = Prefab::Get(Prefab::GetPrefabPath(entity));
+						Prefab::ReloadPrefabTarget(prefabEntity, entity->GetScene(), entity->GetUUID());
 					}
 					ImGui::SameLine();
 
 					// 断开Prefab和Entity联系
 					if (ImGui::Button("Unpack"))
 					{
-						std::string prefabPath = entity->GetPrefabPath();
-						Prefab::GetTargetEntityPathMap()[prefabPath].erase(entity->GetUUID());
-						entity->SetPrefabPath("");
+						Prefab::RemovePrefabTarget(entity);
 					}
 				}
 				else
@@ -663,10 +708,10 @@ namespace Volcano {
 					{
 						// 保存Prefab
 						SceneSerializer serializer(m_Context);
-						serializer.SerializePrefab(Project::GetAssetFileSystemPath(entity->GetPrefabPath()).string(), *entity.get());
+						serializer.SerializePrefab(Project::GetAssetFileSystemPath(Prefab::GetPrefabPath(entity)).string(), *entity.get());
 						
 						// 将链接Prefab的所有Entity重新复制一遍
-						Prefab::ReloadPrefabTarget(entity);
+						Prefab::ReloadPrefabTarget(entity, m_Context.get());
 					}
 				}
 			}
@@ -676,7 +721,7 @@ namespace Volcano {
 		if (stopDraw)
 			return;
 
-		DrawComponent<TransformComponent>("Transform", entity, [](auto& component)
+		DrawComponent<TransformComponent>("Transform", entity, [](TransformComponent& component)
 			{
 				DrawVec3Control("Translation", component.Translation);
 
@@ -688,8 +733,13 @@ namespace Volcano {
 				DrawVec3Control("Scale", component.Scale, 1.0f);
 			});
 
-		DrawComponent<LightComponent>("Light", entity, [](auto& component)
+		DrawComponent<LightComponent>("Light", entity, [](LightComponent& component)
 			{
+
+				ImGui::Checkbox("##LightEnable", &component.enabled);
+
+				ImGui::SameLine();
+
 				const char* lightTypeStrings[] = { "DirectionalLight", "PointLight", "SpotLight"};
 				const char* currentLightTypeString = lightTypeStrings[(int)component.Type];
 				if (ImGui::BeginCombo("LightType", currentLightTypeString))
@@ -746,8 +796,11 @@ namespace Volcano {
 
 			});
 
-		DrawComponent<CameraComponent>("Camera", entity, [](auto& component)
+		DrawComponent<CameraComponent>("Camera", entity, [](CameraComponent& component)
 			{
+				ImGui::Checkbox("Enable", &component.enabled);
+
+
 				auto& camera = component.Camera;
 
 				ImGui::Checkbox("Primary", &component.Primary);
@@ -808,14 +861,42 @@ namespace Volcano {
 
 		DrawComponent<ScriptComponent>("Script", entity, [entity, scene = m_Context](ScriptComponent& component) mutable
 			{
-				ImGui::Checkbox("##ScriptEnable", &component.enable);
-
 				Ref<ScriptInstance> scriptInstance = ScriptEngine::GetEntityScriptInstance(entity->GetUUID());
-				if (scriptInstance != nullptr)
-					if (scriptInstance->GetEnable() != component.enable)
-						scriptInstance->SetEnable(component.enable);
+				if (ImGui::Checkbox("##ScriptEnabled", &component.enabled))
+				{
+					if (!component.ClassName.empty())
+					{
+						if (component.enabled)
+						{
+							if (scriptInstance == nullptr)
+							{
+								ScriptEngine::CreateEntity(*entity.get());
+								ScriptEngine::AwakeEntity(*entity.get());
+							}
+							else
+								scriptInstance->SetEnabled(component.enabled);
 
-				bool scriptClassExists = ScriptEngine::EntityClassExists(component.ClassName);
+							ScriptEngine::OnEnableEntity(*entity.get());
+							ScriptEngine::StartEntity(*entity.get());
+						}
+						else
+						{
+							if (scriptInstance == nullptr)
+							{
+								ScriptEngine::CreateEntity(*entity.get());
+								ScriptEngine::AwakeEntity(*entity.get());
+							}
+							else
+								scriptInstance->SetEnabled(component.enabled);
+
+							ScriptEngine::OnDisableEntity(*entity.get());
+						}
+					}
+				}
+
+				ImGui::SameLine();
+
+				bool scriptClassExists = ScriptEngine::ClassExists(component.ClassName);
 
 				// 如果mono类不存在则红框
 				//UI::ScopedStyleColor textColor(ImGuiCol_Text, ImVec4(0.9f, 0.2f, 0.3f, 1.0f), !scriptClassExists);
@@ -825,17 +906,20 @@ namespace Volcano {
 
 				if (ImGui::BeginCombo("##ScriptClassName", component.ClassName.c_str()))
 				{
-					for (auto& [className, script] : ScriptEngine::GetEntityClasses())
+					for (auto& [className, scriptClass] : ScriptEngine::GetClasses())
 					{
-						const bool isSelected = (className == component.ClassName);
-						if (ImGui::Selectable(className.c_str(), isSelected))
+						if (!scriptClass->IsCore())
 						{
-							if (!isSelected)
-							    component.ClassName = className;
-						}
+							const bool isSelected = (className == component.ClassName);
+							if (ImGui::Selectable(className.c_str(), isSelected))
+							{
+								if (!isSelected)
+									component.ClassName = className;
+							}
 
-						if (isSelected)
-							ImGui::SetItemDefaultFocus();
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
 					}
 					ImGui::EndCombo();
 				}
@@ -852,15 +936,37 @@ namespace Volcano {
 						for (const auto& [name, field] : fields)
 						{
 							ImGui::PushID(&name);
+
+							ImGui::Columns(2);
+							ImGui::SetColumnWidth(0, 150.0f);
+							ImGui::Text(name.c_str());
+							ImGui::NextColumn();
+
+							if (field.Type == ScriptFieldType::ULong)
+							{
+								uint64_t data = scriptInstance->GetFieldValue<uint64_t>(name);
+								if (name == "ID")
+								{
+									ImGui::Text(std::to_string(data).c_str());
+								}
+								else
+								{
+									if (ImGui::InputText("##ScriptFieldName", (char*)&data, sizeof(data), ImGuiInputTextFlags_EnterReturnsTrue))
+									{
+										scriptInstance->SetFieldValue(name, data);
+									}
+								}
+							}
+
 							if (field.Type == ScriptFieldType::Float)
 							{
 								float data = scriptInstance->GetFieldValue<float>(name);
-								if (ImGui::DragFloat(name.c_str(), &data, 0.1f))
+								if (ImGui::DragFloat("##ScriptFieldName", &data, 0.1f))
 								{
 									scriptInstance->SetFieldValue(name, data);
 								}
 							}
-							if (field.Type == ScriptFieldType::Entity)
+							if (field.Type == ScriptFieldType::Entity || field.Type == ScriptFieldType::GameObject || field.Type == ScriptFieldType::Behaviour || field.Type == ScriptFieldType::Component || field.Type == ScriptFieldType::Transform || field.Type == ScriptFieldType::MonoBehaviour)
 							{
 								uint64_t data = scriptInstance->GetFieldValue<uint64_t>(name);
 
@@ -881,7 +987,7 @@ namespace Volcano {
 									}
 								}
 
-								if (ImGui::BeginCombo(name.c_str(), targetEntity == nullptr ? "" : targetEntity->GetName().c_str()))
+								if (ImGui::BeginCombo("##ScriptFieldName", targetEntity == nullptr ? "" : targetEntity->GetName().c_str()))
 								{
 									for (auto& [ID, entityNode] : entityIDMap)
 									{
@@ -926,6 +1032,10 @@ namespace Volcano {
 									ImGui::EndDragDropTarget();
 								}
 							}
+							ImGui::SameLine();
+							ImGui::Text(("(" + std::string(Utils::ScriptFieldTypeToString(field.Type)) + ")").c_str());
+							ImGui::EndColumns();
+
 							ImGui::PopID();
 						}
 					}
@@ -940,7 +1050,7 @@ namespace Volcano {
 					// 脚本类存在，渲染脚本类字段
 					if (scriptClassExists)
 					{
-						Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(component.ClassName);
+						Ref<ScriptClass> entityClass = ScriptEngine::GetClass(component.ClassName);
 						// 获取mono类中的字段field
 						const auto& fields = entityClass->GetFields();
 
@@ -950,6 +1060,11 @@ namespace Volcano {
 						{
 							ImGui::PushID(&name);
 
+							ImGui::Columns(2);
+							ImGui::SetColumnWidth(0, 150.0f);
+							ImGui::Text(name.c_str());
+							ImGui::NextColumn();
+
 							// Field has been set in editor
 							if (entityFields.find(name) != entityFields.end())
 							{
@@ -957,17 +1072,33 @@ namespace Volcano {
 								VOL_CORE_ASSERT(entityFields.find(name) != entityFields.end());
 								ScriptFieldInstance& scriptField = entityFields.at(name);
 
+								if (field.Type == ScriptFieldType::ULong)
+								{
+									uint64_t data = scriptField.GetValue<uint64_t>();
+									if (name == "ID")
+									{
+										ImGui::Text(std::to_string(data).c_str());
+									}
+									else
+									{
+										if (ImGui::InputText("##ScriptFieldName", (char*)&data, sizeof(data), ImGuiInputTextFlags_EnterReturnsTrue))
+										{
+											scriptField.SetValue(data);
+										}
+									}
+								}
+
 								// Display control to set it maybe
 								if (field.Type == ScriptFieldType::Float)
 								{
 									float data = scriptField.GetValue<float>();
-									if (ImGui::DragFloat(name.c_str(), &data, 0.1f))
+									if (ImGui::DragFloat("##ScriptFieldName", &data, 0.1f))
 									{
 										scriptField.SetValue(data);
 									}
 								}
 
-								if (field.Type == ScriptFieldType::Entity)
+								if (field.Type == ScriptFieldType::Entity || field.Type == ScriptFieldType::GameObject || field.Type == ScriptFieldType::Behaviour || field.Type == ScriptFieldType::Component || field.Type == ScriptFieldType::Transform || field.Type == ScriptFieldType::MonoBehaviour)
 								{
 									uint64_t data = scriptField.GetValue<uint64_t>();
 									auto& entityIDMap = scene->GetEntityIDMap();
@@ -983,7 +1114,7 @@ namespace Volcano {
 											targetEntity = prefabEntityIDMap[data];
 									}
 
-									if (ImGui::BeginCombo(name.c_str(), targetEntity == nullptr ? "" : targetEntity->GetName().c_str()))
+									if (ImGui::BeginCombo("##ScriptFieldName", targetEntity == nullptr ? "" : targetEntity->GetName().c_str()))
 									{
 										for (auto& [ID, entityNode] : entityIDMap)
 										{
@@ -1028,21 +1159,35 @@ namespace Volcano {
 							}
 							else
 							{
+								if (field.Type == ScriptFieldType::ULong)
+								{
+									uint64_t data = 0;
+									if (name != "ID")
+									{
+										if (ImGui::InputText("##ScriptFieldName", (char*)&data, sizeof(data), ImGuiInputTextFlags_EnterReturnsTrue))
+										{
+											ScriptFieldInstance& fieldInstance = entityFields[name];
+											fieldInstance.Field = field;
+											fieldInstance.SetValue(data);
+										}
+									}
+								}
+
 								// 如果name字段不在ScriptFieldMap中,设置渲染空字段，修改后在ScriptFieldMap中创建name字段
 								if (field.Type == ScriptFieldType::Float)
 								{
 									float data = 0.0f;
-									if (ImGui::DragFloat(name.c_str(), &data, 0.1f))
+									if (ImGui::DragFloat("##ScriptFieldName", &data, 0.1f))
 									{
 										ScriptFieldInstance& fieldInstance = entityFields[name];
 										fieldInstance.Field = field;
 										fieldInstance.SetValue(data);
 									}
 								}
-								if (field.Type == ScriptFieldType::Entity)
+								if (field.Type == ScriptFieldType::Entity || field.Type == ScriptFieldType::GameObject || field.Type == ScriptFieldType::Behaviour || field.Type == ScriptFieldType::Component || field.Type == ScriptFieldType::Transform || field.Type == ScriptFieldType::MonoBehaviour)
 								{
 									auto& entityIDMap = scene->GetEntityIDMap();
-									if (ImGui::BeginCombo(name.c_str(), ""))
+									if (ImGui::BeginCombo("##ScriptFieldName", ""))
 									{
 										for (auto& [ID, entityNode] : entityIDMap)
 										{
@@ -1088,6 +1233,9 @@ namespace Volcano {
 								}
 							}
 
+							ImGui::SameLine();
+							ImGui::Text(("(" + std::string(Utils::ScriptFieldTypeToString(field.Type)) + ")").c_str());
+							ImGui::EndColumns();
 							ImGui::PopID();
 						}
 					}
@@ -1148,14 +1296,14 @@ namespace Volcano {
 									ImGui::PushItemWidth(80);
 									ImGui::PushID(i);
 									memset(buffer, 0, sizeof(buffer));
-									sprintf(buffer, "%d", vertexBone[i].vertexIndex1);
+									sprintf_s(buffer, "%d", vertexBone[i].vertexIndex1);
 									if (ImGui::InputTextWithHint("##vi1", "vi1:", buffer, sizeof(buffer), flags))
 										vertexBone[i].vertexIndex1 = atoi(buffer);
 
 									ImGui::SameLine();
 
 									memset(buffer, 0, sizeof(buffer));
-									sprintf(buffer, "%d", vertexBone[i].vertexIndex2);
+									sprintf_s(buffer, "%d", vertexBone[i].vertexIndex2);
 
 									if (ImGui::InputTextWithHint("##vi2", "vi2:", buffer, sizeof(buffer), flags))
 										vertexBone[i].vertexIndex2 = atoi(buffer);
@@ -1188,9 +1336,9 @@ namespace Volcano {
 										ImGui::SameLine();
 										ImGui::PushItemWidth(80);
 										memset(buffer, 0, sizeof(buffer));
-										sprintf(buffer, "%.4f", vertexBone[i].weight);
+										sprintf_s(buffer, "%.4f", vertexBone[i].weight);
 										if (ImGui::InputText("weight", buffer, sizeof(buffer), flags))
-											vertexBone[i].weight = atof(buffer);
+											vertexBone[i].weight = std::stof(buffer);
 									}
 									else
 										ImGui::Text("No Bone");
@@ -1379,6 +1527,10 @@ namespace Volcano {
 
 		DrawComponent<MeshRendererComponent>("Mesh Renderer", entity, [](MeshRendererComponent& component)
 			{
+				ImGui::Checkbox("##MeshRendererEnabled", &component.enabled);
+
+				ImGui::SameLine();
+
 				const char* items[] = { "Diffuse", "Specular", "Normal", "Height", "Roughness", "AO" };
 				auto& textures = component.Textures;
 
@@ -1396,7 +1548,7 @@ namespace Volcano {
 					auto& texture = textures[i].second;
 					if (texture != nullptr)
 					{
-						float aspect = texture->GetWidth() / texture->GetHeight();
+						float aspect = (float)texture->GetWidth() / (float)texture->GetHeight();
 						if (ImGui::ImageButton((void*)(intptr_t)texture->GetRendererID(), ImVec2(100.0f * aspect, 100.0f)))
 							texture = nullptr;
 					}
@@ -1447,8 +1599,12 @@ namespace Volcano {
 						component.DeleteTexture(textures.size() - 1);
 			});
 
-		DrawComponent<CircleRendererComponent>("Circle Renderer", entity, [](auto& component)
+		DrawComponent<CircleRendererComponent>("Circle Renderer", entity, [](CircleRendererComponent& component)
 			{
+				ImGui::Checkbox("##CircleRendererEnabled", &component.enabled);
+
+				ImGui::SameLine();
+
 				ImGui::ColorEdit4("Color", glm::value_ptr(component.Color));
 
 				if (ImGui::Button("Texture", ImVec2(100.0f, 100.0f)))
@@ -1471,6 +1627,10 @@ namespace Volcano {
 
 		DrawComponent<AnimatorComponent>("Animator", entity, [](AnimatorComponent& component) 
 			{
+				ImGui::Checkbox("##AnimatorEnabled", &component.enabled);
+
+				ImGui::SameLine();
+
 			    if (ImGui::Button("Animator"))
 					component.Reset();
 				ImGui::SameLine();
@@ -1496,6 +1656,10 @@ namespace Volcano {
 
 		DrawComponent<AnimationComponent>("Animation", entity, [](AnimationComponent& component)
 			{
+				ImGui::Checkbox("##AnimationEnabled", &component.enabled);
+
+				ImGui::SameLine();
+
 				if (ImGui::Button("Animation"))
 				{
 					component.animation = std::make_shared<Animation>();
@@ -1757,7 +1921,7 @@ namespace Volcano {
 				const char* currentBodyTypeString = bodyTypeStrings[(int)component.Type];
 				if (ImGui::BeginCombo("Body Type", currentBodyTypeString))
 				{
-					for (int i = 0; i < 2; i++)
+					for (int i = 0; i < 3; i++)
 					{
 						bool isSelected = currentBodyTypeString == bodyTypeStrings[i];
 						if (ImGui::Selectable(bodyTypeStrings[i], isSelected))
@@ -1799,8 +1963,62 @@ namespace Volcano {
 				ImGui::DragFloat("Restitution Threshold", &component.RestitutionThreshold, 0.01f, 0.0f);
 			});
 
+		DrawComponent<RigidbodyComponent>("Rigidbody", entity, [](RigidbodyComponent& component)
+			{
+				const char* bodyTypeStrings[] = { "Static", "Dynamic", "Kinematic" };
+				const char* currentBodyTypeString = bodyTypeStrings[(int)component.Type];
+				if (ImGui::BeginCombo("Body Type", currentBodyTypeString))
+				{
+					for (int i = 0; i < 2; i++)
+					{
+						bool isSelected = currentBodyTypeString == bodyTypeStrings[i];
+						if (ImGui::Selectable(bodyTypeStrings[i], isSelected))
+						{
+							if (!isSelected)
+							{
+								currentBodyTypeString = bodyTypeStrings[i];
+								component.Type = (RigidbodyComponent::BodyType)i;
+							}
+						}
+
+						if (isSelected)
+							ImGui::SetItemDefaultFocus();
+					}
+
+					ImGui::EndCombo();
+				}
+
+				ImGui::Checkbox("Fixed Rotation", &component.FixedRotation);
+			});
+
+		DrawComponent<BoxColliderComponent>("Box Collider", entity, [](BoxColliderComponent& component)
+			{
+				ImGui::Checkbox("Show Collider", &component.showCollider);
+				DrawVec3Control("Size", component.size);
+				ImGui::DragFloat("Density", &component.material.density, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("StaticFriction", &component.material.staticFriction, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("DynamicFriction", &component.material.dynamicFriction, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("bounciness", &component.material.bounciness, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("Restitution Threshold", &component.material.restitutionThreshold, 0.01f, 0.0f);
+			});
+
+		DrawComponent<SphereColliderComponent>("Sphere Collider", entity, [](SphereColliderComponent& component)
+			{
+				ImGui::Checkbox("Show Collider", &component.showCollider);
+				ImGui::DragFloat("Radius", &component.radius);
+				ImGui::DragFloat("Density", &component.material.density, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("StaticFriction", &component.material.staticFriction, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("DynamicFriction", &component.material.dynamicFriction, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("bounciness", &component.material.bounciness, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("Restitution Threshold", &component.material.restitutionThreshold, 0.01f, 0.0f);
+			});
+
 		DrawComponent<SkyboxComponent>("Skybox", entity, [](SkyboxComponent& component)
 			{
+				ImGui::Checkbox("##SkyboxEnabled", &component.enabled);
+
+				ImGui::SameLine();
+
 				ImGui::Checkbox("Primary", &component.Primary);
 
 				if (ImGui::Button("Skybox"))
@@ -1814,7 +2032,7 @@ namespace Volcano {
 						const wchar_t* path = (const wchar_t*)payload->Data;
 						std::filesystem::path texturePath = path;
 
-						if (texturePath.extension() == ".png")
+						if (texturePath.extension() == ".png" || texturePath.extension() == ".jpg")
 						    component.texture = TextureCube::Create(texturePath.string());
 					}
 					ImGui::EndDragDropTarget();
@@ -1878,6 +2096,9 @@ namespace Volcano {
 			DisplayAddComponentEntry<Rigidbody2DComponent>("Rigidbody 2D");
 			DisplayAddComponentEntry<BoxCollider2DComponent>("Box Collider 2D");
 			DisplayAddComponentEntry<CircleCollider2DComponent>("Circle Collider 2D");
+			DisplayAddComponentEntry<RigidbodyComponent>("Rigidbody");
+			DisplayAddComponentEntry<BoxColliderComponent>("Box Collider");
+			DisplayAddComponentEntry<SphereColliderComponent>("Sphere Collider");
 			DisplayAddComponentEntry<SkyboxComponent>("Skybox");
 
 			ImGui::EndPopup();

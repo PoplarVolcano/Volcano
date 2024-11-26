@@ -101,7 +101,7 @@ namespace Volcano {
         dest.transformation = AssimpGLMHelpers::ConvertMatrixToGLMFormat(src->mTransformation);
         dest.childrenCount = src->mNumChildren;
 
-        for (int i = 0; i < src->mNumChildren; i++)
+        for (uint32_t i = 0; i < src->mNumChildren; i++)
         {
             AssimpNodeData newData;
             newData.parent = &dest;

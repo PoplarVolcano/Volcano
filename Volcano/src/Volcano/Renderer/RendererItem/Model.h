@@ -15,7 +15,7 @@ namespace Volcano {
     {
         std::string name;
         uint32_t numMeshes;
-        std::vector<uint32_t> meshes;
+        //std::vector<uint32_t> meshes; // mesh的索引列表
         glm::mat4 transform;
         Ref<ModelNode> parent;
         uint32_t numChildren;

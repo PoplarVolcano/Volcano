@@ -3,60 +3,63 @@ using Volcano;
 
 namespace Sandbox
 {
-    public class MainLogic : Entity
+    public class MainLogic : MonoBehaviour
     {
-        public float test = 10.0f;
-        public Entity target;
-        public Entity bulletPrefab;
-
-
-        private Entity entity;
-
+        public GameObject fireControlObject;
         private void Awake()
         {
-            test = 20.0f;
-            //target = FindEntityByName("Player");
-            entity = FindEntityByName("游戏主控");
-            if(entity != null)
-                entity.transform.position += Vector3.up;
-            Application.targetFrameRate = 60;
+            //Application.targetFrameRate = 60;
 
             InternalCalls.DebugTrace("MainLogic.Awake:" + ID);
         }
 
         void Start()
         {
-            test = 40.0f;
-
             InternalCalls.DebugTrace("MainLogic.Start:" + ID);
         }
 
         void Update(float ts)
         {
-            if(Input.IsMouseButtonPressed(0))
+            if(Input.IsMouseButtonClicked(MouseCode.ButtonRight) || Input.IsKeyClicked(KeyCode.F))
             {
-                Entity node = Instantiate(bulletPrefab, null);
-                node.transform.position = Vector3.zero;
-                node.transform.localEulerAngles = Vector3.zero;
+                if (fireControlObject != null)
+                {
+                    FireControl fireControl = fireControlObject.GetComponent<FireControl>();
+                    if (fireControl != null)
+                    {
+                        fireControl.Fire();
+                    }
+                }
             }
 
-            /*
-            if (target != null)
-                target.transform.position += Vector3.up;
-
-            Entity[] children = this.children;
-            if (children != null)
+            if (Input.IsKeyClicked(KeyCode.R))
             {
-                children[0].transform.position += Vector3.up;
+                if (fireControlObject != null)
+                {
+                    FireControl fireControl = fireControlObject.GetComponent<FireControl>();
+                    if(fireControl != null && !fireControl.IsInvoking("Fire"))
+                    {
+                        fireControl.InvokeRepeating("Fire", 3.0f, 1.0f);
+                    }
+                }
             }
-            else
-                InternalCalls.DebugTrace("children is null");
-            */
+
+            if (Input.IsKeyClicked(KeyCode.E))
+            {
+                if (fireControlObject != null)
+                {
+                    FireControl fireControl = fireControlObject.GetComponent<FireControl>();
+                    if (fireControl != null && fireControl.IsInvoking("Fire"))
+                    {
+                        fireControl.CancelInvoke("Fire");
+                    }
+                }
+            }
+
         }
 
         void OnEnable()
         {
-            test = 30.0f;
         }
 
     }

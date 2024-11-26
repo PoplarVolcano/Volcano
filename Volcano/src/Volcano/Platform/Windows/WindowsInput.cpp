@@ -8,7 +8,15 @@
 
 namespace Volcano {
 
-	bool Input::IsKeyPressed(int keycode) 
+	std::unordered_set<int> Input::m_ClickedMap;
+	std::unordered_set<int> Input::m_ClickedMapBuffer;
+
+	bool Input::IsClicked(int code)
+	{
+		return m_ClickedMap.find(code) != m_ClickedMap.end();
+	}
+
+	bool Input::IsKeyPressed(int keycode)
 	{
 		auto& window = static_cast<WindowsWindow&>(Application::Get().GetWindow());
 		auto state = glfwGetKey(static_cast<GLFWwindow*>(window.GetNativeWindow()), keycode);
@@ -40,6 +48,18 @@ namespace Volcano {
 	{
 		auto [x, y] = GetMousePosition();
 		return (float)y;
+	}
+
+	void Input::UpdateClickMap()
+	{
+		m_ClickedMap.clear();
+		m_ClickedMap = m_ClickedMapBuffer;
+		m_ClickedMapBuffer.clear();
+	}
+
+	void Input::Click(int code)
+	{
+		m_ClickedMapBuffer.insert(code);
 	}
 
 }

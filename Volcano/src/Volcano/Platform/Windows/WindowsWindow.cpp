@@ -44,6 +44,11 @@ namespace Volcano {
         glViewport(0, 0, m_Data.Width, m_Data.Height);
     }
 
+    void WindowsWindow::ClearConsole()
+    {
+        system("cls");
+    }
+
     void WindowsWindow::Init(const WindowProps& props)
     {
         m_Data.Title = props.Title;
@@ -119,6 +124,7 @@ namespace Volcano {
             data.EventCallback(event);
         });
 
+        // 设置鼠标按键回调函数：按下时按键时创建对应按键的PressedEvent作为参数调用EventCallback=>Application.OnEvent()
         glfwSetMouseButtonCallback(m_Window, [](GLFWwindow* window, int button, int action, int mods) {
             WindowData& data = *(WindowData*)glfwGetWindowUserPointer(window);
 

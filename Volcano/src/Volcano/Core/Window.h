@@ -44,6 +44,7 @@ namespace Volcano {
         virtual void SetMouseActive(bool mouseActive) = 0;
         virtual void SetViewport(float width, float height) = 0;
         virtual void ResetViewport() = 0;
+        virtual void ClearConsole() = 0;
         static Scope<Window> Create(const WindowProps& props = WindowProps());
     };
 

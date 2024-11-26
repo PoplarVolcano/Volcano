@@ -16,9 +16,10 @@
 
 #include <Volcano/Core/MouseBuffer.h>
 
-#include "Volcano/Scripting/ComponentRegister.h"
-#include "Volcano/Scripting/MathFRegister.h"
-#include "Volcano/Scripting/InputRegister.h"
+#include "Volcano/Scripting/Registers/ComponentRegister.h"
+#include "Volcano/Scripting/Registers/MathFRegister.h"
+#include "Volcano/Scripting/Registers/InputRegister.h"
+#include "Volcano/Scripting/Registers/GameObjectRegister.h"
 
 namespace Volcano {
 
@@ -28,13 +29,14 @@ namespace Volcano {
 	// C#的Volcano命名空间下的InternalCalls类的#Name函数  被C++的Name给定义
 #define VOL_ADD_INTERNAL_CALL(Name) mono_add_internal_call("Volcano.InternalCalls::" #Name, Name)
 
+	/*
 	static MonoObject* GetScriptInstance(UUID entityID)
 	{
 		return ScriptEngine::GetManagedInstance(entityID);
 	}
-
+	*/
 	// ==========================================Entity=============================================================
-
+	/*
 	static bool Entity_HasComponent(UUID entityID, MonoReflectionType* componentType)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
@@ -53,7 +55,7 @@ namespace Volcano {
 
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
-		Ref<Entity> entity = scene->FindEntityByName(nameCStr);
+		Ref<Entity> entity = scene->Find(nameCStr, scene->GetEntityList());
 		mono_free(nameCStr);
 
 		if (!entity)
@@ -89,7 +91,7 @@ namespace Volcano {
 		MonoArray* monoArray = mono_array_new(ScriptEngine::GetCoreAssemblyDomain(), ScriptEngine::GetClass(ScriptFieldType::ULong), children.size());
 
 		int i = 0;
-		for (auto& [name, child] : entity->GetEntityChildren())
+		for (auto& child : entity->GetEntityChildren())
 		{
 			mono_array_set(monoArray, uint64_t, i, child->GetUUID()); // 设置第i个元素为i + 1
 			i++;
@@ -107,7 +109,7 @@ namespace Volcano {
 			return 0;
 		auto it = entity->GetEntityChildren().begin();
 		std::advance(it, index);
-		return it->second->GetUUID();
+		return (*it)->GetUUID();
 	}
 
 	static uint64_t Entity_GetChildrenCount(UUID entityID)
@@ -119,12 +121,168 @@ namespace Volcano {
 
 		return entity->GetEntityChildren().size();
 	}
-
+	*/
 	static bool Entity_IsEntityExist(UUID entityID)
 	{
 		Scene* scene = ScriptEngine::GetSceneContext();
 		VOL_CORE_ASSERT(scene);
 		return scene->GetEntityByUUID(entityID) != nullptr;
+	}
+
+	// 在Scene目录下复制实例
+	// original: C#Entity实例
+	static MonoObject* Entity_InstantiateSingle(MonoObject* original, glm::vec3 position, glm::quat rotation)
+	{
+		ScriptInstance instance(original);
+		UUID id = instance.GetFieldValue<UUID>("ID");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		VOL_CORE_ASSERT(scene);
+		Ref<Entity> entity = scene->GetEntityByUUID(id);
+		VOL_CORE_ASSERT(entity);
+		;
+		Ref<Entity> resultEntity = scene->DuplicateEntity(entity);
+
+		if (resultEntity->HasComponent<ScriptComponent>())
+		{
+			auto& sc = resultEntity->GetComponent<ScriptComponent>();
+			if (!sc.ClassName.empty())
+			{
+				ScriptEngine::CreateEntity(*resultEntity.get());
+				ScriptEngine::AwakeEntity(*resultEntity.get());
+				ScriptEngine::OnEnableEntity(*resultEntity.get());
+				ScriptEngine::StartEntity(*resultEntity.get());
+
+			}
+		}
+
+		if (resultEntity != nullptr)
+		{
+			resultEntity->GetComponent<TransformComponent>().Translation = position;
+			resultEntity->GetComponent<TransformComponent>().Rotation = glm::eulerAngles(rotation);
+			return ScriptInstance(instance.GetScriptClass(), *resultEntity.get()).GetManagedObject();
+		}
+		else
+			return nullptr;
+	}
+
+	// 在parent目录下复制实例
+	// parent: C#TransformComponent实例
+	// original: C#Entity实例
+	static MonoObject* Entity_InstantiateSingleWithParent(MonoObject* original, MonoObject* parent, glm::vec3 position, glm::quat rotation)
+	{
+		ScriptInstance instance(original);
+		UUID id = instance.GetFieldValue<UUID>("ID");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		VOL_CORE_ASSERT(scene);
+		Ref<Entity> entity = scene->GetEntityByUUID(id);
+		VOL_CORE_ASSERT(entity);
+
+		ScriptInstance parentInstance(parent);
+		UUID parentId = parentInstance.GetFieldValue<UUID>("ID");
+
+		Ref<Entity> parentEntity = scene->GetEntityByUUID(parentId);
+		VOL_CORE_ASSERT(entity);
+
+		Ref<Entity> resultEntity = scene->DuplicateEntity(entity, parentEntity.get());
+
+		if (resultEntity->HasComponent<ScriptComponent>())
+		{
+			auto& sc = resultEntity->GetComponent<ScriptComponent>();
+			if (!sc.ClassName.empty())
+			{
+				ScriptEngine::CreateEntity(*resultEntity.get());
+				ScriptEngine::AwakeEntity(*resultEntity.get());
+				ScriptEngine::OnEnableEntity(*resultEntity.get());
+				ScriptEngine::StartEntity(*resultEntity.get());
+
+			}
+		}
+
+		if (resultEntity != nullptr)
+		{
+			resultEntity->GetComponent<TransformComponent>().Translation = position;
+			resultEntity->GetComponent<TransformComponent>().Rotation = glm::eulerAngles(rotation);
+			return ScriptInstance(instance.GetScriptClass(), *resultEntity.get()).GetManagedObject();
+		}
+		else
+			return nullptr;
+	}
+
+	static MonoObject* Entity_CloneSingle(MonoObject* original)
+	{
+		ScriptInstance instance(original);
+		UUID id = instance.GetFieldValue<UUID>("ID");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		VOL_CORE_ASSERT(scene);
+		Ref<Entity> entity = scene->GetEntityByUUID(id);
+		VOL_CORE_ASSERT(entity);
+
+		Ref<Entity> resultEntity = scene->DuplicateEntity(entity);
+
+		if (resultEntity->HasComponent<ScriptComponent>())
+		{
+			auto& sc = resultEntity->GetComponent<ScriptComponent>();
+			if (!sc.ClassName.empty())
+			{
+				ScriptEngine::CreateEntity(*resultEntity.get());
+				ScriptEngine::AwakeEntity(*resultEntity.get());
+				ScriptEngine::OnEnableEntity(*resultEntity.get());
+				ScriptEngine::StartEntity(*resultEntity.get());
+
+			}
+		}
+
+		if (resultEntity != nullptr)
+			return ScriptInstance(instance.GetScriptClass(), *resultEntity.get()).GetManagedObject();
+		else
+			return nullptr;
+	}
+
+	static MonoObject* Entity_CloneSingleWithParent(MonoObject* original, MonoObject* parent, bool instantiateInWorldSpace)
+	{
+		ScriptInstance instance(original);
+		UUID id = instance.GetFieldValue<UUID>("ID");
+
+		Scene* scene = ScriptEngine::GetSceneContext();
+		VOL_CORE_ASSERT(scene);
+		Ref<Entity> entity = scene->GetEntityByUUID(id);
+		VOL_CORE_ASSERT(entity);
+
+		ScriptInstance parentInstance(parent);
+		UUID parentId = parentInstance.GetFieldValue<UUID>("ID");
+
+		Ref<Entity> parentEntity = scene->GetEntityByUUID(parentId);
+		VOL_CORE_ASSERT(entity);
+
+		Ref<Entity> resultEntity = scene->DuplicateEntity(entity, parentEntity.get());
+
+		if (resultEntity->HasComponent<ScriptComponent>())
+		{
+			auto& sc = resultEntity->GetComponent<ScriptComponent>();
+			if (!sc.ClassName.empty())
+			{
+				ScriptEngine::CreateEntity(*resultEntity.get());
+				ScriptEngine::AwakeEntity(*resultEntity.get());
+				ScriptEngine::OnEnableEntity(*resultEntity.get());
+				ScriptEngine::StartEntity(*resultEntity.get());
+
+			}
+		}
+
+		if (resultEntity != nullptr)
+			return ScriptInstance(instance.GetScriptClass(), *resultEntity.get()).GetManagedObject();
+		else
+			return nullptr;
+	}
+	static void Entity_Destroy(MonoObject* original, float time)
+	{
+		ScriptInstance instance(original);
+		UUID id = instance.GetFieldValue<UUID>("ID");
+
+		ScriptEngine::GetEntityUpdateList().push({ EntityUpdateType::DESTROY, id });
 	}
 
 	// =======================================MouseBuffer================================================
@@ -185,158 +343,56 @@ namespace Volcano {
 
 	//====================================Invoke==========================================================
 
-	static void InvokeDelayed(UUID entityID, MonoString* methodName, float time, float repeatRate)
+	static void MonoBehaviour_InvokeDelayed(UUID entityID, MonoString* methodName, float time, float repeatRate)
 	{
 		Ref<ScriptInstance> instance = ScriptEngine::GetEntityScriptInstance(entityID);
 		const char* methodNameCStr = mono_string_to_utf8(methodName);
 		if (instance->GetScriptClass()->HasMethod(methodNameCStr))
 		{
 			auto& method = instance->GetScriptClass()->GetMethod(methodNameCStr);
-			auto& list = ScriptEngine::GetEntityInvokeDelayedList();
+			auto& list = ScriptEngine::GetEntityInvokeDelayedListBuffer();
 			list.push_back({ entityID, instance, method, time, repeatRate, Timer() });
 		}
 	}
 
-	static bool IsInvoking(UUID entityID, MonoString* methodName)
+	static bool MonoBehaviour_IsInvoking(UUID entityID, MonoString* methodName)
 	{
 		auto& list = ScriptEngine::GetEntityInvokeDelayedList();
 		const char* methodNameCStr = mono_string_to_utf8(methodName);
 		for (auto& data : list)
 		{
-			if (data.id = entityID)
+			if (data.id == entityID)
 				if (data.method.Name == methodNameCStr)
 					return true;
 		}
 		return false;
 	}
 
-	static bool IsInvokingAll(UUID entityID)
+	static bool MonoBehaviour_IsInvokingAll(UUID entityID)
 	{
 		auto& list = ScriptEngine::GetEntityInvokeDelayedList();
 		for (auto& data : list)
-			if (data.id = entityID)
+			if (data.id == entityID)
 				return true;
 		return false;
 	}
 
-	static void CancelInvoke(UUID entityID, MonoString* methodName)
+	static void MonoBehaviour_CancelInvoke(UUID entityID, MonoString* methodName)
 	{
-		auto& list = ScriptEngine::GetEntityInvokeDelayedList();
 		const char* methodNameCStr = mono_string_to_utf8(methodName);
-		for (auto it = list.begin(); it != list.end(); )
-		{
-			if (it->id = entityID && it->method.Name == methodNameCStr)
-				it = list.erase(it);
-			else
-				it++;
-		}
+		ScriptEngine::RemoveEntityInvokeDelayed(entityID, methodNameCStr);
 	}
 
-	static void CancelInvokeAll(UUID entityID)
+	static void MonoBehaviour_CancelInvokeAll(UUID entityID)
 	{
 		auto& list = ScriptEngine::GetEntityInvokeDelayedList();
 		for (auto it = list.begin(); it != list.end(); )
 		{
-			if (it->id = entityID)
+			if (it->id == entityID)
 				it = list.erase(it);
 			else
 				it++;
 		}
-	}
-
-	// ============================================Instantiate==========================================
-
-	// 在Scene目录下复制实例
-	// original: C#Entity实例
-	static MonoObject* InstantiateSingle(MonoObject* original, glm::vec3 position, glm::quat rotation)
-	{
-		ScriptInstance instance = ScriptInstance(original);
-		UUID id = instance.GetFieldValue<UUID>("ID");
-
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Ref<Entity> entity = scene->GetEntityByUUID(id);
-		VOL_CORE_ASSERT(entity);
-		;
-		Ref<Entity> resultEntity = scene->DuplicateEntity(entity);
-		if (resultEntity != nullptr)
-		{
-			resultEntity->GetComponent<TransformComponent>().Translation = position;
-			resultEntity->GetComponent<TransformComponent>().Rotation = glm::eulerAngles(rotation);
-			return ScriptInstance(ScriptEngine::GetEntityClass(), *resultEntity.get()).GetManagedObject();
-		}
-		else
-			return nullptr;
-	}
-
-	// 在parent目录下复制实例
-	// parent: C#TransformComponent实例
-	// original: C#Entity实例
-	static MonoObject* InstantiateSingleWithParent(MonoObject* original, MonoObject* parent, glm::vec3 position, glm::quat rotation)
-	{
-		ScriptInstance instance = ScriptInstance(original);
-		UUID id = instance.GetFieldValue<UUID>("ID");
-
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Ref<Entity> entity = scene->GetEntityByUUID(id);
-		VOL_CORE_ASSERT(entity);
-
-		ScriptInstance parentInstance = ScriptInstance(parent);
-		UUID parentId = instance.GetFieldValue<UUID>("Entity");
-
-		Ref<Entity> parentEntity = scene->GetEntityByUUID(parentId);
-		VOL_CORE_ASSERT(entity);
-
-		Ref<Entity> resultEntity = scene->DuplicateEntity(entity, parentEntity);
-		if (resultEntity != nullptr)
-		{
-			resultEntity->GetComponent<TransformComponent>().Translation = position;
-			resultEntity->GetComponent<TransformComponent>().Rotation = glm::eulerAngles(rotation);
-			return ScriptInstance(ScriptEngine::GetEntityClass(), *resultEntity.get()).GetManagedObject();
-		}
-		else
-			return nullptr;
-	}
-
-	static MonoObject* CloneSingle(MonoObject* original)
-	{
-		ScriptInstance instance = ScriptInstance(original);
-		UUID id = instance.GetFieldValue<UUID>("ID");
-
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Ref<Entity> entity = scene->GetEntityByUUID(id);
-		VOL_CORE_ASSERT(entity);
-
-		Ref<Entity> resultEntity = scene->DuplicateEntity(entity);
-		if (resultEntity != nullptr)
-			return ScriptInstance(ScriptEngine::GetEntityClass(), *resultEntity.get()).GetManagedObject();
-		else
-			return nullptr;
-	}
-
-	static MonoObject* CloneSingleWithParent(MonoObject* original, MonoObject* parent, bool instantiateInWorldSpace)
-	{
-		ScriptInstance instance = ScriptInstance(original);
-		UUID id = instance.GetFieldValue<UUID>("ID");
-
-		Scene* scene = ScriptEngine::GetSceneContext();
-		VOL_CORE_ASSERT(scene);
-		Ref<Entity> entity = scene->GetEntityByUUID(id);
-		VOL_CORE_ASSERT(entity);
-
-		ScriptInstance parentInstance = ScriptInstance(parent);
-		UUID parentId = instance.GetFieldValue<UUID>("Entity");
-
-		Ref<Entity> parentEntity = scene->GetEntityByUUID(parentId);
-		VOL_CORE_ASSERT(entity);
-
-		Ref<Entity> resultEntity = scene->DuplicateEntity(entity, parentEntity);
-		if (resultEntity != nullptr)
-			return ScriptInstance(ScriptEngine::GetEntityClass(), *resultEntity.get()).GetManagedObject();
-		else
-			return nullptr;
 	}
 
 	// ================================================Register=========================================
@@ -348,6 +404,7 @@ namespace Volcano {
 				std::string_view typeName = typeid(Component).name();
 				size_t pos = typeName.find_last_of(':');
 				std::string_view structName = typeName.substr(pos + 1);
+				structName = structName.substr(0, structName.length() - 9);
 				std::string managedTypename = fmt::format("Volcano.{}", structName);
 
 				MonoType* managedType = mono_reflection_type_from_name(managedTypename.data(), ScriptEngine::GetCoreAssemblyImage());
@@ -374,19 +431,26 @@ namespace Volcano {
 
 	void ScriptGlue::RegisterFunctions()
 	{
-		VOL_ADD_INTERNAL_CALL(GetScriptInstance);
-		VOL_ADD_INTERNAL_CALL(Entity_HasComponent);
-		VOL_ADD_INTERNAL_CALL(Entity_FindEntityByName);
-		VOL_ADD_INTERNAL_CALL(Entity_GetParent);
-		VOL_ADD_INTERNAL_CALL(Entity_GetChildren);
-		VOL_ADD_INTERNAL_CALL(Entity_GetChildrenCount);
+		//VOL_ADD_INTERNAL_CALL(GetScriptInstance);
+		//VOL_ADD_INTERNAL_CALL(Entity_HasComponent);
+		//VOL_ADD_INTERNAL_CALL(Entity_FindEntityByName);
+		//VOL_ADD_INTERNAL_CALL(Entity_GetParent);
+		//VOL_ADD_INTERNAL_CALL(Entity_GetChildren);
+		//VOL_ADD_INTERNAL_CALL(Entity_GetChildrenCount);
 		VOL_ADD_INTERNAL_CALL(Entity_IsEntityExist);
-		
+		VOL_ADD_INTERNAL_CALL(Entity_InstantiateSingle);
+		VOL_ADD_INTERNAL_CALL(Entity_InstantiateSingleWithParent);
+		VOL_ADD_INTERNAL_CALL(Entity_CloneSingle);
+		VOL_ADD_INTERNAL_CALL(Entity_CloneSingleWithParent);
+		VOL_ADD_INTERNAL_CALL(Entity_Destroy);
+
+		ComponentRegister::Component_RegisterFunctions();
 		ComponentRegister::TransformComponent_RegisterFunctions();
 		ComponentRegister::CameraComponent_RegisterFunctions();
 		ComponentRegister::Rigidbody2DComponent_RegisterFunctions();
 		MathFRegister::MathF_RegisterFunctions();
 		InputRegister::Input_RegisterFunctions();
+		GameObjectRegister::GameObject_RegisterFunctions();
 
 		VOL_ADD_INTERNAL_CALL(MouseBuffer_GetMouseOnActive);
 		VOL_ADD_INTERNAL_CALL(MouseBuffer_SetMouseOnActive);
@@ -399,16 +463,12 @@ namespace Volcano {
 		VOL_ADD_INTERNAL_CALL(Application_GetTargetFrameRate);
 		VOL_ADD_INTERNAL_CALL(Application_SetTargetFrameRate);
 
-		VOL_ADD_INTERNAL_CALL(InvokeDelayed);
-		VOL_ADD_INTERNAL_CALL(IsInvoking);
-		VOL_ADD_INTERNAL_CALL(IsInvokingAll);
-		VOL_ADD_INTERNAL_CALL(CancelInvoke);
-		VOL_ADD_INTERNAL_CALL(CancelInvokeAll);
+		VOL_ADD_INTERNAL_CALL(MonoBehaviour_InvokeDelayed);
+		VOL_ADD_INTERNAL_CALL(MonoBehaviour_IsInvoking);
+		VOL_ADD_INTERNAL_CALL(MonoBehaviour_IsInvokingAll);
+		VOL_ADD_INTERNAL_CALL(MonoBehaviour_CancelInvoke);
+		VOL_ADD_INTERNAL_CALL(MonoBehaviour_CancelInvokeAll);
 
-		VOL_ADD_INTERNAL_CALL(InstantiateSingle);
-		VOL_ADD_INTERNAL_CALL(InstantiateSingleWithParent);
-		VOL_ADD_INTERNAL_CALL(CloneSingle);
-		VOL_ADD_INTERNAL_CALL(CloneSingleWithParent);
 	}
 
 }

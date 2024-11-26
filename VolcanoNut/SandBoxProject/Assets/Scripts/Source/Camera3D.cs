@@ -1,26 +1,20 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Volcano;
 
-namespace SandBox
+namespace Sandbox
 {
-    internal class Camera3D : Entity
+    internal class Camera3D : MonoBehaviour
     {
         public float m_MouseSentity = 1.0f;
         public float m_MoveSpeed = 2.0f;
         private CameraComponent m_Camera;
         private Vector2 limitRotation;  //限制摄像机旋转的角度
-        private Entity m_Player;
+        private GameObject m_Player;
 
         void Start()
         {
-            m_Player = FindEntityByName("Player");
+            m_Player = GameObject.Find("Player");
             if (m_Player != null)
                 transform.LookAt(m_Player.transform);
             limitRotation = new Vector2(MathF.Radians(-89.0f), MathF.Radians(89.0f));
@@ -78,25 +72,6 @@ namespace SandBox
             if (Input.IsKeyPressed(KeyCode.Space))
                 velocity.y += 1.0f;
 
-
-            if (Input.IsMouseButtonPressed(MouseCode.ButtonRight))
-            {
-                if(!this.IsInvoking("SpeedUp"))
-                    this.InvokeRepeating("SpeedUp", 1.0f, 1.0f);
-            }
-
-            if (Input.IsMouseButtonPressed(MouseCode.ButtonMiddle))
-            {
-                if(!this.IsInvoking("SpeedUp"))
-                    this.CancelInvoke("SpeedUp");
-            }
-
-            if (Input.IsMouseButtonPressed(MouseCode.ButtonLeft))
-            {
-                if(!this.IsInvoking("SpeedUp"))
-                    this.Invoke("SpeedUp", 1.0f);
-            }
-
             // velocity只在rotation(0,0,0)方向上移动,需要通过quatRotation转换方向
 
             // 四元数和向量相乘是向量按四元数进行了旋转
@@ -130,9 +105,5 @@ namespace SandBox
 	    	return new Quaternion(new Vector3(MathF.Radians(transform.rotation.x), MathF.Radians(transform.rotation.y), MathF.Radians(transform.rotation.z)));
 	    }
 
-        public void SpeedUp()
-        {
-            m_MoveSpeed += 1.0f;
-        }
     }
 }

@@ -65,6 +65,7 @@ namespace Volcano {
 		Timer& GetTimer() { return m_Timer; }
 
 		void SubmitToMainThread(const std::function<void()>& function);
+		void ClearConsole();
 	private:
 		void Run();
 		bool OnWindowResize(WindowResizeEvent& e);

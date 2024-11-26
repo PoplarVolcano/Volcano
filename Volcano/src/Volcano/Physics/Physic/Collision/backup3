@@ -1,0 +1,259 @@
+#pragma once
+
+
+
+// refTriangle内侧的裁剪incTriangle：将incTriangle扩增为6点，每2个点代表一条边，共6条边
+b3_ClipVertex clipTriangle[6];
+clipTriangle[0] = incTriangle[0];
+clipTriangle[1] = incTriangle[0];
+clipTriangle[2] = incTriangle[1];
+clipTriangle[3] = incTriangle[1];
+clipTriangle[4] = incTriangle[2];
+clipTriangle[5] = incTriangle[2];
+
+float projectionRefTriangle = glm::dot(normal, v11);
+
+// clipTriangle的点在被refTriangle法向量上的投影
+float projectionVertices[6];
+for (int i = 0; i < 6; i++)
+	projectionVertices[i] = glm::dot(normal, clipTriangle[i].vertex) - projectionRefTriangle;
+
+// 查找在第一个在内侧的点
+int index = -1;
+for (int i = 0; i < 6; i += 2)
+	if (projectionVertices[i] <= totalRadius)
+	{
+		index = i;
+		break;
+	}
+
+// 三个点都在外侧，不相交
+if (index == -1)
+return;
+
+// 遍历clipTriangle的6条边，在refTriangle外侧的裁剪掉
+for (int i = index; i < index + 6; i++)
+{
+	int i0 = i % 6, i1 = (i + 1) % 6;
+
+	// 两点都在内侧，跳过
+	if (projectionVertices[i0] <= totalRadius && projectionVertices[i1] <= totalRadius)
+		continue;
+
+	// i点在外侧，i+1在内侧，裁剪i点
+	if (projectionVertices[i0] > totalRadius && projectionVertices[i1] <= totalRadius)
+	{
+		clipTriangle[i0].vertex = clipTriangle[i0].vertex +
+			(clipTriangle[i1].vertex - clipTriangle[i0].vertex) *
+			(projectionVertices[i0]) / (projectionVertices[i0] - projectionVertices[i1]);
+		continue;
+	}
+
+	// i+1点在外侧，i在内侧，裁剪i+1点
+	if (projectionVertices[i0] <= totalRadius && projectionVertices[i1] > totalRadius)
+	{
+		clipTriangle[i1].vertex = clipTriangle[i1].vertex +
+			(clipTriangle[i0].vertex - clipTriangle[i1].vertex) *
+			(projectionVertices[i1]) / (projectionVertices[i1] - projectionVertices[i0]);
+		continue;
+	}
+
+	// 两点都在外侧
+	// 循环开始时i = 0, clipTriangle[i0]和clipTriangle[i1]必定为同一点，通过index，循环第一个点必定在内侧
+	// 所以两点都在外侧时clipTriangle[i0 - 1]必然为被裁剪过的内侧点
+	// i0点等于i0-1点，i1点不动，跟i1+1点一组进行裁剪
+	if (projectionVertices[i0] > totalRadius && projectionVertices[i1] > totalRadius)
+	{
+		clipTriangle[i0].vertex = clipTriangle[(i0 + 5) % 6].vertex;
+		continue;
+	}
+}
+
+
+// 正面偏移 Face offset.
+float frontOffset = glm::dot(normal, v11); // 参考系碰撞点v11在法线上的投影,世界坐标
+
+// 侧面偏移，由立方体蒙皮(skin)厚度延伸。 Side offsets, extended by polytope skin thickness.
+float sideOffset1 = -glm::dot(tangent1, v11) + totalRadius;
+float sideOffset2 = -glm::dot(tangent2, v12) + totalRadius;
+float sideOffset3 = -glm::dot(tangent3, v13) + totalRadius;
+
+b3_ClipVertex clipPoints1[2];
+b3_ClipVertex clipPoints2[2];
+b3_ClipVertex clipPoints3[2];
+b3_ClipVertex incidentTriangleEdge[2];
+
+int np;
+
+
+index = -1;
+// 遍历clipTriangle的点，找到位于refTriangle内的点
+for (int i = 0; i < 6; i++)
+{
+	// i点在refTriangle法向量上的投影
+	float projection = (glm::dot(normal, clipTriangle[i].vertex) - frontOffset) * 2.0f;
+	// 注：clipTriangle的点都在refTriangle内侧，在判断光线三角形相交时要把方向倒转
+	float t = RayTriangleIntersect(clipTriangle[i].vertex, normal * projection, v13, v12, v11);
+	if (t != FLT_MAX)
+	{
+		// i点在refTriangle内
+		index = i;
+		break;
+	}
+}
+
+// 6个点都在refTriangle外，可能不相交，可能refTriangle被clipTriangle包含,可能相交
+if (index == -1)
+{
+	//glm::vec3 normalInc = b3_Multiply(transformInc, boxInc->GetNormal(incTriangle[0].id.cf.indexB));
+	// refTriangle到clipTriangle的最远点的垂直距离
+	float distance = -FLT_MAX;
+	for (int i = 0; i < 3; i++)
+	{
+		float projection = glm::dot(-normal, incTriangle[i].vertex - v11);
+		if (projection > distance)
+			distance = projection;
+	}
+
+	glm::vec3 projectionV11;
+	glm::vec3 projectionV12;
+	glm::vec3 projectionV13;
+	// 获取refTriangle在clipTriangle上的投影点
+	float t = RayTriangleIntersect(v11, -normal * distance, incTriangle[2].vertex, incTriangle[1].vertex, incTriangle[0].vertex);
+	if (t != FLT_MAX)
+		projectionV11 = v11 + -normal * distance * t;
+	else
+		return;
+
+	t = RayTriangleIntersect(v12, -normal * distance, incTriangle[2].vertex, incTriangle[1].vertex, incTriangle[0].vertex);
+	if (t != FLT_MAX)
+		projectionV12 = v12 + -normal * distance * t;
+	else
+		return;
+
+	t = RayTriangleIntersect(v13, -normal * distance, incTriangle[2].vertex, incTriangle[1].vertex, incTriangle[0].vertex);
+	if (t != FLT_MAX)
+		projectionV13 = v13 + -normal * distance * t;
+	else
+		return;
+
+	// 裁剪clipTriangle
+	for (int i = 0; i < 6; i++)
+	{
+		int i1 = (i + 1) % 6;
+
+		incidentTriangleEdge[0] = clipTriangle[i];
+		incidentTriangleEdge[1] = clipTriangle[i1];
+
+		// Clip to box side 1
+		np = b3_ClipSegmentToLine(clipPoints1, incidentTriangleEdge, -tangent1, sideOffset1, indexRef, totalRadius);
+
+		if (np < 2)
+		{
+			continue;
+		}
+		np = b3_ClipSegmentToLine(clipPoints2, clipPoints1, -tangent2, sideOffset2, indexRef, totalRadius);
+
+		if (np < 2)
+		{
+			continue;
+		}
+
+		np = b3_ClipSegmentToLine(clipPoints3, clipPoints2, -tangent3, sideOffset3, indexRef, totalRadius);
+
+		if (np < 2)
+		{
+			continue;
+		}
+
+		clipTriangle[i].vertex = clipPoints3[0].vertex;
+		clipTriangle[i1].vertex = clipPoints3[1].vertex;
+		index = i1;
+	}
+	if (index != -1)
+	{
+		// 如果有边被裁剪，index为最后一个成功裁剪的边的后一个点，
+		for (int i = index; i < index + 6; i++)
+		{
+			int i0 = i % 6, i1 = (i + 1) % 6;
+
+			incidentTriangleEdge[0] = clipTriangle[i0];
+			incidentTriangleEdge[1] = clipTriangle[i1];
+
+			// Clip to box side 1
+			np = b3_ClipSegmentToLine(clipPoints1, incidentTriangleEdge, -tangent1, sideOffset1, indexRef, totalRadius);
+
+			if (np < 2)
+			{
+				clipTriangle[i0] = clipTriangle[(i0 + 5) % 6];
+				continue;
+			}
+			np = b3_ClipSegmentToLine(clipPoints2, clipPoints1, -tangent2, sideOffset2, indexRef, totalRadius);
+
+			if (np < 2)
+			{
+				clipTriangle[i0] = clipTriangle[(i0 + 5) % 6];
+				continue;
+			}
+
+			np = b3_ClipSegmentToLine(clipPoints3, clipPoints2, -tangent3, sideOffset3, indexRef, totalRadius);
+
+			if (np < 2)
+			{
+				clipTriangle[i0] = clipTriangle[(i0 + 5) % 6];
+				continue;
+			}
+
+			clipTriangle[i0].vertex = clipPoints3[0].vertex;
+			clipTriangle[i1].vertex = clipPoints3[1].vertex;
+		}
+	}
+
+}
+else
+{
+	// 裁剪clipTriangle
+	for (int i = index; i < index + 6; i++)
+	{
+		int i0 = i % 6, i1 = (i + 1) % 6;
+
+		incidentTriangleEdge[0] = clipTriangle[i0];
+		incidentTriangleEdge[1] = clipTriangle[i1];
+
+		// Clip to box side 1
+		np = b3_ClipSegmentToLine(clipPoints1, incidentTriangleEdge, -tangent1, sideOffset1, indexRef, totalRadius);
+
+		if (np < 2)
+		{
+			if (np == 1)
+			{
+				// 计算端点到直线的距离 Calculate the distance of end points to the line
+				float distance0 = glm::dot(normal, incidentTriangleEdge[0].vertex) - sideOffset1;
+				float distance1 = glm::dot(normal, incidentTriangleEdge[1].vertex) - sideOffset1;
+
+				if (distance0 <= totalRadius) clipTriangle[i0] = clipTriangle[(i0 + 5) % 6];
+				if (distance1 <= totalRadius) vOut[count++] = vIn[1];
+			}
+			clipTriangle[i0] = clipTriangle[(i0 + 5) % 6];
+			continue;
+		}
+		np = b3_ClipSegmentToLine(clipPoints2, clipPoints1, -tangent2, sideOffset2, indexRef, totalRadius);
+
+		if (np < 2)
+		{
+			clipTriangle[i0] = clipTriangle[(i0 + 5) % 6];
+			continue;
+		}
+
+		np = b3_ClipSegmentToLine(clipPoints3, clipPoints2, -tangent3, sideOffset3, indexRef, totalRadius);
+
+		if (np < 2)
+		{
+			clipTriangle[i0] = clipTriangle[(i0 + 5) % 6];
+			continue;
+		}
+
+		clipTriangle[i0].vertex = clipPoints3[0].vertex;
+		clipTriangle[i1].vertex = clipPoints3[1].vertex;
+	}
+}

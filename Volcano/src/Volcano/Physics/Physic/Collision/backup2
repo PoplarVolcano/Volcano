@@ -1,0 +1,134 @@
+
+		/*
+		manifold->pointCount = 0;
+
+		// 将球体转换到box局部空间，将box作为AABB进行计算
+		glm::vec3 cB = b3_Multiply(transformB, sphereB->m_position);
+		glm::vec3 cBLocalA = b3_MultiplyT(transformA.rotation, cB - transformA.position);
+		glm::vec3 cA = b3_Multiply(transformA, boxA->m_position);
+		//glm::vec3 cALocalB = b3_MultiplyT(transformB, cA);
+
+		if (boxA->TestPoint(transformA, cB) || sphereB->TestPoint(transformB, cA))
+		{
+			
+			manifold->type = b3_Manifold::e_faceA;
+			manifold->localPoint = cB;
+
+			manifold->localNormal = glm::normalize(cBLocalA - cB);
+			manifold->pointCount = 1;
+
+			manifold->points[0].localPoint = sphereB->m_position;
+			manifold->points[0].id.key = 0;
+			
+			return;
+		}
+
+		// 球体原点不在box内部
+		glm::vec3 closestPoint = cBLocalA; // box到球心的最近点
+		if (closestPoint.x < -boxA->m_size.x)
+			closestPoint.x = -boxA->m_size.x;
+		else if (closestPoint.x > boxA->m_size.x)
+			closestPoint.x = boxA->m_size.x;
+
+		if (closestPoint.y < -boxA->m_size.y)
+			closestPoint.y = -boxA->m_size.y;
+		else if (closestPoint.y > boxA->m_size.y)
+			closestPoint.y = boxA->m_size.y;
+
+		if (closestPoint.z < -boxA->m_size.z)
+			closestPoint.z = -boxA->m_size.z;
+		else if (closestPoint.z > boxA->m_size.z)
+			closestPoint.z = boxA->m_size.z;
+
+		glm::vec3 cc = closestPoint - cBLocalA;
+
+		if (glm::dot(cc, cc) > sphereB->m_radius * sphereB->m_radius)
+		{
+			return;
+		}
+
+		manifold->type = b3_Manifold::e_faceA;
+		manifold->localPoint = closestPoint;
+
+		if (closestPoint.x == boxA->m_size.x)
+		{
+			if (closestPoint.y == boxA->m_size.y)
+				if (closestPoint.z == boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x,  boxA->m_size.y,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)			 				  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x,  boxA->m_size.y, -boxA->m_size.z));
+				else												 				  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x,  boxA->m_size.y,  0.0f));
+			else if (closestPoint.y == -boxA->m_size.y)				  
+				if (closestPoint.z == boxA->m_size.z)				  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x, -boxA->m_size.y,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)			  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x, -boxA->m_size.y, -boxA->m_size.z));
+				else												  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x, -boxA->m_size.y,  0.0f));
+			else													  
+				if (closestPoint.z == boxA->m_size.z)				  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x,  0.0f,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)			 				  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x,  0.0f, -boxA->m_size.z));
+				else												 				  
+					manifold->localNormal = glm::normalize(glm::vec3( boxA->m_size.x,  0.0f,  0.0f));
+		}
+		else if (closestPoint.x == -boxA->m_size.x)
+		{
+			if (closestPoint.y == boxA->m_size.y)
+				if (closestPoint.z == boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x,  boxA->m_size.y,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)							   
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x,  boxA->m_size.y, -boxA->m_size.z));
+				else																   
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x,  boxA->m_size.y,  0.0f));
+			else if (closestPoint.y == -boxA->m_size.y)
+				if (closestPoint.z == boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x, -boxA->m_size.y,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x, -boxA->m_size.y, -boxA->m_size.z));
+				else
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x, -boxA->m_size.y,  0.0f));
+			else
+				if (closestPoint.z == boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x,  0.0f,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)							   
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x,  0.0f, -boxA->m_size.z));
+				else																   
+					manifold->localNormal = glm::normalize(glm::vec3(-boxA->m_size.x,  0.0f,  0.0f));
+		}
+		else
+		{
+			if (closestPoint.y == boxA->m_size.y)
+				if (closestPoint.z == boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f,  boxA->m_size.y,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)				    
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f,  boxA->m_size.y, -boxA->m_size.z));
+				else													    
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f,  boxA->m_size.y,  0.0f));
+			else if (closestPoint.y == -boxA->m_size.y)
+				if (closestPoint.z == boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f, -boxA->m_size.y,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f, -boxA->m_size.y, -boxA->m_size.z));
+				else
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f, -boxA->m_size.y,  0.0f));
+			else
+				if (closestPoint.z == boxA->m_size.z)
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f,  0.0f,  boxA->m_size.z));
+				else if (closestPoint.z == -boxA->m_size.z)				    
+					manifold->localNormal = glm::normalize(glm::vec3(0.0f,  0.0f, -boxA->m_size.z));
+				else
+				{
+					// closestPoint = 0.0, 0.0, 0.0
+					VOL_TRACE("Dug: closestPoint = 0.0, 0.0, 0.0");
+					//manifold->localNormal = glm::normalize(glm::vec3(0.0f, 0.0f, 0.0f));
+					assert(false, "debug");
+				}
+		}
+		manifold->pointCount = 1;
+
+		manifold->points[0].localPoint = sphereB->m_position;
+		manifold->points[0].id.key = 0;
+		*/

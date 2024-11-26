@@ -62,15 +62,15 @@ namespace Volcano {
 					auto& keyPosition = bone->GetPositions();
 					auto& keyRotation = bone->GetRotations();
 					auto& keyScale = bone->GetScales();
-					for (uint32_t i = 0; i < bone->GetNumPosition(); i++)
+					for (int i = 0; i < bone->GetNumPosition(); i++)
 					{
 						out << YAML::BeginMap;
-						out << YAML::Key << "KeyPosition" << YAML::Value << keyPosition[i].position;
+						out << YAML::Key << "KeyPosition"       << YAML::Value << keyPosition[i].position;
 						out << YAML::Key << "PositionTimeStamp" << YAML::Value << keyPosition[i].timeStamp;
-						out << YAML::Key << "KeyRotation" << YAML::Value << keyRotation[i].orientation;
+						out << YAML::Key << "KeyRotation"       << YAML::Value << keyRotation[i].orientation;
 						out << YAML::Key << "RotationTimeStamp" << YAML::Value << keyRotation[i].timeStamp;
-						out << YAML::Key << "KeyScale" << YAML::Value << keyScale[i].scale;
-						out << YAML::Key << "ScaleTimeStamp" << YAML::Value << keyScale[i].timeStamp;
+						out << YAML::Key << "KeyScale"          << YAML::Value << keyScale[i].scale;
+						out << YAML::Key << "ScaleTimeStamp"    << YAML::Value << keyScale[i].timeStamp;
 						out << YAML::EndMap;
 					}
 					out << YAML::EndSeq;
@@ -97,6 +97,7 @@ namespace Volcano {
 		else
 			out << YAML::Key << "EntityID" << YAML::Value << *uuid;
 
+		out << YAML::Key << "Active" << YAML::Value << entity.GetActive();
 
 		if (entity.HasComponent<TagComponent>())
 		{
@@ -106,8 +107,6 @@ namespace Volcano {
 			out << YAML::Key << "Tag" << YAML::Value << tag;
 			out << YAML::EndMap;//TagComponent
 		}
-
-		out << YAML::Key << "PrefabPath" << YAML::Value << entity.GetPrefabPath();
 
 		if (entity.HasComponent<TransformComponent>())
 		{
@@ -126,6 +125,8 @@ namespace Volcano {
 			out << YAML::BeginMap;//LightComponent
 
 			auto& lightComponent = entity.GetComponent<LightComponent>();
+
+			out << YAML::Key << "Enabled" << YAML::Value << lightComponent.enabled;
 
 			out << YAML::Key << "Type" << YAML::Value << (int)lightComponent.Type;
 			out << YAML::Key << "Ambient" << YAML::Value << lightComponent.Ambient;
@@ -148,6 +149,8 @@ namespace Volcano {
 			auto& cameraComponent = entity.GetComponent<CameraComponent>();
 			auto& camera = cameraComponent.Camera;
 
+			out << YAML::Key << "Enabled" << YAML::Value << cameraComponent.enabled;
+
 			out << YAML::Key << "Camera" << YAML::Value;
 			out << YAML::BeginMap;//Camera
 			out << YAML::Key << "ProjectionType" << YAML::Value << (int)camera.GetProjectionType();
@@ -167,14 +170,18 @@ namespace Volcano {
 
 		if (entity.HasComponent<ScriptComponent>())
 		{
-			auto& scriptComponent = entity.GetComponent<ScriptComponent>();
-
 			out << YAML::Key << "ScriptComponent";
 			out << YAML::BeginMap; // ScriptComponent
+
+			auto& scriptComponent = entity.GetComponent<ScriptComponent>();
+
+			out << YAML::Key << "Enabled" << YAML::Value << scriptComponent.enabled;
+
 			out << YAML::Key << "ClassName" << YAML::Value << scriptComponent.ClassName;
 
 				// 保存字段Fields
-			Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(scriptComponent.ClassName);
+			Ref<ScriptClass> entityClass = ScriptEngine::GetClass(scriptComponent.ClassName);
+
 			if (entityClass != nullptr)
 			{
 				const auto& fields = entityClass->GetFields();
@@ -199,24 +206,32 @@ namespace Volcano {
 
 						switch (field.Type)
 						{
-							WRITE_SCRIPT_FIELD(Float, float);
-							WRITE_SCRIPT_FIELD(Double, double);
-							WRITE_SCRIPT_FIELD(Bool, bool);
-							WRITE_SCRIPT_FIELD(Char, char);
-							WRITE_SCRIPT_FIELD(Byte, int8_t);
-							WRITE_SCRIPT_FIELD(Short, int16_t);
-							WRITE_SCRIPT_FIELD(Int, int32_t);
-							WRITE_SCRIPT_FIELD(Long, int64_t);
-							WRITE_SCRIPT_FIELD(UByte, uint8_t);
-							WRITE_SCRIPT_FIELD(UShort, uint16_t);
-							WRITE_SCRIPT_FIELD(UInt, uint32_t);
-							WRITE_SCRIPT_FIELD(ULong, uint64_t);
-							WRITE_SCRIPT_FIELD(Vector2, glm::vec2);
-							WRITE_SCRIPT_FIELD(Vector3, glm::vec3);
-							WRITE_SCRIPT_FIELD(Vector4, glm::vec4);
-							WRITE_SCRIPT_FIELD(Quaternion, glm::quat);
-							WRITE_SCRIPT_FIELD(Matrix4x4, glm::mat4);
-							WRITE_SCRIPT_FIELD(Entity, UUID);
+							WRITE_SCRIPT_FIELD(Float,         float);
+							WRITE_SCRIPT_FIELD(Double,        double);
+							WRITE_SCRIPT_FIELD(Bool,          bool);
+							WRITE_SCRIPT_FIELD(Char,          char);
+							WRITE_SCRIPT_FIELD(Byte,          int8_t);
+							WRITE_SCRIPT_FIELD(Short,         int16_t);
+							WRITE_SCRIPT_FIELD(Int,           int32_t);
+							WRITE_SCRIPT_FIELD(Long,          int64_t);
+							WRITE_SCRIPT_FIELD(UByte,         uint8_t);
+							WRITE_SCRIPT_FIELD(UShort,        uint16_t);
+							WRITE_SCRIPT_FIELD(UInt,          uint32_t);
+							WRITE_SCRIPT_FIELD(ULong,         uint64_t);
+							WRITE_SCRIPT_FIELD(String,        std::string);
+							WRITE_SCRIPT_FIELD(Vector2,       glm::vec2);
+							WRITE_SCRIPT_FIELD(Vector3,       glm::vec3);
+							WRITE_SCRIPT_FIELD(Vector4,       glm::vec4);
+							WRITE_SCRIPT_FIELD(Quaternion,    glm::quat);
+							WRITE_SCRIPT_FIELD(Matrix4x4,     glm::mat4);
+							WRITE_SCRIPT_FIELD(Entity,        UUID);
+							WRITE_SCRIPT_FIELD(GameObject,    UUID);
+							WRITE_SCRIPT_FIELD(Component,     UUID);
+							WRITE_SCRIPT_FIELD(Transform,     UUID);
+							WRITE_SCRIPT_FIELD(Behaviour,     UUID);
+							WRITE_SCRIPT_FIELD(MonoBehaviour, UUID);
+							WRITE_SCRIPT_FIELD(Collider,      UUID);
+							WRITE_SCRIPT_FIELD(Rigidbody,     UUID);
 						}
 						out << YAML::EndMap; // ScriptFields
 					}
@@ -271,6 +286,9 @@ namespace Volcano {
 			out << YAML::BeginMap; // MeshRendererComponent
 			{
 				auto& meshRendererComponent = entity.GetComponent<MeshRendererComponent>();
+
+				out << YAML::Key << "Enabled" << YAML::Value << meshRendererComponent.enabled;
+
 				auto& textures = meshRendererComponent.Textures;
 				if (!textures.empty())
 				{
@@ -296,6 +314,9 @@ namespace Volcano {
 			out << YAML::BeginMap; // CircleRendererComponent
 
 			auto& circleRendererComponent = entity.GetComponent<CircleRendererComponent>();
+
+			out << YAML::Key << "Enabled" << YAML::Value << circleRendererComponent.enabled;
+
 			out << YAML::Key << "Color" << YAML::Value << circleRendererComponent.Color;
 			if (circleRendererComponent.Texture)
 				out << YAML::Key << "TexturePath" << YAML::Value << circleRendererComponent.Texture->GetPath();
@@ -309,6 +330,8 @@ namespace Volcano {
 		{
 			out << YAML::Key << "AnimatorComponent";
 			out << YAML::BeginMap; // AnimatorComponent
+			auto& animatorComponent = entity.GetComponent<AnimatorComponent>();
+			out << YAML::Key << "Enabled" << YAML::Value << animatorComponent.enabled;
 			out << YAML::EndMap; // AnimatorComponent
 		}
 
@@ -318,6 +341,9 @@ namespace Volcano {
 			out << YAML::Key << "AnimationComponent";
 			out << YAML::BeginMap; // AnimationComponent
 			auto& animationComponent = entity.GetComponent<AnimationComponent>();
+
+			out << YAML::Key << "Enabled" << YAML::Value << animationComponent.enabled;
+
 			if (!animationComponent.animation->GetPath().empty())
 				out << YAML::Key << "Path" << YAML::Value << Project::GetRelativeAssetDirectory(animationComponent.animation->GetPath()).string();
 			else
@@ -369,21 +395,68 @@ namespace Volcano {
 			out << YAML::EndMap; // CircleCollider2DComponent
 		}
 
+		if (entity.HasComponent<RigidbodyComponent>())
+		{
+			out << YAML::Key << "RigidbodyComponent";
+			out << YAML::BeginMap; // RigidbodyComponent
+			auto& rbComponent = entity.GetComponent<RigidbodyComponent>();
+			out << YAML::Key << "Type" << YAML::Value << (int)rbComponent.Type;
+			out << YAML::Key << "FixedRotation" << YAML::Value << rbComponent.FixedRotation;
+			out << YAML::EndMap; // RigidbodyComponent
+		}
+
+		if (entity.HasComponent<BoxColliderComponent>())
+		{
+			out << YAML::Key << "BoxColliderComponent";
+			out << YAML::BeginMap; // BoxColliderComponent
+			auto& bcComponent = entity.GetComponent<BoxColliderComponent>();
+			out << YAML::Key << "Enabled"              << YAML::Value << bcComponent.enabled;
+			out << YAML::Key << "IsTrigger"            << YAML::Value << bcComponent.isTrigger;
+			out << YAML::Key << "Center"               << YAML::Value << bcComponent.center;
+			out << YAML::Key << "Density"              << YAML::Value << bcComponent.material.density;
+			out << YAML::Key << "StaticFriction"       << YAML::Value << bcComponent.material.staticFriction;
+			out << YAML::Key << "DynamicFriction"      << YAML::Value << bcComponent.material.dynamicFriction;
+			out << YAML::Key << "Bounciness"           << YAML::Value << bcComponent.material.bounciness;
+			out << YAML::Key << "RestitutionThreshold" << YAML::Value << bcComponent.material.restitutionThreshold;
+			out << YAML::Key << "Size"                 << YAML::Value << bcComponent.size;
+			out << YAML::EndMap; // BoxColliderComponent
+		}
+
+		if (entity.HasComponent<SphereColliderComponent>())
+		{
+			out << YAML::Key << "SphereColliderComponent";
+			out << YAML::BeginMap; // SphereColliderComponent
+			auto& scComponent = entity.GetComponent<SphereColliderComponent>();
+			out << YAML::Key << "Enabled"              << YAML::Value << scComponent.enabled;
+			out << YAML::Key << "IsTrigger"            << YAML::Value << scComponent.isTrigger;
+			out << YAML::Key << "Center"               << YAML::Value << scComponent.center;
+			out << YAML::Key << "Density"              << YAML::Value << scComponent.material.density;
+			out << YAML::Key << "StaticFriction"       << YAML::Value << scComponent.material.staticFriction;
+			out << YAML::Key << "DynamicFriction"      << YAML::Value << scComponent.material.dynamicFriction;
+			out << YAML::Key << "Bounciness"           << YAML::Value << scComponent.material.bounciness;
+			out << YAML::Key << "RestitutionThreshold" << YAML::Value << scComponent.material.restitutionThreshold;
+			out << YAML::Key << "Radius"               << YAML::Value << scComponent.radius;
+			out << YAML::EndMap; // SphereColliderComponent
+		}
+
 		if (entity.HasComponent<SkyboxComponent>())
 		{
 			out << YAML::Key << "SkyboxComponent";
 			out << YAML::BeginMap; // SkyboxComponent
 
 			auto& skyboxComponent = entity.GetComponent<SkyboxComponent>();
+
+			out << YAML::Key << "Enabled" << YAML::Value << skyboxComponent.enabled;
+
 			out << YAML::Key << "Primary" << YAML::Value << skyboxComponent.Primary;
-			out << YAML::Key << "Path" << YAML::Value << skyboxComponent.texture->GetPath();
+			out << YAML::Key << "Path"    << YAML::Value << skyboxComponent.texture->GetPath();
 			out << YAML::EndMap; // SkyboxComponent
 		}
 
 		if (!entity.GetEntityChildren().empty())
 		{
 			out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
-			for (auto& [name, entity] : entity.GetEntityChildren())
+			for (auto& entity : entity.GetEntityChildren())
 			{
 				if (uuid != nullptr)
 				{
@@ -420,11 +493,11 @@ namespace Volcano {
 		out << YAML::BeginMap;
 		{
 			out << YAML::Key << "Scene" << YAML::Value << m_Scene->GetName();
-			if (!m_Scene->GetEntityNameMap().empty())
+			if (!m_Scene->GetEntityList().empty())
 			{
 				out << YAML::Key << "Entities" << YAML::Value << YAML::BeginSeq;// 开始序列化
 				{
-					for (auto& [name, entity] : m_Scene->GetEntityNameMap())
+					for (auto& entity : m_Scene->GetEntityList())
 						Volcano::SerializeEntity(out, *entity.get());
 					out << YAML::EndSeq; // 结束序列化
 				}
@@ -453,15 +526,33 @@ namespace Volcano {
 			}
 
 			// 将已载入的Prefab的路径保存
-			out << YAML::Key << "Prefabs" << YAML::BeginSeq;
+			out << YAML::Key << "Prefab";
+			out << YAML::BeginMap; // Prefab
 			{
-				for (auto& [prefabPath, entity] : Prefab::GetEntityPathMap())
+				out << YAML::Key << "PrefabPaths" << YAML::BeginSeq; // PrefabPaths
 				{
-					out << YAML::BeginMap;
-					out << YAML::Key << "Path" << YAML::Value << prefabPath;
-					out << YAML::EndMap;
+					for (auto& [prefabPath, entity] : Prefab::GetEntityPathMap())
+					{
+						out << YAML::BeginMap;
+						out << YAML::Key << "PrefabPath" << YAML::Value << prefabPath;
+						out << YAML::EndMap;
+					}
+					out << YAML::EndSeq; // PrefabPaths
 				}
-				out << YAML::EndSeq;
+
+				out << YAML::Key << "EntityPrefabMap" << YAML::BeginSeq; // EntityPrefabMap
+				{
+					for (auto& [id, prefabPath] : Prefab::GetEntityPrefabMap())
+					{
+						out << YAML::BeginMap;
+						out << YAML::Key << "ID"         << YAML::Value << id;
+						out << YAML::Key << "PrefabPath" << YAML::Value << prefabPath;
+						out << YAML::EndMap;
+					}
+					out << YAML::EndSeq; // EntityPrefabMap
+				}
+
+				out << YAML::EndMap;// Prefab
 			}
 			out << YAML::EndMap;
 		}
@@ -507,8 +598,8 @@ namespace Volcano {
 		}
 	}
 
-	// entityParent为null时在scene目录下读取Entity，prefabPath不为null时为预制体读取Entity
-	Ref<Entity> DeserializeLoadEntity(YAML::Node& entity, Scene* scene, Ref<Entity> entityParent = nullptr, const std::string& prefabPath = std::string())
+	// entityParent为null时在scene目录下读取Entity
+	Ref<Entity> DeserializeLoadEntity(YAML::Node& entity, Scene* scene, Ref<Entity> entityParent = nullptr)
 	{
 		uint64_t uuid = entity["EntityID"].as<uint64_t>();
 
@@ -519,26 +610,9 @@ namespace Volcano {
 
 		VOL_CORE_TRACE("Deserialized entity with ID = {0}, name = {1}", uuid, name);
 
-		// 读取prefab不需要读取prefabPath，不读取prefab时根据entity是否有prefabPath决定正常读取还是读取prefab
-		if (prefabPath.empty())
-		{
-			std::string prefabPathYAML = entity["PrefabPath"].as<std::string>();
-			if (!prefabPathYAML.empty())
-			{
-				Ref<Entity> targetEntity = Prefab::Get(prefabPathYAML);
-				if (targetEntity == nullptr)
-				{
-					targetEntity = Prefab::Load(Project::GetAssetFileSystemPath(prefabPathYAML));
-				}
-				Ref<Entity> resultEntity = scene->DuplicateEntity(targetEntity, entityParent);
-				Prefab::GetTargetEntityPathMap()[resultEntity->GetPrefabPath()][resultEntity->GetUUID()] = resultEntity;
-				return resultEntity;
-			}
-		}
+		Ref<Entity> deserializedEntity = scene->CreateEntityWithUUID(uuid, name, entityParent.get());
 
-		Ref<Entity> deserializedEntity = scene->CreateEntityWithUUID(uuid, name, entityParent);
-
-		deserializedEntity->SetPrefabPath(Project::GetRelativeAssetDirectory(prefabPath).string());
+		deserializedEntity->SetActive(entity["Active"].as<bool>());
 
 		auto transformComponent = entity["TransformComponent"];
 		if (transformComponent)
@@ -554,6 +628,7 @@ namespace Volcano {
 		if (lightComponent)
 		{
 			auto& lc = deserializedEntity->AddComponent<LightComponent>();
+			lc.enabled = lightComponent["Enabled"].as<bool>();
 			lc.Type = (LightComponent::LightType)lightComponent["Type"].as<int>();
 			lc.Ambient = lightComponent["Ambient"].as<glm::vec3>();
 			lc.Diffuse = lightComponent["Diffuse"].as<glm::vec3>();
@@ -569,6 +644,7 @@ namespace Volcano {
 		if (cameraComponent)
 		{
 			auto& cc = deserializedEntity->AddComponent<CameraComponent>();
+			cc.enabled = cameraComponent["Enabled"].as<bool>();
 			auto cameraProps = cameraComponent["Camera"];
 			cc.Camera.SetProjectionType((SceneCamera::ProjectionType)cameraProps["ProjectionType"].as<int>());
 
@@ -587,6 +663,7 @@ namespace Volcano {
 		if (scriptComponent)
 		{
 			auto& sc = deserializedEntity->AddComponent<ScriptComponent>();
+			sc.enabled = scriptComponent["Enabled"].as<bool>();
 			sc.ClassName = scriptComponent["ClassName"].as<std::string>();
 
 			// 获取脚本字段数据
@@ -594,7 +671,7 @@ namespace Volcano {
 			if (scriptFields)
 			{
 				// 获取mono类
-				Ref<ScriptClass> entityClass = ScriptEngine::GetEntityClass(sc.ClassName);
+				Ref<ScriptClass> entityClass = ScriptEngine::GetClass(sc.ClassName);
 
 				if (entityClass)
 				{
@@ -620,24 +697,32 @@ namespace Volcano {
 
 						switch (type)
 						{
-							READ_SCRIPT_FIELD(Float, float);
-							READ_SCRIPT_FIELD(Double, double);
-							READ_SCRIPT_FIELD(Bool, bool);
-							READ_SCRIPT_FIELD(Char, char);
-							READ_SCRIPT_FIELD(Byte, int8_t);
-							READ_SCRIPT_FIELD(Short, int16_t);
-							READ_SCRIPT_FIELD(Int, int32_t);
-							READ_SCRIPT_FIELD(Long, int64_t);
-							READ_SCRIPT_FIELD(UByte, uint8_t);
-							READ_SCRIPT_FIELD(UShort, uint16_t);
-							READ_SCRIPT_FIELD(UInt, uint32_t);
-							READ_SCRIPT_FIELD(ULong, uint64_t);
-							READ_SCRIPT_FIELD(Vector2, glm::vec2);
-							READ_SCRIPT_FIELD(Vector3, glm::vec3);
-							READ_SCRIPT_FIELD(Vector4, glm::vec4);
-							READ_SCRIPT_FIELD(Quaternion, glm::quat);
-							READ_SCRIPT_FIELD(Matrix4x4, glm::mat4);
-							READ_SCRIPT_FIELD(Entity, UUID);
+							READ_SCRIPT_FIELD(Float,         float);
+							READ_SCRIPT_FIELD(Double,        double);
+							READ_SCRIPT_FIELD(Bool,          bool);
+							READ_SCRIPT_FIELD(Char,          char);
+							READ_SCRIPT_FIELD(Byte,          int8_t);
+							READ_SCRIPT_FIELD(Short,         int16_t);
+							READ_SCRIPT_FIELD(Int,           int32_t);
+							READ_SCRIPT_FIELD(Long,          int64_t);
+							READ_SCRIPT_FIELD(UByte,         uint8_t);
+							READ_SCRIPT_FIELD(UShort,        uint16_t);
+							READ_SCRIPT_FIELD(UInt,          uint32_t);
+							READ_SCRIPT_FIELD(ULong,         uint64_t);
+							READ_SCRIPT_FIELD(String,        std::string);
+							READ_SCRIPT_FIELD(Vector2,       glm::vec2);
+							READ_SCRIPT_FIELD(Vector3,       glm::vec3);
+							READ_SCRIPT_FIELD(Vector4,       glm::vec4);
+							READ_SCRIPT_FIELD(Quaternion,    glm::quat);
+							READ_SCRIPT_FIELD(Matrix4x4,     glm::mat4);
+							READ_SCRIPT_FIELD(Entity,        UUID);
+							READ_SCRIPT_FIELD(GameObject,    UUID);
+							READ_SCRIPT_FIELD(Component,     UUID);
+							READ_SCRIPT_FIELD(Transform,     UUID);
+							READ_SCRIPT_FIELD(Behaviour,     UUID);
+							READ_SCRIPT_FIELD(MonoBehaviour, UUID);
+							READ_SCRIPT_FIELD(Collider,      UUID);
+							READ_SCRIPT_FIELD(Rigidbody,     UUID);
 						}
 					}
 				}
@@ -695,6 +780,7 @@ namespace Volcano {
 		if (meshRendererComponent)
 		{
 			auto& mrc = deserializedEntity->AddComponent<MeshRendererComponent>();
+			mrc.enabled = meshRendererComponent["Enabled"].as<bool>();
 			auto textures = meshRendererComponent["Textures"];
 			if (!textures.IsNull())
 			{
@@ -717,6 +803,7 @@ namespace Volcano {
 		if (circleRendererComponent)
 		{
 			auto& crc = deserializedEntity->AddComponent<CircleRendererComponent>();
+			crc.enabled = circleRendererComponent["Enabled"].as<bool>();
 			crc.Color = circleRendererComponent["Color"].as<glm::vec4>();
 			if (circleRendererComponent["TexturePath"])
 				crc.Texture = Texture2D::Create(circleRendererComponent["TexturePath"].as<std::string>());
@@ -728,12 +815,14 @@ namespace Volcano {
 		if (animatorComponent)
 		{
 			auto& ac = deserializedEntity->AddComponent<AnimatorComponent>();
+			ac.enabled = animatorComponent["Enabled"].as<bool>();
 		}
 
 		auto animationComponent = entity["AnimationComponent"];
 		if (animationComponent)
 		{
 			auto& ac = deserializedEntity->AddComponent<AnimationComponent>();
+			ac.enabled = animationComponent["Enabled"].as<bool>();
 			std::string path = animationComponent["Path"].as<std::string>();
 			if (!path.empty())
 			{
@@ -777,14 +866,55 @@ namespace Volcano {
 			cc2d.RestitutionThreshold = circleCollider2DComponent["RestitutionThreshold"].as<float>();
 		}
 
+		auto rigidbodyComponent = entity["RigidbodyComponent"];
+		if (rigidbodyComponent)
+		{
+			auto& rb = deserializedEntity->AddComponent<RigidbodyComponent>();
+			rb.Type = (RigidbodyComponent::BodyType)rigidbodyComponent["Type"].as<int>();
+			rb.FixedRotation = rigidbodyComponent["FixedRotation"].as<bool>();
+		}
+
+		auto boxColliderComponent = entity["BoxColliderComponent"];
+		if (boxColliderComponent)
+		{
+			auto& bc = deserializedEntity->AddComponent<BoxColliderComponent>();
+			bc.enabled = boxColliderComponent["Enabled"].as<bool>();
+			bc.isTrigger = boxColliderComponent["IsTrigger"].as<bool>();
+			bc.center = boxColliderComponent["Center"].as<glm::vec3>();
+			bc.material.density = boxColliderComponent["Density"].as<float>();
+			bc.material.staticFriction = boxColliderComponent["StaticFriction"].as<float>();
+			bc.material.dynamicFriction = boxColliderComponent["DynamicFriction"].as<float>();
+			bc.material.bounciness = boxColliderComponent["Bounciness"].as<float>();
+			bc.material.restitutionThreshold = boxColliderComponent["RestitutionThreshold"].as<float>();
+			bc.size = boxColliderComponent["Size"].as<glm::vec3>();
+		}
+
+		auto sphereColliderComponent = entity["SphereColliderComponent"];
+		if (sphereColliderComponent)
+		{
+			auto& sc = deserializedEntity->AddComponent<SphereColliderComponent>();
+			sc.enabled = sphereColliderComponent["Enabled"].as<bool>();
+			sc.isTrigger = sphereColliderComponent["IsTrigger"].as<bool>();
+			sc.center = sphereColliderComponent["Center"].as<glm::vec3>();
+			sc.material.density = sphereColliderComponent["Density"].as<float>();
+			sc.material.staticFriction = sphereColliderComponent["StaticFriction"].as<float>();
+			sc.material.dynamicFriction = sphereColliderComponent["DynamicFriction"].as<float>();
+			sc.material.bounciness = sphereColliderComponent["Bounciness"].as<float>();
+			sc.material.restitutionThreshold = sphereColliderComponent["RestitutionThreshold"].as<float>();
+			sc.radius = sphereColliderComponent["Radius"].as<float>();
+		}
+
 		auto skyboxComponent = entity["SkyboxComponent"];
 		if (skyboxComponent)
 		{
 			auto& sc = deserializedEntity->AddComponent<SkyboxComponent>();
+			sc.enabled = skyboxComponent["Enabled"].as<bool>();
 			sc.Primary = skyboxComponent["Primary"].as<bool>();
-			auto paths = skyboxComponent["Path"];
-			if (!paths.IsNull())
-				sc.texture = TextureCube::Create(Project::GetAssetFileSystemPath(paths.as<std::string>()).string());
+			std::string path  = skyboxComponent["Path"].as<std::string>();
+			if (!path.empty())
+			{
+				sc.texture = TextureCube::Create(Project::GetAssetFileSystemPath(path).string());
+			}
 		}
 
 		auto entities = entity["Entities"];
@@ -817,7 +947,7 @@ namespace Volcano {
 		if (prefab.size())
 		{
 			auto entity = prefab[0];
-			return DeserializeLoadEntity(entity, m_Scene.get(), nullptr, filepath);
+			return DeserializeLoadEntity(entity, m_Scene.get(), nullptr);
 		}
 		return nullptr;
 	}
@@ -853,14 +983,21 @@ namespace Volcano {
 			for (auto animation : animations)
 				Animation::GetAnimationLibrary()->LoadAnm(animation["Path"].as<std::string>());
 
-		auto prefabs = data["Prefabs"];
-		if (prefabs)
-			for (auto prefab : prefabs)
+		auto prefab = data["Prefab"];
+		if (prefab)
+		{
+			for (auto prefabPath : prefab["PrefabPaths"])
 			{
-				std::string prefabPath = prefab["Path"].as<std::string>();
-				if (Prefab::Get(prefabPath) == nullptr)
-					Prefab::Load(Project::GetAssetFileSystemPath(prefabPath));
+				std::string prefabPathTemp = prefabPath["PrefabPath"].as<std::string>();
+				if (Prefab::Get(prefabPathTemp) == nullptr)
+					Prefab::Load(Project::GetAssetFileSystemPath(prefabPathTemp));
 			}
+
+			for (auto entityPrefab : prefab["EntityPrefabMap"])
+			{
+				Prefab::GetEntityPrefabMap()[entityPrefab["ID"].as<UUID>()] = entityPrefab["PrefabPath"].as<std::string>();
+			}
+		}
 
 		auto entities = data["Entities"];
 		if (entities)

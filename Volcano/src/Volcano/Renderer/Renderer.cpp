@@ -32,6 +32,7 @@ namespace Volcano {
 		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/PointShadowsDepth.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/shadow/SpotShadowDepth.glsl");
 		Renderer::GetShaderLibrary()->Load("assets/shaders/Renderer2D_Quad.glsl");
+		Renderer::GetShaderLibrary()->Load("assets/shaders/3D/Collider.glsl");
 
 		// ≥ı ºªØOpenGL≈‰÷√
 		RendererAPI::Init(); 

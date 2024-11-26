@@ -50,6 +50,8 @@ namespace Volcano {
 
 		// UI Panels
 		void UI_Toolbar();
+
+		void ClearConsole();
 	private:
 		Ref<VertexArray> m_VertexArray;
 		Ref<Texture2D> m_Texture, m_AlterTexture;

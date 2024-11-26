@@ -24,9 +24,9 @@ namespace Volcano {
 	bool SceneRenderer::m_SSAOSwitch;
 	Ref<Texture2D>   SceneRenderer::m_NoiseTexture;
 	int   SceneRenderer::m_KernelSize = 64;
-	float SceneRenderer::m_Radius = 0.5;
-	float SceneRenderer::m_Bias = 0.035;
-	float SceneRenderer::m_Power = 1.0;
+	float SceneRenderer::m_Radius = 0.5f;
+	float SceneRenderer::m_Bias = 0.035f;
+	float SceneRenderer::m_Power = 1.0f;
 	Ref<Framebuffer> SceneRenderer::m_BlurFramebuffer[2];
 	Ref<Framebuffer> SceneRenderer::m_HDRFramebuffer;
 	float SceneRenderer::m_Exposure = 1.5f;
@@ -747,6 +747,8 @@ namespace Volcano {
 		m_DeferredShadingFramebuffer->Bind();
 		{
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);
+			RenderScene();
+			m_ActiveScene->SetRenderType(RenderType::COLLIDER);
 			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::SKYBOX);
 			RenderScene();

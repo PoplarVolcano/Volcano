@@ -27,7 +27,7 @@ namespace Volcano {
 
     void Model::ExtractBoneWeightForVertices(std::vector<MeshVertex>& vertices, aiMesh* mesh, const aiScene* scene)
     {
-        for (int boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
+        for (uint32_t boneIndex = 0; boneIndex < mesh->mNumBones; ++boneIndex)
         {
             int boneID = -1;
             std::string boneName = mesh->mBones[boneIndex]->mName.C_Str();
@@ -90,7 +90,7 @@ namespace Volcano {
             //场景包含了所有的数据，节点只是用来组织东西（比如节点之间的关系）。
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
             modelNode->numMeshes++;
-            modelNode->meshes.push_back(m_Meshes.size());
+            //modelNode->meshes.push_back(m_Meshes.size());
             processMesh(mesh, scene);
         }
 

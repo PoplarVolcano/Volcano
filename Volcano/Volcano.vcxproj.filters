@@ -300,13 +300,13 @@
     <ClInclude Include="src\Volcano\Scene\ScriptableEntity.h">
       <Filter>src\Volcano\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Scripting\ComponentRegister.h">
+    <ClInclude Include="src\Volcano\Scripting\Registers\ComponentRegister.h">
       <Filter>src\Volcano\Scripting</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Scripting\InputRegister.h">
+    <ClInclude Include="src\Volcano\Scripting\Registers\InputRegister.h">
       <Filter>src\Volcano\Scripting</Filter>
     </ClInclude>
-    <ClInclude Include="src\Volcano\Scripting\MathFRegister.h">
+    <ClInclude Include="src\Volcano\Scripting\Registers\MathFRegister.h">
       <Filter>src\Volcano\Scripting</Filter>
     </ClInclude>
     <ClInclude Include="src\Volcano\Scripting\ScriptEngine.h">
@@ -1582,6 +1582,39 @@
     <ClInclude Include="src\Volcano\Renderer\RendererItem\CylinderMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\CapsuleMesh.h" />
     <ClInclude Include="src\Volcano\Scene\Prefab.h" />
+    <ClInclude Include="src\Volcano\Scripting\Registers\GameObjectRegister.h" />
+    <ClInclude Include="src\Volcano\Scene\PhysicsMaterial.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_World.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\Physic3D.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_WorldCallbacks.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_TimeStep.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_CollideSphere.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_SphereShape.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_BlockAllocator.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Body.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_BroadPhase.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Collision.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Common.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Contact.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_ContactManager.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_DistanceJoint.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Draw.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_DynamicTree.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Fixture.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_GrowableStack.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Island.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Joint.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Math.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Setting.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Shape.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_SphereContact.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_StackAllocator.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_ContactSolver.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_TimeOfImpact.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\b3_Distance.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_BoxShape.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_BoxSphereContact.h" />
+    <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_BoxContact.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1755,19 +1788,19 @@
     <ClCompile Include="src\Volcano\Scene\SceneSerializer.cpp">
       <Filter>src\Volcano\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Scripting\Component\CameraComponent.cpp">
+    <ClCompile Include="src\Volcano\Scripting\Registers\Component\CameraComponent.cpp">
       <Filter>src\Volcano\Scripting\Component</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Scripting\Component\Rigidbody2DComponent.cpp">
+    <ClCompile Include="src\Volcano\Scripting\Registers\Component\Rigidbody2DComponent.cpp">
       <Filter>src\Volcano\Scripting\Component</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Scripting\Component\TransformComponent.cpp">
+    <ClCompile Include="src\Volcano\Scripting\Registers\Component\TransformComponent.cpp">
       <Filter>src\Volcano\Scripting\Component</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Scripting\InputRegister.cpp">
+    <ClCompile Include="src\Volcano\Scripting\Registers\InputRegister.cpp">
       <Filter>src\Volcano\Scripting</Filter>
     </ClCompile>
-    <ClCompile Include="src\Volcano\Scripting\MathFRegister.cpp">
+    <ClCompile Include="src\Volcano\Scripting\Registers\MathFRegister.cpp">
       <Filter>src\Volcano\Scripting</Filter>
     </ClCompile>
     <ClCompile Include="src\Volcano\Scripting\ScriptEngine.cpp">
@@ -1786,5 +1819,33 @@
     <ClCompile Include="src\Volcano\Renderer\RendererItem\CylinderMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\CapsuleMesh.cpp" />
     <ClCompile Include="src\Volcano\Scene\Prefab.cpp" />
+    <ClCompile Include="src\Volcano\Scripting\Registers\GameObjectRegister.cpp" />
+    <ClCompile Include="src\Volcano\Scripting\Registers\Component\Component.cpp" />
+    <ClCompile Include="src\Volcano\Scene\PhysicsMaterial.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_World.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_SphereShape.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_BlockAllocator.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Body.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_BroadPhase.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Collision.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Contact.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_ContactManager.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_DistanceJoint.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_DynamicTree.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Fixture.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Island.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Joint.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Setting.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_SphereContact.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_StackAllocator.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_WorldCallbacks.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_ContactSolver.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_TimeOfImpact.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Distance.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_BoxShape.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_BoxSphereContact.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_CollideSphere.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_BoxContact.cpp" />
+    <ClCompile Include="src\Volcano\Physics\Physic\b3_Math.cpp" />
   </ItemGroup>
 </Project>

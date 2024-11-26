@@ -53,6 +53,7 @@ namespace Volcano {
 
 			if (!m_Minimized)
 			{
+				Input::UpdateClickMap();
 				for (Layer* layer : m_LayerStack)
 					layer->OnUpdate(m_Timestep);
 
@@ -83,6 +84,11 @@ namespace Volcano {
 		std::scoped_lock<std::mutex> lock(m_MainThreadQueueMutex);
 
 		m_MainThreadQueue.emplace_back(function);
+	}
+
+	void Application::ClearConsole()
+	{
+		m_Window->ClearConsole();
 	}
 
 	//事件处理

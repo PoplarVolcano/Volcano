@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace Volcano
 {
-    public class CameraComponent : Component
+    public class CameraComponent : Behaviour
     {
         enum ProjectionType { Prespective = 0, Orthographic = 1 };
         ProjectionType m_ProjectionType { get; set; }
