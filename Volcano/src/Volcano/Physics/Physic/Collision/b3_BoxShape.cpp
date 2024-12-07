@@ -286,11 +286,13 @@ namespace Volcano {
 		assert(volume > b3_Epsilon);
 		massData->center = m_position;
 
+		massData->I = (1.0f / 3.0f) * massData->mass * glm::mat3(
+		          m_size.y * m_size.y + m_size.z * m_size.z, 0.0f, 0.0f,
+			      0.0f,                                      m_size.x * m_size.x + m_size.z * m_size.z, 0.0f,
+			      0.0f,                                      0.0f,                                      m_size.x * m_size.x + m_size.y * m_size.y);
+
 		// Shift to center of mass then to original body origin.
-		float dSqr = glm::dot(massData->center, massData->center);
-		massData->I.x = massData->mass * ((1.0f / 3.0f) * (m_size.y * m_size.y + m_size.z * m_size.z) + dSqr);
-		massData->I.y = massData->mass * ((1.0f / 3.0f) * (m_size.x * m_size.x + m_size.z * m_size.z) + dSqr);
-		massData->I.z = massData->mass * ((1.0f / 3.0f) * (m_size.x * m_size.x + m_size.y * m_size.y) + dSqr);
+		massData->I = ComputeInertia(massData->I, massData->mass, massData->center);
 	}
 
 	bool b3_BoxShape::Set(const glm::vec3* size)

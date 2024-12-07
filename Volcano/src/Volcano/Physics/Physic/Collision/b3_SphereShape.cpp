@@ -74,8 +74,11 @@ namespace Volcano {
 
 	void b3_SphereShape::ComputeMass(b3_MassData* massData, float density) const
 	{
-		massData->mass = density * (4 / 3) * b3_PI * m_radius * m_radius * m_radius;
+		massData->mass = density * (4.0f / 3.0f) * b3_PI * m_radius * m_radius * m_radius;
 		massData->center = m_position;
-		massData->I = glm::vec3(massData->mass * (0.4f * m_radius * m_radius + glm::dot(m_position, m_position)));  // 平行轴定理：j' = j + md^2 球体j = 2/5 mr^2
+
+		massData->I = 0.4f * massData->mass * m_radius * m_radius * glm::mat3(1.0f);  // 平行轴定理：j' = j + md^2 球体j = 2/5 mr^2
+
+		massData->I = ComputeInertia(massData->I, massData->mass, massData->center);
 	}
 }

@@ -11,6 +11,7 @@
 #include "Volcano/Utils/YAMLUtils.h"
 #include "Volcano/Project/Project.h"
 #include "Volcano/Scene/Prefab.h"
+#include "Volcano/Renderer/RendererItem/QuadMesh.h"
 
 #include <fstream>
 #include <yaml-cpp/yaml.h>
@@ -452,6 +453,150 @@ namespace Volcano {
 			out << YAML::Key << "Path"    << YAML::Value << skyboxComponent.texture->GetPath();
 			out << YAML::EndMap; // SkyboxComponent
 		}
+
+		if (entity.HasComponent<ParticleSystemComponent>())
+		{
+			out << YAML::Key << "ParticleSystemComponent";
+			out << YAML::BeginMap; // ParticleSystemComponent
+
+			auto& particleSystemComponent = entity.GetComponent<ParticleSystemComponent>();
+
+			out << YAML::Key << "Enabled" << YAML::Value << particleSystemComponent.enabled;
+
+			auto& particleSystem = particleSystemComponent.particleSystem;
+
+			out << YAML::Key << "ParticleSystem";
+			out << YAML::BeginMap; // ParticleSystem
+			{
+				out << YAML::Key << "PlaybackSpeed"        << YAML::Value << particleSystem->playbackSpeed;
+				out << YAML::Key << "Duration"             << YAML::Value << particleSystem->duration;
+				out << YAML::Key << "Looping"              << YAML::Value << particleSystem->looping;
+				out << YAML::Key << "Prewarm"              << YAML::Value << particleSystem->prewarm;
+				out << YAML::Key << "StartDelay1"          << YAML::Value << particleSystem->startDelay1;
+				out << YAML::Key << "StartDelay2"          << YAML::Value << particleSystem->startDelay2;
+				out << YAML::Key << "StartDelayType"       << YAML::Value << (int)particleSystem->startDelayType;
+				out << YAML::Key << "StartLifetime1"       << YAML::Value << particleSystem->startLifetime1;
+				out << YAML::Key << "StartLifetime2"       << YAML::Value << particleSystem->startLifetime2;
+				out << YAML::Key << "StartLifetimeType"    << YAML::Value << (int)particleSystem->startLifetimeType;
+				out << YAML::Key << "StartSpeed1"          << YAML::Value << particleSystem->startSpeed1;
+				out << YAML::Key << "StartSpeed2"          << YAML::Value << particleSystem->startSpeed2;
+				out << YAML::Key << "StartSpeedType"       << YAML::Value << (int)particleSystem->startSpeedType;
+				out << YAML::Key << "ThreeDStartSize"      << YAML::Value << particleSystem->threeDStartSize;
+				out << YAML::Key << "StartSize1"           << YAML::Value << particleSystem->startSize1;
+				out << YAML::Key << "StartSize2"           << YAML::Value << particleSystem->startSize2;
+				out << YAML::Key << "ThreeDStartSize1"     << YAML::Value << particleSystem->threeDStartSize1;
+				out << YAML::Key << "ThreeDStartSize2"     << YAML::Value << particleSystem->threeDStartSize2;
+				out << YAML::Key << "StartSizeType"        << YAML::Value << (int)particleSystem->startSizeType;
+				out << YAML::Key << "ThreeDStartRotation"  << YAML::Value << particleSystem->threeDStartRotation;
+				out << YAML::Key << "StartRotation1"       << YAML::Value << particleSystem->startRotation1;
+				out << YAML::Key << "StartRotation2"       << YAML::Value << particleSystem->startRotation2;
+				out << YAML::Key << "ThreeDStartRotation1" << YAML::Value << particleSystem->threeDStartRotation1;
+				out << YAML::Key << "ThreeDStartRotation2" << YAML::Value << particleSystem->threeDStartRotation2;
+				out << YAML::Key << "StartRotationType"    << YAML::Value << (int)particleSystem->startRotationType;
+				out << YAML::Key << "FlipRotation"         << YAML::Value << particleSystem->flipRotation;
+				out << YAML::Key << "StartColor1"          << YAML::Value << particleSystem->startColor1;
+				out << YAML::Key << "StartColor2"          << YAML::Value << particleSystem->startColor2;
+				out << YAML::Key << "StartColorType"       << YAML::Value << (int)particleSystem->startColorType;
+				out << YAML::Key << "SimulationSpace"      << YAML::Value << (int)particleSystem->simulationSpace;
+				out << YAML::Key << "SimulationSpeed"      << YAML::Value << particleSystem->simulationSpeed;
+				out << YAML::Key << "PlayOnAwake"          << YAML::Value << particleSystem->playOnAwake;
+				out << YAML::Key << "MaxParticles"         << YAML::Value << particleSystem->maxParticles;
+				out << YAML::Key << "PlayOnAwake"          << YAML::Value << particleSystem->playOnAwake;
+
+				out << YAML::EndMap; // ParticleSystem
+
+			}
+
+			auto& emission = particleSystem->emission;
+
+			out << YAML::Key << "Emission";
+			out << YAML::BeginMap; // Emission
+			{
+				out << YAML::Key << "Enabled"              << YAML::Value << emission.enabled;
+				out << YAML::Key << "RateOverTime1"        << YAML::Value << emission.rateOverTime1;
+				out << YAML::Key << "RateOverTime2"        << YAML::Value << emission.rateOverTime2;
+				out << YAML::Key << "RateOverTimeType"     << YAML::Value << (int)emission.rateOverTimeType;
+				out << YAML::Key << "RateOverDistance1"    << YAML::Value << emission.rateOverDistance1;
+				out << YAML::Key << "RateOverDistance2"    << YAML::Value << emission.rateOverDistance2;
+				out << YAML::Key << "RateOverDistanceType" << YAML::Value << (int)emission.rateOverDistanceType;
+
+				auto& bursts = emission.bursts;
+				out << YAML::Key << "Bursts";
+				out << YAML::BeginSeq; // Bursts
+				{
+					for (int i = 0; i < bursts.size(); i++)
+					{
+						out << YAML::BeginMap;
+						{
+							out << YAML::Key << "Time"        << YAML::Value << bursts[i].time;
+							out << YAML::Key << "Count1"      << YAML::Value << bursts[i].count1;
+							out << YAML::Key << "Count2"      << YAML::Value << bursts[i].count2;
+							out << YAML::Key << "CountType"   << YAML::Value << (int)bursts[i].countType;
+							out << YAML::Key << "Cycles"      << YAML::Value << bursts[i].cycles;
+							out << YAML::Key << "CyclesType"  << YAML::Value << (int)bursts[i].cyclesType;
+							out << YAML::Key << "Interval"    << YAML::Value << bursts[i].interval;
+							out << YAML::Key << "Probability" << YAML::Value << bursts[i].probability;
+							out << YAML::BeginMap;
+						}
+					}
+					out << YAML::EndSeq; // Bursts
+				}
+				out << YAML::EndMap; // Emission
+			}
+
+			auto& shape = particleSystem->shape;
+
+			out << YAML::Key << "Shape";
+			out << YAML::BeginMap; // Shape
+			{
+				out << YAML::Key << "Enabled"         << YAML::Value << shape.enabled;
+				out << YAML::Key << "Shape"           << YAML::Value << (int)shape.shape;
+				out << YAML::Key << "Angle"           << YAML::Value << shape.angle;
+				out << YAML::Key << "Radius"          << YAML::Value << shape.radius;
+				out << YAML::Key << "RadiusThickness" << YAML::Value << shape.radiusThickness;
+				out << YAML::Key << "Arc"             << YAML::Value << shape.arc;
+				out << YAML::Key << "Length"          << YAML::Value << shape.length;
+				out << YAML::Key << "EmitFrom"        << YAML::Value << shape.emitFrom;
+				if(shape.texture != nullptr)
+					out << YAML::Key << "Texture" << YAML::Value << shape.texture->GetPath();
+				else
+					out << YAML::Key << "Texture" << YAML::Value << std::string();
+				out << YAML::Key << "Position"        << YAML::Value << shape.position;
+				out << YAML::Key << "Rotation"        << YAML::Value << shape.rotation;
+				out << YAML::Key << "Scale"           << YAML::Value << shape.scale;
+				out << YAML::EndMap; // Shape
+			}
+
+			auto& renderer = particleSystem->renderer;
+
+			out << YAML::Key << "Renderer";
+			out << YAML::BeginMap; // Renderer
+			{
+				out << YAML::Key << "Enabled"         << YAML::Value << renderer.enabled;
+				out << YAML::Key << "RenderMode"      << YAML::Value << (int)renderer.renderMode;
+				out << YAML::Key << "NormalDirection" << YAML::Value << renderer.normalDirection;
+				if (renderer.material != nullptr)
+					out << YAML::Key << "Material" << YAML::Value << renderer.material->GetPath();
+				else
+					out << YAML::Key << "Material" << YAML::Value << std::string();
+				out << YAML::Key << "Meshes";
+				out << YAML::BeginSeq; // Meshes
+				{
+					for (int i = 0; i < renderer.meshes.size(); i++)
+					{
+						out << YAML::BeginMap;
+						out << YAML::Key << "MeshType" << YAML::Value << (int)renderer.meshes[i].first;
+						out << YAML::EndMap;
+					}
+					out << YAML::EndSeq; // Meshes
+				}
+
+				out << YAML::EndMap; // Renderer
+			}
+
+			out << YAML::EndMap; // ParticleSystemComponent
+		}
+
 
 		if (!entity.GetEntityChildren().empty())
 		{
@@ -914,6 +1059,150 @@ namespace Volcano {
 			if (!path.empty())
 			{
 				sc.texture = TextureCube::Create(Project::GetAssetFileSystemPath(path).string());
+			}
+		}
+
+		auto particleSystemComponent = entity["ParticleSystemComponent"];
+		if (particleSystemComponent)
+		{
+			auto& psc = deserializedEntity->AddComponent<ParticleSystemComponent>();
+			psc.enabled = particleSystemComponent["Enabled"].as<bool>();
+
+			auto particleSystemYAML = particleSystemComponent["ParticleSystem"];
+			auto& particleSystem = psc.particleSystem;
+			particleSystem->playbackSpeed        = particleSystemYAML["PlaybackSpeed"].as<float>();       
+			particleSystem->duration             = particleSystemYAML["Duration"].as<float>();
+			particleSystem->looping              = particleSystemYAML["Looping"].as<bool>();
+			particleSystem->prewarm              = particleSystemYAML["Prewarm"].as<bool>();
+			particleSystem->startDelay1          = particleSystemYAML["StartDelay1"].as<float>();
+			particleSystem->startDelay2          = particleSystemYAML["StartDelay2"].as<float>();
+			particleSystem->startDelayType       = particleSystemYAML["StartDelayType"].as<int>();      
+			particleSystem->startLifetime1       = particleSystemYAML["StartLifetime1"].as<float>();      
+			particleSystem->startLifetime2       = particleSystemYAML["StartLifetime2"].as<float>();      
+			particleSystem->startLifetimeType    = particleSystemYAML["StartLifetimeType"].as<int>();
+			particleSystem->startSpeed1          = particleSystemYAML["StartSpeed1"].as<float>();         
+			particleSystem->startSpeed2          = particleSystemYAML["StartSpeed2"].as<float>();         
+			particleSystem->startSpeedType       = particleSystemYAML["StartSpeedType"].as<int>();
+			particleSystem->threeDStartSize      = particleSystemYAML["ThreeDStartSize"].as<bool>();
+			particleSystem->startSize1           = particleSystemYAML["StartSize1"].as<float>();
+			particleSystem->startSize2           = particleSystemYAML["StartSize2"].as<float>();
+			particleSystem->threeDStartSize1     = particleSystemYAML["ThreeDStartSize1"].as<glm::vec3>();
+			particleSystem->threeDStartSize2     = particleSystemYAML["ThreeDStartSize2"].as<glm::vec3>();
+			particleSystem->startSizeType        = particleSystemYAML["StartSizeType"].as<int>();
+			particleSystem->threeDStartRotation  = particleSystemYAML["ThreeDStartRotation"].as<bool>();
+			particleSystem->startRotation1       = particleSystemYAML["StartRotation1"].as<float>();      
+			particleSystem->startRotation2       = particleSystemYAML["StartRotation2"].as<float>();      
+			particleSystem->threeDStartRotation1 = particleSystemYAML["ThreeDStartRotation1"].as<glm::vec3>();
+			particleSystem->threeDStartRotation2 = particleSystemYAML["ThreeDStartRotation2"].as<glm::vec3>();
+			particleSystem->startRotationType    = particleSystemYAML["StartRotationType"].as<int>();
+			particleSystem->flipRotation         = particleSystemYAML["FlipRotation"].as<float>();
+			particleSystem->startColor1          = particleSystemYAML["StartColor1"].as<glm::vec4>();
+			particleSystem->startColor2          = particleSystemYAML["StartColor2"].as<glm::vec4>();
+			particleSystem->startColorType       = particleSystemYAML["StartColorType"].as<int>();
+			particleSystem->simulationSpace      = particleSystemYAML["SimulationSpace"].as<int>();
+			particleSystem->simulationSpeed      = particleSystemYAML["SimulationSpeed"].as<float>();
+			particleSystem->playOnAwake          = particleSystemYAML["PlayOnAwake"].as<bool>();
+			particleSystem->maxParticles         = particleSystemYAML["MaxParticles"].as<int>();
+			particleSystem->playOnAwake          = particleSystemYAML["PlayOnAwake"].as<bool>();
+
+			auto emissionYAML = particleSystemComponent["Emission"];
+			auto& emission = particleSystem->emission;
+
+			emission.enabled              = emissionYAML["Enabled"].as<bool>();             
+			emission.rateOverTime1        = emissionYAML["RateOverTime1"].as<float>();       
+			emission.rateOverTime2        = emissionYAML["RateOverTime2"].as<float>();       
+			emission.rateOverTimeType     = emissionYAML["RateOverTimeType"].as<int>();
+			emission.rateOverDistance1    = emissionYAML["RateOverDistance1"].as<float>();   
+			emission.rateOverDistance2    = emissionYAML["RateOverDistance2"].as<float>();   
+			emission.rateOverDistanceType = emissionYAML["RateOverDistanceType"].as<int>();
+			auto burstsYAML = emissionYAML["Bursts"];
+			for (auto burstYAML : burstsYAML)
+			{
+				ParticleSystem_Emission::Burst burst;
+				burst.time        = burstYAML["Time"].as<float>();       
+				burst.count1      = burstYAML["Count1"].as<float>();     
+				burst.count2      = burstYAML["Count2"].as<float>();     
+				burst.countType   = burstYAML["CountType"].as<int>();  
+				burst.cycles      = burstYAML["Cycles"].as<uint32_t>();     
+				burst.cyclesType  = burstYAML["CyclesType"].as<int>();
+				burst.interval    = burstYAML["Interval"].as<float>();   
+				burst.probability = burstYAML["Probability"].as<float>();
+				emission.bursts.push_back(burst);
+			}
+
+			auto shapeYAML = particleSystemComponent["Shape"];
+			auto& shape = particleSystem->shape;
+
+			shape.enabled         = shapeYAML["Enabled"].as<bool>();        
+			shape.shape           = (ParticleSystem_Shape::Shape)shapeYAML["Shape"].as<int>();
+			shape.angle           = shapeYAML["Angle"].as<float>();          
+			shape.radius          = shapeYAML["Radius"].as<float>();         
+			shape.radiusThickness = shapeYAML["RadiusThickness"].as<float>();
+			shape.arc             = shapeYAML["Arc"].as<float>();            
+			shape.length          = shapeYAML["Length"].as<float>();         
+			shape.emitFrom        = shapeYAML["EmitFrom"].as<bool>();
+			std::string shapeTexturePath = shapeYAML["Texture"].as<std::string>();
+			if (shapeTexturePath != std::string())
+				shape.texture = Texture2D::Create(Project::GetAssetFileSystemPath(shapeTexturePath).string());
+			else
+				shape.texture = nullptr;
+			shape.position        = shapeYAML["Position"].as<glm::vec3>();       
+			shape.rotation        = shapeYAML["Rotation"].as<glm::vec3>();
+			shape.scale           = shapeYAML["Scale"].as<glm::vec3>();
+
+
+			auto rendererYAML = particleSystemComponent["Renderer"];
+			auto& renderer = particleSystem->renderer;
+			renderer.enabled         = rendererYAML["Enabled"].as<bool>();        
+			renderer.renderMode      = (ParticleSystem_Renderer::RenderMode)rendererYAML["RenderMode"].as<int>();
+			renderer.normalDirection = rendererYAML["NormalDirection"].as<float>();
+			std::string rendererMaterialPath = rendererYAML["Material"].as<std::string>();
+			if (rendererMaterialPath != std::string())
+				renderer.material = Texture2D::Create(Project::GetAssetFileSystemPath(rendererMaterialPath).string());
+			else
+				renderer.material = nullptr;
+			auto meshesYAML = rendererYAML["Meshes"];
+			for (auto meshYAML : meshesYAML)
+			{
+				Ref<Mesh> mesh;
+				ParticleSystem_Renderer::MeshType type = (ParticleSystem_Renderer::MeshType)meshYAML["MeshType"].as<int>();
+				switch (type)
+				{
+				case ParticleSystem_Renderer::MeshType::None:
+					mesh = nullptr;
+					break;
+
+				case ParticleSystem_Renderer::MeshType::Cube:
+					mesh = CubeMesh::CloneRef();
+					break;
+					
+				case ParticleSystem_Renderer::MeshType::Capsule:
+					mesh = CapsuleMesh::CloneRef();
+					break;
+					
+				case ParticleSystem_Renderer::MeshType::Cylinder:
+					mesh = CylinderMesh::CloneRef();
+					break;
+					
+				case ParticleSystem_Renderer::MeshType::Plane:
+					mesh = PlaneMesh::CloneRef();
+					break;
+					
+				case ParticleSystem_Renderer::MeshType::Sphere:
+					mesh = SphereMesh::CloneRef();
+					break;
+					
+				case ParticleSystem_Renderer::MeshType::Quad:
+					mesh = QuadMesh::CloneRef();
+					break;
+
+				default:
+					VOL_ASSERT(false, "Deserialize.ParticleSystemComponent.Renderer.MeshType");
+					break;
+				}
+				if(mesh != nullptr)
+					mesh->ResetMaxMeshes(particleSystem->maxParticles);
+				renderer.meshes.push_back({ type, mesh });
 			}
 		}
 

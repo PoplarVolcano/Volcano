@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Volcano.h"
-#include <ParticleSystem.h>
+//#include <ParticleSystem.h>
 #include <Panels/SceneHierarchyPanel.h>
 #include <Panels/ContentBrowserPanel.h>
 #include "Volcano/Renderer/EditorCamera.h"
@@ -91,8 +91,8 @@ namespace Volcano {
 		};
 		std::vector<ProfileResult> m_ProfileResults;
 
-		ParticleProps m_Particle;
-		ParticleSystem m_ParticleSystem;
+		//ParticleProps m_Particle;
+		//ParticleSystem m_ParticleSystem;
 
 		uint32_t m_MapWidth, m_MapHeight;
 		std::unordered_map<char, Ref<SubTexture2D>> s_TextureMap;

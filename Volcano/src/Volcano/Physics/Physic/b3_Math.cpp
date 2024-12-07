@@ -7,7 +7,22 @@
 
 float glm::dot(const glm::vec3& vec)
 {
-	return glm::dot(vec, vec);
+	return vec.x + vec.y + vec.z;
+}
+
+bool glm::operator<(const glm::vec3& v1, const glm::vec3& v2)
+{
+	if (v1.x < v2.x && v1.y < v2.y && v1.z < v2.z)
+		return true;
+	return false;
+}
+bool glm::operator>(const glm::mat3& mat, const float& f)
+{
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			if (mat[i][j] <= f)
+				return false;
+	return true;
 }
 
 namespace Volcano {
@@ -60,6 +75,11 @@ namespace Volcano {
 		return glm::quat({ x, y, z });
 	}
 
+	glm::quat b3_Rotation::GetInvQuat() const
+	{
+		return glm::quat({ -x, -y, -z });
+	}
+
 	/*
 	glm::quat b3_Rotation::GetRotationMatrix() const
 	{
@@ -99,7 +119,7 @@ namespace Volcano {
 
 	glm::vec3 b3_MultiplyT(const b3_Rotation& q, const glm::vec3& v)
 	{
-		return (-q.GetQuat()) * v;
+		return q.GetInvQuat() * v;
 	}
 
 	b3_Rotation b3_Multiply(const b3_Rotation& q, const b3_Rotation& r)
@@ -121,7 +141,7 @@ namespace Volcano {
 	}
 	glm::vec3 b3_MultiplyT(const b3_Transform& T, const glm::vec3& v)
 	{
-		return (-T.rotation.GetQuat()) * (v - T.position);
+		return T.rotation.GetInvQuat() * (v - T.position);
 	}
 	b3_Transform b3_Multiply(const b3_Transform& A, const b3_Transform& B)
 	{
@@ -345,4 +365,29 @@ namespace Volcano {
 		return inv;
 	}
 
+	float ComputeInertia(const glm::mat3& I, const glm::vec3& p, const glm::vec3& n)
+	{
+		// 刚体在Q点及Qxyz坐标系的惯性张量为I，取一轴QR，n为沿QR方向的单位向量，刚体在QR上的转动惯量：
+		// IQR = f(n×r)^2 dm
+		//     = f[(nyrz-nzry)^2 + (nxrz-nzrx)^2 + (nxry-nyrx)^2]dm
+		//     = nx^2 f(ry^2+rz^2)dm + ny^2 f(rx^2+rz^2)dm + nz^2 f(rx^2+ry^2)dm - 2nxny f(rxry)dm - 2nxnz f(rxrz)dm - 2nynz f(ryrz)dm
+		//     = nx^2 Ixx + ny^2 Iyy + nz^2 Izz + 2nxny Ixy + 2nxnz Ixz + 2nynz Iyz
+		return n.x * n.x * I[0][0] + n.y * n.y * I[1][1] + n.z * n.z * I[2][2] + 2 * n.x * n.y * I[0][1] + 2 * n.x * n.z * I[0][2] + 2 * n.y * n.z * I[1][2];
+	}
+
+	glm::mat3 ComputeInertia(const glm::mat3& I, const float& m, const glm::vec3& p)
+	{
+		glm::mat3 newI;
+
+		newI[0][0] = I[0][0] + m * (p.y * p.y + p.z * p.z);
+		newI[0][1] = I[0][1] - m * (p.x * p.y);
+		newI[0][2] = I[0][2] - m * (p.x * p.z);
+		newI[1][0] = newI[0][1];
+		newI[1][1] = I[1][1] + m * (p.x * p.x + p.z * p.z);
+		newI[1][2] = I[1][2] - m * (p.y * p.z);
+		newI[2][0] = newI[0][2];
+		newI[2][1] = newI[1][2];
+		newI[2][2] = I[2][2] + m * (p.x * p.x + p.y * p.y);
+		return newI;
+	}
 }

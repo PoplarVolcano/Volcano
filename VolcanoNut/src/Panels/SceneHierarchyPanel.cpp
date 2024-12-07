@@ -172,18 +172,6 @@ namespace Volcano {
 				VOL_CORE_ASSERT(entityIDMap.find(*entityID) != entityIDMap.end());
 				Ref<Entity> srcEntity = entityIDMap.at(*entityID);
 				Scene::UpdateEntityParent(srcEntity, entity.get());
-				/*
-				Scene* scene = entity->GetScene();
-				auto& entityIDMap = m_Context->GetEntityIDMap();
-				VOL_CORE_ASSERT(entityIDMap.find(*entityID) != entityIDMap.end());
-				Ref<Entity> srcEntity = entityIDMap.at(*entityID);
-				Entity* entityParent = srcEntity->GetEntityParent();
-				if(entityParent != nullptr)
-					entityParent->GetEntityChildren().erase(std::find(entityParent->GetEntityChildren().begin(), entityParent->GetEntityChildren().end(), srcEntity));
-				else
-					scene->GetEntityList().erase(std::find(scene->GetEntityList().begin(), scene->GetEntityList().end(), srcEntity));
-				entity->AddEntityChild(srcEntity);
-				*/
 			}
 
 			// 在结点下创建一个Prefab实体
@@ -212,6 +200,67 @@ namespace Volcano {
 		if (ImGui::IsMouseReleased(0) && ImGui::IsItemHovered())//ImGui::IsItemClicked())
 		{
 			m_SelectionContext = entity;
+		}
+
+
+		if (m_SelectionContext == entity && entity->HasComponent<ParticleSystemComponent>() && entity->GetComponent<ParticleSystemComponent>().enabled)
+		{
+			auto& particleSystem = entity->GetComponent<ParticleSystemComponent>().particleSystem;
+			ImGui::Begin("Particles");
+
+			if (particleSystem->isPlaying)
+			{
+				if (ImGui::Button("Pause"))
+				{
+					particleSystem->Pause();
+				}
+			}
+			else
+			{
+				if (ImGui::Button("Play"))
+				{
+					particleSystem->Play();
+				}
+			}
+			ImGui::SameLine();
+
+			if (ImGui::Button("Restart"))
+			{
+				particleSystem->Restart();
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Stop"))
+			{
+				particleSystem->Stop();
+			}
+
+
+			float columnWidth = 175.0f;
+
+			ImGui::Columns(2);
+			ImGui::SetColumnWidth(0, columnWidth);
+			ImGui::Text("Playback Speed");
+			ImGui::NextColumn();
+			ImGui::InputFloat("##playbackSpeed", &particleSystem->playbackSpeed);
+			ImGui::EndColumns();
+
+			ImGui::Columns(2);
+			ImGui::SetColumnWidth(0, columnWidth);
+			ImGui::Text("Playback Time");
+			ImGui::NextColumn();
+			ImGui::InputFloat("##playbackTime", &particleSystem->playbackTime);
+			ImGui::EndColumns();
+
+			ImGui::Columns(2);
+			ImGui::SetColumnWidth(0, columnWidth);
+			ImGui::Text("Particles");
+			ImGui::NextColumn();
+			ImGui::Text(std::to_string(particleSystem->particleCount).c_str());
+			ImGui::EndColumns();
+
+			ImGui::End();
 		}
 
 		bool entityDeleted = false;
@@ -2040,6 +2089,467 @@ namespace Volcano {
 
 			});
 
+		DrawComponent<ParticleSystemComponent>("Particle System", entity, [](ParticleSystemComponent& component)
+			{
+				float columnWidth = 175.0f;
+
+				auto& particleSystem = component.particleSystem;
+
+				ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth;
+
+				if (ImGui::TreeNodeEx("##ParticleSystem", flags, "Particle System"))
+				{
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Duration");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##duration", &particleSystem->duration, 1.0f, 0.05f, 100000.0f);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Looping");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##looping", &particleSystem->looping);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Prewarm");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##prewarm", &particleSystem->prewarm);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Start Delay");
+					ImGui::NextColumn();
+					if (particleSystem->startDelayType == 0)
+					{
+						if (ImGui::DragFloat("##startDelay", &particleSystem->startDelay1, 0.1f, 0.0f, FLT_MAX))
+							particleSystem->startDelay2 = particleSystem->startDelay1;
+					}
+					else if (particleSystem->startDelayType == 1)
+					{
+						ImGui::DragFloat("##startDelay1", &particleSystem->startDelay1, 0.1f, 0.0f, FLT_MAX);
+						ImGui::DragFloat("##startDelay2", &particleSystem->startDelay2, 0.1f, 0.0f, FLT_MAX);
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Start Lifetime");
+					ImGui::NextColumn();
+					if (particleSystem->startLifetimeType == 0)
+					{
+						if (ImGui::DragFloat("##startLifetime", &particleSystem->startLifetime1, 0.1f, 0.0001f, FLT_MAX))
+							particleSystem->startLifetime2 = particleSystem->startLifetime1;
+					}
+					else if (particleSystem->startLifetimeType == 2)
+					{
+						ImGui::DragFloat("##startLifetime1", &particleSystem->startLifetime1, 0.1f, 0.0001f, FLT_MAX);
+						ImGui::DragFloat("##startLifetime2", &particleSystem->startLifetime2, 0.1f, 0.0001f, FLT_MAX);
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Start Speed");
+					ImGui::NextColumn();
+					if (particleSystem->startSpeedType == 0)
+					{
+						if (ImGui::DragFloat("##startSpeed", &particleSystem->startSpeed1))
+							particleSystem->startSpeed2 = particleSystem->startSpeed1;
+					}
+					else if (particleSystem->startSpeedType == 2)
+					{
+						ImGui::DragFloat("##startSpeed1", &particleSystem->startSpeed1);
+						ImGui::DragFloat("##startSpeed2", &particleSystem->startSpeed2);
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("3D Start Size");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##threeDStartSize", &particleSystem->threeDStartSize);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("StartSize");
+					ImGui::NextColumn();
+					if (particleSystem->startSizeType == 0)
+					{
+						if (ImGui::DragFloat("##startSize", &particleSystem->startSize1, 0.1f, 0.0f, FLT_MAX))
+							particleSystem->startSize2 = particleSystem->startSize1;
+					}
+					else if (particleSystem->startSizeType == 2)
+					{
+						ImGui::DragFloat("##startSize1", &particleSystem->startSize1, 0.1f, 0.0f, FLT_MAX);
+						ImGui::DragFloat("##startSize2", &particleSystem->startSize2, 0.1f, 0.0f, FLT_MAX);
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("3D Start Rotation");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##threeDStartRotation", &particleSystem->threeDStartRotation);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Start Rotation");
+					ImGui::NextColumn();
+					if (particleSystem->startSizeType == 0)
+					{
+						if (ImGui::DragFloat("##startRotation", &particleSystem->startRotation1))
+							particleSystem->startRotation2 = particleSystem->startRotation1;
+					}
+					else if (particleSystem->startSizeType == 2)
+					{
+						ImGui::DragFloat("##startRotation1", &particleSystem->startRotation1);
+						ImGui::DragFloat("##startRotation2", &particleSystem->startRotation2);
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Flip Rotation");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##flipRotation", &particleSystem->flipRotation, 0.1f, 0.0f, 1.0f);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Start Color");
+					ImGui::NextColumn();
+					if (particleSystem->startColorType == 0)
+					{
+						if (ImGui::ColorEdit4("##startColor", glm::value_ptr(particleSystem->startColor1)))
+							particleSystem->startColor2 = particleSystem->startColor1;
+					}
+					else if (particleSystem->startColorType == 2)
+					{
+						ImGui::ColorEdit4("##startColor1", glm::value_ptr(particleSystem->startColor1));
+						ImGui::ColorEdit4("##startColor2", glm::value_ptr(particleSystem->startColor2));
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Simulation Space");
+					ImGui::NextColumn();
+					const char* simulationSpace[] = { "Local", "World", "Custom" };
+					VOL_ASSERT(particleSystem->simulationSpace < 3);
+					if (ImGui::BeginCombo("##simulationSpace", simulationSpace[particleSystem->simulationSpace]))
+					{
+						for (int i = 0; i < 3; i++)
+						{
+							bool isSelected = particleSystem->simulationSpace == i;
+							if (ImGui::Selectable(simulationSpace[i], isSelected))
+							{
+								if (!isSelected)
+								{
+									particleSystem->simulationSpace = i;
+								}
+							}
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::EndColumns();
+
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Simulation Speed");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##simulationSpeed", &particleSystem->simulationSpeed, 1.0f, 0.0f, 100.0f);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Play On Awake");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##playOnAwake", &particleSystem->playOnAwake);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Max Particles");
+					ImGui::NextColumn();
+					ImGui::DragInt("##maxParticles", &particleSystem->maxParticles, 1, 0, INT_FAST16_MAX);
+					ImGui::EndColumns();
+
+
+					ImGui::TreePop();
+				}
+
+				// 若是被点击标记为选中状态|有下一级
+
+				if (ImGui::TreeNodeEx("##Emission", flags, "Emission"))
+				{
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Enable");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##enable", &particleSystem->emission.enabled);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Rate Over Time");
+					ImGui::NextColumn();
+					if (particleSystem->emission.rateOverTimeType == 0)
+					{
+						if (ImGui::DragFloat("##rateOverTime", &particleSystem->emission.rateOverTime1))
+							particleSystem->emission.rateOverTime2 = particleSystem->emission.rateOverTime1;
+					}
+					else if (particleSystem->emission.rateOverDistanceType == 2)
+					{
+						ImGui::DragFloat("##rateOverTime1", &particleSystem->emission.rateOverTime1);
+						ImGui::DragFloat("##rateOverTime2", &particleSystem->emission.rateOverTime2);
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Rate Over Distance");
+					ImGui::NextColumn();
+					if (particleSystem->emission.rateOverDistanceType == 0)
+					{
+						if (ImGui::DragFloat("##rateOverDistance", &particleSystem->emission.rateOverDistance1))
+							particleSystem->emission.rateOverDistance2 = particleSystem->emission.rateOverDistance1;
+					}
+					else if (particleSystem->emission.rateOverDistanceType == 2)
+					{
+						ImGui::DragFloat("##rateOverDistance1", &particleSystem->emission.rateOverDistance1);
+						ImGui::DragFloat("##rateOverDistance2", &particleSystem->emission.rateOverDistance2);
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::TreePop();
+				}
+
+
+				if (ImGui::TreeNodeEx("##Shape", flags, "Shape"))
+				{
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Enable");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##enable", &particleSystem->shape.enabled);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Shape");
+					ImGui::NextColumn();
+					const char* shape[] = { 
+						"Sphere", "Hemisphere", "Cone", "Donut", "Box", "Mesh", "MeshRenderer", 
+						"SkinnedMeshRenderer", "Sprite", "SpriteRenderer", "Circle", "Edge", "Rectangle" };
+					if (ImGui::BeginCombo("##shape", shape[(int)particleSystem->shape.shape]))
+					{
+						for (int i = 0; i < 13; i++)
+						{
+							bool isSelected = (int)particleSystem->shape.shape == i;
+							if (ImGui::Selectable(shape[i], isSelected))
+							{
+								if (!isSelected)
+								{
+									particleSystem->shape.shape = (ParticleSystem_Shape::Shape)i;
+								}
+							}
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Angle");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##angle", &particleSystem->shape.angle, 0.1f, 0.0f, 90.0f);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Radius");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##radius", &particleSystem->shape.radius, 0.1f, 0.0001f, FLT_MAX);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("RadiusThickness");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##radiusThickness", &particleSystem->shape.radiusThickness, 0.01f, 0.0f, 1.0f);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Arc");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##arc", &particleSystem->shape.arc, 0.1f, 0.0f, 360.0f);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Length");
+					ImGui::NextColumn();
+					ImGui::DragFloat("##length", &particleSystem->shape.length, 0.1f, 0.0f, FLT_MAX);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Emit From");
+					ImGui::NextColumn();
+					const char* emitFrom[] = { "Base", "Valume" };
+					if (ImGui::BeginCombo("##emitFrom", emitFrom[(int)particleSystem->shape.emitFrom]))
+					{
+						for (int i = 0; i < 2; i++)
+						{
+							bool isSelected = (int)particleSystem->shape.emitFrom == i;
+							if (ImGui::Selectable(emitFrom[i], isSelected))
+							{
+								if (!isSelected)
+								{
+									particleSystem->shape.emitFrom = i;
+								}
+							}
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Texture");
+					ImGui::NextColumn();
+
+					ImGui::Button("Texture", ImVec2(100.0f, 100.0f));
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+						{
+							const wchar_t* path = (const wchar_t*)payload->Data;
+							std::filesystem::path texturePath(path);
+
+							if (texturePath.extension() == ".png")
+								particleSystem->shape.texture = Texture2D::Create(texturePath.string());
+						}
+						ImGui::EndDragDropTarget();
+					}
+					ImGui::EndColumns();
+
+
+
+					ImGui::TreePop();
+				}
+
+
+				if (ImGui::TreeNodeEx("##Renderer", flags, "Renderer"))
+				{
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Enable");
+					ImGui::NextColumn();
+					ImGui::Checkbox("##enable", &particleSystem->renderer.enabled);
+					ImGui::EndColumns();
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Render Mode");
+					ImGui::NextColumn();
+					const char* renderMode[] = {
+						"Billboard", "StrectchedBillboard", "HorizontalBillboard", "VerticalBillboard", "Mesh", "None" };
+					if (ImGui::BeginCombo("##renderMode", renderMode[(int)particleSystem->renderer.renderMode]))
+					{
+						for (int i = 0; i < 6; i++)
+						{
+							bool isSelected = (int)particleSystem->renderer.renderMode == i;
+							if (ImGui::Selectable(renderMode[i], isSelected))
+							{
+								if (!isSelected)
+								{
+									particleSystem->renderer.renderMode = (ParticleSystem_Renderer::RenderMode)i;
+								}
+							}
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+						ImGui::EndCombo();
+					}
+					ImGui::EndColumns();
+
+
+
+					ImGui::Columns(2);
+					ImGui::SetColumnWidth(0, columnWidth);
+					ImGui::Text("Material");
+					ImGui::NextColumn();
+
+					ImGui::Button("Material", ImVec2(100.0f, 100.0f));
+					if (ImGui::BeginDragDropTarget())
+					{
+						if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM"))
+						{
+							const wchar_t* path = (const wchar_t*)payload->Data;
+							std::filesystem::path texturePath(path);
+
+							if (texturePath.extension() == ".png")
+								particleSystem->renderer.material = Texture2D::Create(texturePath.string());
+						}
+						ImGui::EndDragDropTarget();
+					}
+					ImGui::EndColumns();
+
+
+
+					ImGui::TreePop();
+				}
+
+				/*
+
+				renderer.normalDirection = 1.0f;
+				*/
+
+			});
+		
 		ImGui::Separator();
 
 		ImGui::Button("LoadModel");
@@ -2100,6 +2610,8 @@ namespace Volcano {
 			DisplayAddComponentEntry<BoxColliderComponent>("Box Collider");
 			DisplayAddComponentEntry<SphereColliderComponent>("Sphere Collider");
 			DisplayAddComponentEntry<SkyboxComponent>("Skybox");
+			DisplayAddComponentEntry<ParticleSystemComponent>("Particle System");
+			
 
 			ImGui::EndPopup();
 		}

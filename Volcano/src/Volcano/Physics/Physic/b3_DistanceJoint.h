@@ -126,8 +126,8 @@ namespace Volcano {
 		float m_currentLength;
 		float m_invMassA;
 		float m_invMassB;
-		glm::vec3 m_invIA;
-		glm::vec3 m_invIB;
+		float m_invIA;
+		float m_invIB;
 		float m_softMass;
 		float m_mass;
 	};

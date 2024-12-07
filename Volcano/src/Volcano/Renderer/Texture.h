@@ -47,6 +47,7 @@ namespace Volcano {
 		static void Bind(uint32_t m_RendererID, uint32_t slot);
 		static void ClearTextureSlot(uint32_t i);
 
+		// Ïà¶ÔÂ·¾¶
 		virtual const std::string& GetPath() const = 0;
 		virtual uint32_t GetWidth() const = 0;
 		virtual uint32_t GetHeight() const = 0;

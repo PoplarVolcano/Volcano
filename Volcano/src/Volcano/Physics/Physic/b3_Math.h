@@ -2,10 +2,13 @@
 
 #include "b3_Common.h"
 #include "glm/glm.hpp"
+#include "glm/matrix.hpp"
 
 namespace glm {
 
 	float dot(const glm::vec3& vec);
+	bool operator<(const glm::vec3& v1, const glm::vec3& v2);
+	bool operator>(const glm::mat3& mat, const float& f);
 }
 
 namespace Volcano {
@@ -22,6 +25,7 @@ namespace Volcano {
 
 		glm::vec3 GetRotation() const;
 		glm::quat GetQuat() const;
+		glm::quat GetInvQuat() const;
 
 
 		/*
@@ -120,4 +124,12 @@ namespace Volcano {
 
 	mat inverse(const mat& a);
 
+
+	// 计算转动惯量
+	// @param I 惯性张量.
+	// @param p 转动轴起点.
+	// @param n 转动轴方向向量(单位向量).
+	float ComputeInertia(const glm::mat3& I, const glm::vec3& p, const glm::vec3& n);
+
+	glm::mat3 ComputeInertia(const glm::mat3& I, const float& m, const glm::vec3& p);
 }

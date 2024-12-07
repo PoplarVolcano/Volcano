@@ -116,8 +116,8 @@ namespace Volcano {
 
 		m_mass = 0.0f;
 		m_invMass = 0.0f;
-		m_I = { 0.0f, 0.0f, 0.0f };
-		m_invI = { 0.0f, 0.0f, 0.0f };
+		m_I = glm::mat3(0.0f);
+		m_invI = glm::mat3(0.0f);
 		m_userData = bd->userData;
 		m_fixtureList = nullptr;
 		m_fixtureCount = 0;
@@ -268,8 +268,8 @@ namespace Volcano {
 		}
 
 		m_invMass = 0.0f;
-		m_I = { 0.0f, 0.0f, 0.0f };
-		m_invI = { 0.0f, 0.0f, 0.0f };
+		m_I = glm::mat3(0.0f);
+		m_invI = glm::mat3(0.0f);
 
 		m_mass = massData->mass;
 		if (m_mass <= 0.0f)
@@ -279,11 +279,12 @@ namespace Volcano {
 
 		m_invMass = 1.0f / m_mass;
 
-		if (massData->I.x > 0.0f && massData->I.y > 0.0f && massData->I.z > 0.0f && (m_flags & b3_Body::e_fixedRotationFlag) == 0)
+		//if (massData->I.x > 0.0f && massData->I.y > 0.0f && massData->I.z > 0.0f && (m_flags & b3_Body::e_fixedRotationFlag) == 0)
+		if ((m_flags & b3_Body::e_fixedRotationFlag) == 0)
 		{
-			m_I = massData->I - m_mass * glm::dot(massData->center, massData->center);
-			assert(m_I.x > 0.0f && m_I.y > 0.0f && m_I.z > 0.0f);
-			m_invI = 1.0f / m_I;
+			// 获取物体在质心处的惯性张量
+			m_I = ComputeInertia(massData->I, m_mass, -massData->center);
+			m_invI = glm::inverse(m_I);
 		}
 
 		// 移动质心
@@ -300,8 +301,8 @@ namespace Volcano {
 		// 根据shapes计算质量数据。每种shapes都有自己的密度。
 		m_mass = 0.0f;
 		m_invMass = 0.0f;
-		m_I = { 0.0f, 0.0f, 0.0f };
-		m_invI = { 0.0f, 0.0f, 0.0f };
+		m_I = glm::mat3(0.0f);
+		m_invI = glm::mat3(0.0f);
 		m_sweep.localCenter = { 0.0f, 0.0f, 0.0f };
 
 		// 静态和运动body的质量均为零。
@@ -316,7 +317,11 @@ namespace Volcano {
 		assert(m_type == b3_BodyType::e_dynamicBody);
 
 		// 对所有fixtures累积质量
+		// 组合刚体: 先计算出组合刚体的重心点. 再计算出每个子刚体在自己空间坐标系下的惯性张量,
+		//   通过惯性张量的旋转和平行轴定理,就可以算出子刚体在组合刚体的坐标系下相对重心点的惯性张量. 
+		//   将所有子刚体的惯性张量各个分量求和,得到组合刚体的惯性张量.
 		glm::vec3 localCenter = { 0.0f, 0.0f, 0.0f };
+		std::vector<b3_MassData> I;
 		for (b3_Fixture* f = m_fixtureList; f; f = f->m_next)
 		{
 			if (f->m_density == 0.0f)
@@ -328,9 +333,9 @@ namespace Volcano {
 			f->GetMassData(&massData);
 			m_mass += massData.mass;
 			localCenter += massData.mass * massData.center;  // 复合物体的质心 center = (f1.mass * f1.center + f2.mass * f2.center) / (f1.mass + f2.mass)
-			// 复合物体相对某点的的转动惯量为每个物体想多某点的转动惯量
+			// 复合物体相对某点的的转动惯量为每个物体相对某点的转动惯量
 			// GetMassData中获取的转动惯量默认以0点为轴，得到以0点为轴的符合物体的转动惯量I = f1.I + f2.I
-			m_I += massData.I;                               
+			I.push_back(massData);
 		}
 
 		// 计算质心
@@ -340,18 +345,18 @@ namespace Volcano {
 			localCenter *= m_invMass;
 		}
 
-		if (m_I.x > 0.0f && m_I.y > 0.0f && m_I.z > 0.0f && (m_flags & e_fixedRotationFlag) == 0)
+		if ((m_flags & e_fixedRotationFlag) == 0)
 		{
-			// 使惯性以质心为中心。平行轴定理，相对体外某点的转动惯量J' = J + md^2  J：相对质心的转动惯量
-			m_I -= m_mass * glm::dot(localCenter, localCenter);
-			assert(m_I.x > 0.0f && m_I.y > 0.0f && m_I.z > 0.0f);
-			m_invI = 1.0f / m_I;
+			// 使惯性以质心为中心。
+			for (int i = 0; i < I.size(); i++)
+				m_I += ComputeInertia(I[i].I, I[i].mass, localCenter - I[i].center);
+			m_invI = glm::inverse(m_I);
 
 		}
 		else
 		{
-			m_I = { 0.0f, 0.0f, 0.0f };
-			m_invI = { 0.0f, 0.0f, 0.0f };
+			m_I = glm::mat3(0.0f);
+			m_invI = glm::mat3(0.0f);
 		}
 
 		// 移动质心

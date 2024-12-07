@@ -2,12 +2,12 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/quaternion.hpp>
 #include "Volcano/Renderer/Texture.h"
 #include "Volcano/Core/UUID.h"
 #include "Volcano/Scene/SceneCamera.h"
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/quaternion.hpp>
 #include "Volcano/Renderer/RendererItem/Mesh.h"
 #include "Volcano/Renderer/RendererItem/CubeMesh.h"
 #include "Volcano/Renderer/RendererItem/SphereMesh.h"
@@ -18,6 +18,7 @@
 #include "Volcano/Renderer/RendererItem/CapsuleMesh.h"
 
 #include "Volcano/Scene/PhysicsMaterial.h"
+#include "Volcano/ParticleSystem/ParticleSystem.h"
 
 namespace Volcano {
 
@@ -412,6 +413,15 @@ namespace Volcano {
 		SphereColliderComponent(const SphereColliderComponent&) = default;
 	};
 
+	struct ParticleSystemComponent
+	{
+		bool enabled = true;
+		Ref<ParticleSystem> particleSystem;
+
+		ParticleSystemComponent();
+		ParticleSystemComponent(const ParticleSystemComponent&) = default;
+	};
+
 
 
 
@@ -439,6 +449,7 @@ namespace Volcano {
 								CircleCollider2DComponent,
 								RigidbodyComponent, 
 								BoxColliderComponent, 
-								SphereColliderComponent>;
+								SphereColliderComponent,
+	                            ParticleSystemComponent>;
 
 }

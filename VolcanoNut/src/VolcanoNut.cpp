@@ -1,7 +1,7 @@
 #include "Volcano.h"
 #include "Volcano/EntryPoint.h"
 
-#include "EditorLayer.h"
+//#include "EditorLayer.h"
 #include "ExampleLayer.h"
 
 class VolcanoNut : public Volcano::Application

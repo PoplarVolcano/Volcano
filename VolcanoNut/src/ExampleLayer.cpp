@@ -678,7 +678,7 @@ namespace Volcano{
         ImGui::Checkbox("Show physics colliders", &m_ShowPhysicsColliders);
         ImGui::End();
 
-        //ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
 
         UI_Toolbar();
 

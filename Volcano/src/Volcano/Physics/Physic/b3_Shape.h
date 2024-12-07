@@ -12,7 +12,7 @@ namespace Volcano {
 		
 		float mass;       // shape的质量，通常以千克为单位。 The mass of the shape, usually in kilograms.
 		glm::vec3 center; // shape质心相对于shape原点的位置。The position of the shape's centroid relative to the shape's origin.
-		glm::vec3 I;      // shape围绕局部原点的转动惯量。   The rotational inertia of the shape about the local origin.
+		glm::mat3 I;      // shape惯性张量
 	};
 
 	// shape用于碰撞检测。在b3_World中用于模拟的shape是在创建b3_Fixture时自动创建的。shape可以封装(encapsulate)一个或多个子shape。

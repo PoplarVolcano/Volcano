@@ -96,8 +96,12 @@ namespace Volcano {
 		m_localCenterB = m_bodyB->m_sweep.localCenter;
 		m_invMassA = m_bodyA->m_invMass;
 		m_invMassB = m_bodyB->m_invMass;
-		m_invIA = m_bodyA->m_invI;
-		m_invIB = m_bodyB->m_invI;
+		float I = ComputeInertia(m_bodyA->m_I, m_bodyA->GetLocalCenter(), glm::normalize(m_bodyA->GetRotation()));
+		if (I != 0.0f)
+			m_invIA = 1.0f / I;
+		I = ComputeInertia(m_bodyB->m_I, m_bodyB->GetLocalCenter(), glm::normalize(m_bodyB->GetRotation()));
+		if (I != 0.0f)
+			m_invIB = 1.0f / I;
 
 		glm::vec3 positionA        = data.positions[m_indexA].position;
 		glm::vec3 rotationA        = data.positions[m_indexA].rotation;
@@ -172,9 +176,9 @@ namespace Volcano {
 		//               = (n¡Ár)^2
 		// JM^-1J^T = ma^-1 + Ia^-1(n¡Ára)^2 + mb^-1 + Ib^-1(n¡Árb)^2
 
-		glm::vec3 crossrAu = glm::cross(m_rA, m_u);
-		glm::vec3 crossrBu = glm::cross(m_rB, m_u);
-		float invMass = m_invMassA + glm::length(m_invIA * glm::dot(crossrAu, crossrAu)) + m_invMassB + glm::length(m_invIB * glm::dot(crossrBu, crossrBu));
+		glm::vec3 rA_cross_u = glm::cross(m_rA, m_u);
+		glm::vec3 rB_cross_u = glm::cross(m_rB, m_u);
+		float invMass = m_invMassA + m_invIA * glm::dot(rA_cross_u, rA_cross_u) + m_invMassB + m_invIB * glm::dot(rB_cross_u, rB_cross_u);
 		m_mass = invMass != 0.0f ? 1.0f / invMass : 0.0f;
 
 		// 1-D constrained system

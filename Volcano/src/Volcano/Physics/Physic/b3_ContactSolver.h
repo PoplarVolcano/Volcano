@@ -29,12 +29,13 @@ namespace Volcano {
 	{
 		b3_VelocityConstraintPoint points[b3_MaxManifoldPoints];  // contact交点
 		glm::vec3 normal;     // 交点法向量，单位向量
-		float normalMass[6][6];
-		float K[6][6];
+		glm::vec3 tangent;    // 交点切向量，单位向量
+		float normalMass[b3_MaxManifoldPoints / 6][6][6];
+		float K[b3_MaxManifoldPoints / 6][6][6];
 		int indexA;              // bodyA的岛上索引
 		int indexB;				 // bodyB的岛上索引
 		float invMassA, invMassB;
-		glm::vec3 invIA, invIB;
+		glm::mat3 invIA, invIB;
 		float friction;            // 摩擦力
 		float restitution;         // 弹性
 		float threshold;           // 弹性阈值

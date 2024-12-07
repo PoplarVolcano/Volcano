@@ -7,8 +7,8 @@
 
 // Collision
 
-// 两个三角形之间的最大接触点数量。不要更改此值。The maximum number of contact points between two convex shapes. Do not change this value.
-#define b3_MaxManifoldPoints	6
+// 两个面之间的最大接触点数量。不要更改此值。The maximum number of contact points between two convex shapes. Do not change this value.
+#define b3_MaxManifoldPoints	12
 
 // 这用于在动态树中扩增AABB。这允许代理少量移动，而不会触发树调整。 这是以米为单位的。
 #define b3_AABBExtension		(0.1f * b3_LengthUnitsPerMeter)

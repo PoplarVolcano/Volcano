@@ -161,6 +161,10 @@
     <ClInclude Include="src\Volcano\ImGui\ImGuiLayer.h" />
     <ClInclude Include="src\Volcano\ImGui\ImGuizmo.h" />
     <ClInclude Include="src\Volcano\Math\Math.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\Particle.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\ParticleSystem.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\Queue.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\ThreadPool.h" />
     <ClInclude Include="src\Volcano\Physics\Physics2D.h" />
     <ClInclude Include="src\Volcano\Physics\Physic\b3_BlockAllocator.h" />
     <ClInclude Include="src\Volcano\Physics\Physic\b3_Body.h" />
@@ -213,6 +217,7 @@
     <ClInclude Include="src\Volcano\Renderer\RendererItem\CapsuleMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\CylinderMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RendererItem\PlaneMesh.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\QuadMesh.h" />
     <ClInclude Include="src\Volcano\Renderer\RenderPass.h" />
     <ClInclude Include="src\Volcano\Renderer\Renderer.h" />
     <ClInclude Include="src\Volcano\Renderer\Renderer2D.h" />
@@ -688,6 +693,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="src\Volcano\Math\Math.cpp" />
+    <ClCompile Include="src\Volcano\ParticleSystem\Particle.cpp" />
+    <ClCompile Include="src\Volcano\ParticleSystem\ParticleSystem.cpp" />
     <ClCompile Include="src\Volcano\Physics\Physic\b3_BlockAllocator.cpp" />
     <ClCompile Include="src\Volcano\Physics\Physic\b3_Body.cpp" />
     <ClCompile Include="src\Volcano\Physics\Physic\b3_BroadPhase.cpp" />
@@ -735,6 +742,7 @@
     <ClCompile Include="src\Volcano\Renderer\RendererItem\CapsuleMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\CylinderMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RendererItem\PlaneMesh.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\QuadMesh.cpp" />
     <ClCompile Include="src\Volcano\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\Renderer2D.cpp" />
@@ -756,6 +764,7 @@
     <ClCompile Include="src\Volcano\Renderer\Texture.cpp" />
     <ClCompile Include="src\Volcano\Renderer\UniformBuffer.cpp" />
     <ClCompile Include="src\Volcano\Renderer\VertexArray.cpp" />
+    <ClCompile Include="src\Volcano\Scene\Components.cpp" />
     <ClCompile Include="src\Volcano\Scene\Entity.cpp" />
     <ClCompile Include="src\Volcano\Scene\PhysicsMaterial.cpp" />
     <ClCompile Include="src\Volcano\Scene\Prefab.cpp" />

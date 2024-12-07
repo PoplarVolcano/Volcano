@@ -13,10 +13,10 @@ namespace Volcano {
 		float LifeTime = 1.0f;
 	};
 
-	class ParticleSystem
+	class TwoDParticleSystem
 	{
 	public:
-		ParticleSystem(uint32_t maxParticles = 10000);
+		TwoDParticleSystem(uint32_t maxParticles = 10000);
 
 		void Emit(const ParticleProps& particleProps);
 

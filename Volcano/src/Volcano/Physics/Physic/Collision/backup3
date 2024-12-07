@@ -257,3 +257,43 @@ else
 		clipTriangle[i1].vertex = clipPoints3[1].vertex;
 	}
 }
+
+
+
+		std::vector<int> indexA;
+		float separationA = b3_FindMaxSeparation(indexA, boxA, transformA, boxB, transformB);
+		if (separationA > totalRadius)
+			return;
+
+		std::vector<int> indexB;
+		float separationB = b3_FindMaxSeparation(indexB, boxB, transformB, boxA, transformA);
+		if (separationB > totalRadius)
+			return;
+
+		const b3_BoxShape* boxRef;	// 参考系box reference box
+		const b3_BoxShape* boxInc;	// 碰撞体box incident box
+		b3_Transform transformRef, transformInc;
+		std::vector<int> indexRef;
+		bool flip;
+		const float k_tol = 0.1f * b3_LinearSlop; // 公差
+
+		if (separationB > separationA + k_tol)
+		{
+			boxRef = boxB;
+			boxInc = boxA;
+			transformRef = transformB;
+			transformInc = transformA;
+			indexRef = indexB;
+			manifold->type = b3_Manifold::e_faceB;
+			flip = true;
+		}
+		else
+		{
+			boxRef = boxA;
+			boxInc = boxB;
+			transformRef = transformA;
+			transformInc = transformB;
+			indexRef = indexA;
+			manifold->type = b3_Manifold::e_faceA;
+			flip = false;
+		}

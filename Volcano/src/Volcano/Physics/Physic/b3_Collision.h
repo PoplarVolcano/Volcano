@@ -93,6 +93,7 @@ namespace Volcano {
 			const b3_Transform& transformB, float radiusB);
 
 		glm::vec3 normal;							// 交点法向量，单位向量
+		glm::vec3 tangent;							// 交点切向量，单位向量
 		glm::vec3 points[b3_MaxManifoldPoints];		// 交点列表
 		float separations[b3_MaxManifoldPoints];	// 负值表示(indicates)重叠，单位为米
 	};

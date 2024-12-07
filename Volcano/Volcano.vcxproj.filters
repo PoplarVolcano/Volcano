@@ -1615,6 +1615,11 @@
     <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_BoxShape.h" />
     <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_BoxSphereContact.h" />
     <ClInclude Include="src\Volcano\Physics\Physic\Collision\b3_BoxContact.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\ParticleSystem.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\Queue.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\ThreadPool.h" />
+    <ClInclude Include="src\Volcano\Renderer\RendererItem\QuadMesh.h" />
+    <ClInclude Include="src\Volcano\ParticleSystem\Particle.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Volcano\Core\Application.cpp">
@@ -1847,5 +1852,9 @@
     <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_CollideSphere.cpp" />
     <ClCompile Include="src\Volcano\Physics\Physic\Collision\b3_BoxContact.cpp" />
     <ClCompile Include="src\Volcano\Physics\Physic\b3_Math.cpp" />
+    <ClCompile Include="src\Volcano\ParticleSystem\ParticleSystem.cpp" />
+    <ClCompile Include="src\Volcano\Scene\Components.cpp" />
+    <ClCompile Include="src\Volcano\Renderer\RendererItem\QuadMesh.cpp" />
+    <ClCompile Include="src\Volcano\ParticleSystem\Particle.cpp" />
   </ItemGroup>
 </Project>

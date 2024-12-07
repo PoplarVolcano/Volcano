@@ -20,7 +20,7 @@ namespace Volcano {
 		int indexB;             // bodyB的岛上索引
 		float invMassA, invMassB;
 		glm::vec3 localCenterA, localCenterB; //质心局部坐标
-		glm::vec3 invIA, invIB;
+		glm::mat3 invIA, invIB;
 		b3_Manifold::Type type;
 		float radiusA, radiusB;
 		int pointCount;
@@ -69,13 +69,6 @@ namespace Volcano {
 			velocityConstraint->invIB        = bodyB->m_invI;
 			velocityConstraint->contactIndex = i;
 			velocityConstraint->pointCount   = pointCount;
-
-			for (int i = 0; i < 6; i++)
-				for (int j = 0; j < 6; j++)
-					velocityConstraint->K[i][j] = 0.0f;
-			for (int i = 0; i < 6; i++)
-				for (int j = 0; j < 6; j++)
-					velocityConstraint->normalMass[i][j] = 0.0f;
 
 			b3_ContactPositionConstraint* positionConstraint = m_positionConstraints + i;
 			positionConstraint->indexA       = bodyA->m_islandIndex;
@@ -128,10 +121,10 @@ namespace Volcano {
 
 	void b3_ContactSolver::InitializeVelocityConstraints()
 	{
-		for (int i = 0; i < m_count; ++i)
+		for (int contactIndex = 0; contactIndex < m_count; ++contactIndex)
 		{
-			b3_ContactVelocityConstraint* velocityConstraint = m_velocityConstraints + i;
-			b3_ContactPositionConstraint* positionConstraint = m_positionConstraints + i;
+			b3_ContactVelocityConstraint* velocityConstraint = m_velocityConstraints + contactIndex;
+			b3_ContactPositionConstraint* positionConstraint = m_positionConstraints + contactIndex;
 
 			b3_Manifold* manifold = m_contacts[velocityConstraint->contactIndex]->GetManifold();
 
@@ -140,8 +133,8 @@ namespace Volcano {
 
 			float imA = velocityConstraint->invMassA;
 			float imB = velocityConstraint->invMassB;
-			glm::vec3 iIA = velocityConstraint->invIA;
-			glm::vec3 iIB = velocityConstraint->invIB;
+			glm::mat3 iIA = velocityConstraint->invIA;
+			glm::mat3 iIB = velocityConstraint->invIB;
 			glm::vec3 localCenterA = positionConstraint->localCenterA;  // 质心A局部坐标
 			glm::vec3 localCenterB = positionConstraint->localCenterB;  // 质心B局部坐标
 
@@ -172,15 +165,15 @@ namespace Volcano {
 
 			// 遍历worldManifold所有交点，初始化速度约束
 			int pointCount = velocityConstraint->pointCount;
-			for (int j = 0; j < pointCount; ++j)
+			for (int pointIndex = 0; pointIndex < pointCount; ++pointIndex)
 			{
-				b3_VelocityConstraintPoint* velocityConstraintPoint = velocityConstraint->points + j;
+				b3_VelocityConstraintPoint* velocityConstraintPoint = velocityConstraint->points + pointIndex;
 
-				velocityConstraintPoint->rA = worldManifold.points[j] - cA;
-				velocityConstraintPoint->rB = worldManifold.points[j] - cB;
+				velocityConstraintPoint->rA = worldManifold.points[pointIndex] - cA;
+				velocityConstraintPoint->rB = worldManifold.points[pointIndex] - cB;
 
-				glm::vec3 rnA = glm::cross(velocityConstraintPoint->rA, velocityConstraint->normal);
-				glm::vec3 rnB = glm::cross(velocityConstraintPoint->rB, velocityConstraint->normal);
+				glm::vec3 rA_cross_n = glm::cross(velocityConstraintPoint->rA, velocityConstraint->normal);
+				glm::vec3 rB_cross_n = glm::cross(velocityConstraintPoint->rB, velocityConstraint->normal);
 
 				// 约束 C(p(t))    p(t)：位置position随时间变化，整体速度  dp/dt = v + w×r, rb:矢径，锚点到接触点的距离
 				// dC/dt = J * v(t) = 0 (J为雅可比矩阵，每一行为约束对质点影响，每一列为质点所受所有约束影响)
@@ -218,16 +211,16 @@ namespace Volcano {
 				// JM^-1J^T = ma^-1 + Ia^-1(n×ra)^2 + mb^-1 + Ib^-1(n×rb)^2
 
 				//有效质量 M effective
-				float kNormal = imA  + glm::length(iIA * rnA * rnA) + imB + glm::length(iIB * rnB * rnB);
+				float kNormal = imA + glm::dot(iIA * rA_cross_n * rA_cross_n) + imB + glm::dot(iIB * rB_cross_n * rB_cross_n);
 				velocityConstraintPoint->normalMass = kNormal > 0.0f ? 1.0f / kNormal : 0.0f;
 
 				glm::vec3 tangent = b3_Tangent(velocityConstraint->normal);
 
 
-				glm::vec3 rtA = glm::cross(velocityConstraintPoint->rA, tangent);
-				glm::vec3 rtB = glm::cross(velocityConstraintPoint->rB, tangent);
+				glm::vec3 rA_cross_t = glm::cross(velocityConstraintPoint->rA, tangent);
+				glm::vec3 rB_cross_t = glm::cross(velocityConstraintPoint->rB, tangent);
 
-				float kTangent = imA + glm::length(iIA * rtA * rtA) + imB + glm::length(iIB * rtB * rtB);
+				float kTangent = imA + glm::dot(iIA * rA_cross_t * rA_cross_t) + imB + glm::dot(iIB * rB_cross_t * rB_cross_t);
 
 				velocityConstraintPoint->tangentMass = kTangent > 0.0f ? 1.0f / kTangent : 0.0f;
 
@@ -245,112 +238,80 @@ namespace Volcano {
 			}
 
 			// 如果大于2个点，准备块结算器 If we have two points, then prepare the block solver.
-			if (velocityConstraint->pointCount == 6 && g_blockSolve)
+			if (velocityConstraint->pointCount > 1 && velocityConstraint->pointCount % 6 == 0 && g_blockSolve)
 			{
-				b3_VelocityConstraintPoint* vcp1 = velocityConstraint->points + 0;
-				b3_VelocityConstraintPoint* vcp2 = velocityConstraint->points + 1;
-				b3_VelocityConstraintPoint* vcp3 = velocityConstraint->points + 2;
-				b3_VelocityConstraintPoint* vcp4 = velocityConstraint->points + 3;
-				b3_VelocityConstraintPoint* vcp5 = velocityConstraint->points + 4;
-				b3_VelocityConstraintPoint* vcp6 = velocityConstraint->points + 5;
+				VOL_ASSERT(velocityConstraint->pointCount <= b3_MaxManifoldPoints);
 
-				glm::vec3 rn1A = glm::cross(vcp1->rA, velocityConstraint->normal);
-				glm::vec3 rn1B = glm::cross(vcp1->rB, velocityConstraint->normal);
-				glm::vec3 rn2A = glm::cross(vcp2->rA, velocityConstraint->normal);
-				glm::vec3 rn2B = glm::cross(vcp2->rB, velocityConstraint->normal);
-				glm::vec3 rn3A = glm::cross(vcp3->rA, velocityConstraint->normal);
-				glm::vec3 rn3B = glm::cross(vcp3->rB, velocityConstraint->normal);
-
-				glm::vec3 rn4A = glm::cross(vcp4->rA, velocityConstraint->normal);
-				glm::vec3 rn4B = glm::cross(vcp4->rB, velocityConstraint->normal);
-				glm::vec3 rn5A = glm::cross(vcp5->rA, velocityConstraint->normal);
-				glm::vec3 rn5B = glm::cross(vcp5->rB, velocityConstraint->normal);
-				glm::vec3 rn6A = glm::cross(vcp6->rA, velocityConstraint->normal);
-				glm::vec3 rn6B = glm::cross(vcp6->rB, velocityConstraint->normal);
-
-				float k11 = imA + glm::length(iIA * rn1A * rn1A) + imB + glm::length(iIB * rn1B * rn1B);
-				float k12 = imA + glm::length(iIA * rn1A * rn2A) + imB + glm::length(iIB * rn1B * rn2B);
-				float k13 = imA + glm::length(iIA * rn1A * rn3A) + imB + glm::length(iIB * rn1B * rn3B);
-				float k14 = imA + glm::length(iIA * rn1A * rn4A) + imB + glm::length(iIB * rn1B * rn4B);
-				float k15 = imA + glm::length(iIA * rn1A * rn5A) + imB + glm::length(iIB * rn1B * rn5B);
-				float k16 = imA + glm::length(iIA * rn1A * rn6A) + imB + glm::length(iIB * rn1B * rn6B);
-
-				float k22 = imA + glm::length(iIA * rn2A * rn2A) + imB + glm::length(iIB * rn2B * rn2B);
-				float k23 = imA + glm::length(iIA * rn2A * rn3A) + imB + glm::length(iIB * rn2B * rn3B);
-				float k24 = imA + glm::length(iIA * rn2A * rn4A) + imB + glm::length(iIB * rn2B * rn4B);
-				float k25 = imA + glm::length(iIA * rn2A * rn5A) + imB + glm::length(iIB * rn2B * rn5B);
-				float k26 = imA + glm::length(iIA * rn2A * rn6A) + imB + glm::length(iIB * rn2B * rn6B);
-
-				float k33 = imA + glm::length(iIA * rn3A * rn3A) + imB + glm::length(iIB * rn3B * rn3B);
-				float k34 = imA + glm::length(iIA * rn3A * rn4A) + imB + glm::length(iIB * rn3B * rn4B);
-				float k35 = imA + glm::length(iIA * rn3A * rn5A) + imB + glm::length(iIB * rn3B * rn5B);
-				float k36 = imA + glm::length(iIA * rn3A * rn6A) + imB + glm::length(iIB * rn3B * rn6B);
-
-				float k44 = imA + glm::length(iIA * rn4A * rn4A) + imB + glm::length(iIB * rn4B * rn4B);
-				float k45 = imA + glm::length(iIA * rn4A * rn5A) + imB + glm::length(iIB * rn4B * rn5B);
-				float k46 = imA + glm::length(iIA * rn4A * rn6A) + imB + glm::length(iIB * rn4B * rn6B);
-
-				float k55 = imA + glm::length(iIA * rn5A * rn5A) + imB + glm::length(iIB * rn5B * rn5B);
-				float k56 = imA + glm::length(iIA * rn5A * rn6A) + imB + glm::length(iIB * rn5B * rn6B);
-
-				float k66 = imA + glm::length(iIA * rn6A * rn6A) + imB + glm::length(iIB * rn6B * rn6B);
-
-				float delta = k11 * k22 * k33 * k44 * k55 * k66 +
-							  k12 * k23 * k34 * k45 * k56 * k16 +
-							  k13 * k24 * k35 * k46 * k15 * k26 +
-							  k14 * k25 * k36 * k14 * k25 * k36 +
-							  k15 * k26 * k13 * k24 * k35 * k46 +
-							  k16 * k12 * k23 * k34 * k45 * k56 +
-							  k11 * k26 * k35 * k44 * k35 * k26 -
-							  k12 * k12 * k36 * k45 * k45 * k36 -
-							  k13 * k22 * k13 * k46 * k55 * k46 -
-							  k14 * k23 * k23 * k14 * k56 * k56 -
-							  k15 * k24 * k33 * k24 * k15 * k66 -
-							  k16 * k25 * k34 * k34 * k25 * k16;
-
-
-				// 确保合理的条件编号(condition number)。
-				//const float k_maxConditionNumber = 1000.0f;
-				if (delta != 0)//k11 * k11 * k11 * k11 * k11 * k11 < k_maxConditionNumber * delta)
+				for (int triangleIndex = 0; triangleIndex < velocityConstraint->pointCount / 6; triangleIndex++)
 				{
-					float arrayTemp[6][6] = {{ k11, k12, k13, k14, k15, k16 },
-										     { k12, k22, k23, k24, k25, k26 },
-										     { k13, k23, k33, k34, k35, k36 },
-										     { k14, k24, k34, k44, k45, k46 },
-										     { k15, k25, k35, k45, k55, k56 },
-										     { k16, k26, k36, k46, k56, k66 }};
-					// K可以安全地反转(invert)
 
-					mat K;
-					K.resize(6);
+					std::array<b3_VelocityConstraintPoint*, 6> vcp;
 					for (int i = 0; i < 6; i++)
-						K[i].resize(6);
+						vcp[i] = velocityConstraint->points + triangleIndex * 6 + i;
+
+					std::array<std::pair<glm::vec3, glm::vec3>, 6> r_cross_n;
 					for (int i = 0; i < 6; i++)
-						for (int j = 0; j < 6; j++)
+					{
+						r_cross_n[i].first  = glm::cross(vcp[i]->rA, velocityConstraint->normal);
+						r_cross_n[i].second = glm::cross(vcp[i]->rB, velocityConstraint->normal);
+					}
+
+					glm::vec3& n = velocityConstraint->normal;
+					float k[6][6];
+					for (int i = 0; i < 6; i++)
+					{
+						for (int j = 0; j < i; j++)
 						{
-							velocityConstraint->K[i][j] = arrayTemp[i][j];
-							K[i][j] = arrayTemp[i][j];
+							k[i][j] = k[j][i];
 						}
-					mat normalMass = inverse(K);
-
-					for (int i = 0; i < 6; i++)
-						for (int j = 0; j < 6; j++)
+						for (int j = i; j < 6; j++)
 						{
-							velocityConstraint->normalMass[i][j] = normalMass[i][j];
-							if(!std::isfinite(normalMass[i][j]))
+							k[i][j] = imA + glm::dot(iIA * r_cross_n[i].first * r_cross_n[j].first) + imB + glm::dot(iIB * r_cross_n[i].second * r_cross_n[j].second);
+//								imA + glm::dot(n, iIA * glm::cross(r_cross_n[i].first, vcp[j]->rA)) +
+//								imB + glm::dot(n, iIB * glm::cross(r_cross_n[i].second, vcp[j]->rB));
+						}
+					}
+
+					float delta = 0.0f;
+					for (int i = 0; i < 6; i++)
+					{
+						delta = delta + 
+							k[0][i] * k[1][(i + 1) % 6] * k[2][(i + 2) % 6] * k[3][(i + 3) % 6] * k[4][(i + 4) % 6] * k[5][(i + 5) % 6] -
+							k[0][i] * k[1][(i + 5) % 6] * k[2][(i + 4) % 6] * k[3][(i + 3) % 6] * k[4][(i + 2) % 6] * k[5][(i + 1) % 6];
+					}
+
+					if (delta != 0)
+					{
+						// K可以安全地反转(invert)
+						mat K;
+						K.resize(6);
+						for (int i = 0; i < 6; i++)
+							K[i].resize(6);
+						for (int i = 0; i < 6; i++)
+							for (int j = 0; j < 6; j++)
 							{
-								VOL_TRACE("DEBUG");
+								velocityConstraint->K[triangleIndex][i][j] = k[i][j];
+								K[i][j] = k[i][j];
 							}
-						}
-					//MatrixInverse(velocityConstraint->K, velocityConstraint->normalMass, 6);
-				}
-				else
-				{
-					// 约束是多余的(redundant)，只需使用一个。 TODO_ERIN 使用最深(deepest)？
-					velocityConstraint->pointCount = 1;
+						mat normalMass = inverse(K);
+
+						for (int i = 0; i < 6; i++)
+							for (int j = 0; j < 6; j++)
+							{
+								velocityConstraint->normalMass[triangleIndex][i][j] = normalMass[i][j];
+								if (!std::isfinite(normalMass[i][j]))
+								{
+									VOL_TRACE("DEBUG");
+								}
+							}
+					}
 				}
 			}
-
+			else
+			{
+				// 约束是多余的(redundant)，只需使用一个。 TODO_ERIN 使用最深(deepest)？
+				velocityConstraint->pointCount = 1;
+			}
 		}
 	}
 	
@@ -363,10 +324,10 @@ namespace Volcano {
 
 			int indexA     = velocityConstraint->indexA;
 			int indexB     = velocityConstraint->indexB;
-			float mA       = velocityConstraint->invMassA;
-			glm::vec3 iA   = velocityConstraint->invIA;
-			float mB       = velocityConstraint->invMassB;
-			glm::vec3 iB   = velocityConstraint->invIB;
+			float imA      = velocityConstraint->invMassA;
+			glm::mat3 iIA  = velocityConstraint->invIA;
+			float imB      = velocityConstraint->invMassB;
+			glm::mat3 iIB  = velocityConstraint->invIB;
 			int pointCount = velocityConstraint->pointCount;
 
 			glm::vec3 vA = m_velocities[indexA].linearVelocity;
@@ -377,14 +338,16 @@ namespace Volcano {
 			glm::vec3 normal  = velocityConstraint->normal;
 			glm::vec3 tangent = b3_Tangent(normal);
 
+
 			for (int j = 0; j < pointCount; ++j)
 			{
 				b3_VelocityConstraintPoint* vcp = velocityConstraint->points + j;
 				glm::vec3 P = vcp->normalImpulse * normal + vcp->tangentImpulse * tangent;
-				wA -= iA * glm::cross(vcp->rA, P);
-				vA -= mA * P;
-				wB += iB * glm::cross(vcp->rB, P);
-				vB += mB * P;
+				// L = Iw
+				wA -= iIA * glm::cross(vcp->rA, P);
+				vA -= imA * P;
+				wB += iIB * glm::cross(vcp->rB, P);
+				vB += imB * P;
 			}
 
 			m_velocities[indexA].linearVelocity  = vA;
@@ -396,16 +359,16 @@ namespace Volcano {
 
 	void b3_ContactSolver::SolveVelocityConstraints()
 	{
-		for (int i = 0; i < m_count; ++i)
+		for (int vcIndex = 0; vcIndex < m_count; ++vcIndex)
 		{
-			b3_ContactVelocityConstraint* velocityConstraint = m_velocityConstraints + i;
+			b3_ContactVelocityConstraint* velocityConstraint = m_velocityConstraints + vcIndex;
 
 			int indexA     = velocityConstraint->indexA;
 			int indexB     = velocityConstraint->indexB;
-			float mA       = velocityConstraint->invMassA;
-			glm::vec3 iA   = velocityConstraint->invIA;
-			float mB       = velocityConstraint->invMassB;
-			glm::vec3 iB   = velocityConstraint->invIB;
+			float imA      = velocityConstraint->invMassA;
+			glm::mat3 iIA  = velocityConstraint->invIA;
+			float imB      = velocityConstraint->invMassB;
+			glm::mat3 iIB  = velocityConstraint->invIB;
 			int pointCount = velocityConstraint->pointCount;
 
 			glm::vec3 vA = m_velocities[indexA].linearVelocity;  // linearVelocity
@@ -420,9 +383,9 @@ namespace Volcano {
 			//assert(pointCount == 1 || pointCount == 2);
 
 			// 首先解决切线约束，因为非穿透(non-penetration)比摩擦更重要。
-			for (int j = 0; j < pointCount; ++j)
+			for (int pointIndex = 0; pointIndex < pointCount; ++pointIndex)
 			{
-				b3_VelocityConstraintPoint* velocityConstraintPoint = velocityConstraint->points + j;
+				b3_VelocityConstraintPoint* velocityConstraintPoint = velocityConstraint->points + pointIndex;
 
 				// VelocityConstraint, contact物体间的相对速度
 				glm::vec3 dv = vB + glm::cross(wB, velocityConstraintPoint->rB) - vA - glm::cross(wA, velocityConstraintPoint->rA);
@@ -441,18 +404,18 @@ namespace Volcano {
 				// 结算contact冲量
 				glm::vec3 P = lambda * tangent;
 
-				vA -= mA * P;
-				wA -= iA * glm::cross(velocityConstraintPoint->rA, P);
+				vA -= imA * P;
+				wA -= iIA * glm::cross(velocityConstraintPoint->rA, P);
 
-				vB += mB * P;
-				wB += iB * glm::cross(velocityConstraintPoint->rB, P);
+				vB += imB * P;
+				wB += iIB * glm::cross(velocityConstraintPoint->rB, P);
 			}
 			// 结算法线约束
 			if (pointCount == 1 || g_blockSolve == false)
 			{
-				for (int j = 0; j < pointCount; ++j)
+				for (int pointIndex = 0; pointIndex < pointCount; ++pointIndex)
 				{
-					b3_VelocityConstraintPoint* velocityConstraintPoint = velocityConstraint->points + j;
+					b3_VelocityConstraintPoint* velocityConstraintPoint = velocityConstraint->points + pointIndex;
 
 					// 相对速度
 					glm::vec3 dv = vB + glm::cross(wB, velocityConstraintPoint->rB) - vA - glm::cross(wA, velocityConstraintPoint->rA);
@@ -470,11 +433,11 @@ namespace Volcano {
 
 					// 结算contact冲量
 					glm::vec3 P = lambda * normal;
-					vA -= mA * P;
-					wA -= iA * glm::cross(velocityConstraintPoint->rA, P);
+					vA -= imA * P;
+					wA -= iIA * glm::cross(velocityConstraintPoint->rA, P);
 
-					vB += mB * P;
-					wB += iB * glm::cross(velocityConstraintPoint->rB, P);
+					vB += imB * P;
+					wB += iIB * glm::cross(velocityConstraintPoint->rB, P);
 				}
 			}
 			else
@@ -545,338 +508,570 @@ namespace Volcano {
 				// b' = b - A * a;
 
 
-				if (pointCount != 6)
+				std::vector<glm::vec3> vATemp; vATemp.resize(pointCount / 6); for (int i = 0; i < vATemp.size(); i++) vATemp[i] = glm::vec3(0.0f);
+				std::vector<glm::vec3> wATemp; wATemp.resize(pointCount / 6); for (int i = 0; i < wATemp.size(); i++) wATemp[i] = glm::vec3(0.0f);
+				std::vector<glm::vec3> vBTemp; vBTemp.resize(pointCount / 6); for (int i = 0; i < vBTemp.size(); i++) vBTemp[i] = glm::vec3(0.0f);
+				std::vector<glm::vec3> wBTemp; wBTemp.resize(pointCount / 6); for (int i = 0; i < wBTemp.size(); i++) wBTemp[i] = glm::vec3(0.0f);
+
+				if (pointCount % 6 != 0)
 					break;
 
-				std::array<b3_VelocityConstraintPoint*, 6> constraintPoints;
-				for (int i = 0; i < 6; i++)
-					constraintPoints[i] = velocityConstraint->points + i;
-
-				// 法向冲量normalImpulse (inverse A)， 上一轮结算的冲量
-				std::array<float, 6> a;
-				for (int i = 0; i < 6; i++)
+				for (int triangleIndex = 0; triangleIndex < pointCount / 6; triangleIndex++)
 				{
-					a[i] = constraintPoints[i]->normalImpulse;
-					assert(a[i] >= 0.0f);
-				}
-
-				// 相对速度 vB+wB×rB-vA-wA×rA
-				std::array<glm::vec3, 6> dv;
-				for (int i = 0; i < 6; i++)
-					dv[i] = vB + glm::cross(wB, constraintPoints[i]->rB) - vA - glm::cross(wA, constraintPoints[i]->rA);
-
-				// 计算法向速度 n(vB+wB×rB-vA-wA×rA) Jnv  
-				std::array<float, 6> vn;
-				for (int i = 0; i < 6; i++)
-					vn[i] = glm::dot(dv[i], normal);
-
-				std::array<float, 6> b;  // b = Jnv = n(vB+wB×rB-vA-wA×rA)
-				for (int i = 0; i < 6; i++)
-				{
-					b[i] = vn[i] - constraintPoints[i]->velocityBias;
-					float sum = 0;
-					for(int j = 0; j < 6; j++)
-						sum += velocityConstraint->K[i][j] * a[j];
-					b[i] -= sum;  // b' = b - A * a
-				}
-
-				const float k_errorTol = 1e-3f;
-				(void)(k_errorTol);  // not used
-
-				int flag = -1;
-				std::array<float, 6> x;
-				for (;;)
-				{
-					// 8种情况：
-					// 1、p12向内，p3456向外 
-					// 2、p12向外，p3456向内 
-					// 3、p34向内，p1256向外 
-					// 4、p34向外，p1256向内 
-					// 5、p56向内，p1234向外 
-					// 6、p56向外，p1234向内 
-					// 7、全向内 
-					// 8、全向外
-
-
-					//
-					// case 1: λn3 = λn4 = λn5 = λn6 = vn1 = vn2 = 0
-					// x= {λn1, λn2, 0, 0, 0, 0 };
-					//
-					//   0 = a11 * x1 + a12 * x2 + a13 * 0 + a14 * 0 + a15 * 0 + a16 * 0 + b1' 
-					//   0 = a12 * x1 + a22 * x2 + a23 * 0 + a24 * 0 + a25 * 0 + a26 * 0 + b2' 
-					// vn3 = a13 * x1 + a23 * x2 + a33 * 0 + a34 * 0 + a35 * 0 + a36 * 0 + b3' 
-					// vn4 = a14 * x1 + a24 * x2 + a34 * 0 + a44 * 0 + a45 * 0 + a46 * 0 + b4' 
-					// vn5 = a15 * x1 + a25 * x2 + a35 * 0 + a45 * 0 + a55 * 0 + a56 * 0 + b5' 
-					// vn6 = a16 * x1 + a26 * x2 + a36 * 0 + a46 * 0 + a55 * 0 + a66 * 0 + b6' 
-					//
-
-					x[0] = -constraintPoints[0]->normalMass * b[0];
-					x[1] = -constraintPoints[1]->normalMass * b[1];
-					x[2] = 0.0f;
-					x[3] = 0.0f;
-					x[4] = 0.0f;
-					x[5] = 0.0f;
-					
-
-					vn[0] = 0.0f;
-					vn[1] = 0.0f;
-					vn[2] = velocityConstraint->K[2][0] * x[0] + velocityConstraint->K[2][1] * x[1] + b[2];
-					vn[3] = velocityConstraint->K[3][0] * x[0] + velocityConstraint->K[3][1] * x[1] + b[3];
-					vn[4] = velocityConstraint->K[4][0] * x[0] + velocityConstraint->K[4][1] * x[1] + b[4];
-					vn[5] = velocityConstraint->K[5][0] * x[0] + velocityConstraint->K[5][1] * x[1] + b[5];
-					if (x[0] >= 0.0f && x[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
-					{
-						flag = 1;
-						break;
-					}
-
-					//
-					// case 2: λn1 = λn2 = vn3 = vn4 = vn5 = vn6 = 0
-					// x= {0, 0, λn3, λn4, λn5, λn6 };
-					//
-					// vn1 = a11 * 0 + a12 * 0 + a13 * x3 + a14 * x4 + a15 * x5 + a16 * x6 + b1' 
-					// vn2 = a12 * 0 + a22 * 0 + a23 * x3 + a24 * x4 + a25 * x5 + a26 * x6 + b2' 
-					//   0 = a13 * 0 + a23 * 0 + a33 * x3 + a34 * x4 + a35 * x5 + a36 * x6 + b3' 
-					//   0 = a14 * 0 + a24 * 0 + a34 * x3 + a44 * x4 + a45 * x5 + a46 * x6 + b4' 
-					//   0 = a15 * 0 + a25 * 0 + a35 * x3 + a45 * x4 + a55 * x5 + a56 * x6 + b5' 
-					//   0 = a16 * 0 + a26 * 0 + a36 * x3 + a46 * x4 + a55 * x5 + a66 * x6 + b6' 
-					//
-
-					x[0] = 0.0f;
-					x[1] = 0.0f;
-					x[2] = -constraintPoints[2]->normalMass * b[2];
-					x[3] = -constraintPoints[3]->normalMass * b[3];
-					x[4] = -constraintPoints[4]->normalMass * b[4];
-					x[5] = -constraintPoints[5]->normalMass * b[5];
-
-					vn[0] = velocityConstraint->K[0][2] * x[2] + velocityConstraint->K[0][3] * x[3] + velocityConstraint->K[0][4] * x[4] + velocityConstraint->K[0][5] * x[5] + b[0];
-					vn[1] = velocityConstraint->K[1][2] * x[2] + velocityConstraint->K[1][3] * x[3] + velocityConstraint->K[1][4] * x[4] + velocityConstraint->K[1][5] * x[5] + b[1];
-					vn[2] = 0.0f;
-					vn[3] = 0.0f;
-					vn[4] = 0.0f;
-					vn[5] = 0.0f;
-					if (vn[0] >= 0.0f && vn[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
-					{
-						flag = 2;
-						break;
-					}
-
-					//
-					// case 3: λn1 = λn2 = λn5 = λn6 = vn3 = vn4 = 0
-					// x= {0, 0, λn3, λn4, 0, 0 };
-					// 
-					//
-					// vn1 = a11 * 0 + a12 * 0 + a13 * x3 + a14 * x4 + a15 * 0 + a16 * 0 + b1' 
-					// vn2 = a12 * 0 + a22 * 0 + a23 * x3 + a24 * x4 + a25 * 0 + a26 * 0 + b2' 
-					//   0 = a13 * 0 + a23 * 0 + a33 * x3 + a34 * x4 + a35 * 0 + a36 * 0 + b3' 
-					//   0 = a14 * 0 + a24 * 0 + a34 * x3 + a44 * x4 + a45 * 0 + a46 * 0 + b4' 
-					// vn5 = a15 * 0 + a25 * 0 + a35 * x3 + a45 * x4 + a55 * 0 + a56 * 0 + b5' 
-					// vn6 = a16 * 0 + a26 * 0 + a36 * x3 + a46 * x4 + a55 * 0 + a66 * 0 + b6' 
-					//
-
-					x[0] = 0.0f;
-					x[1] = 0.0f;
-					x[2] = -constraintPoints[2]->normalMass * b[2];
-					x[3] = -constraintPoints[3]->normalMass * b[3];
-					x[4] = 0.0f;
-					x[5] = 0.0f;
-
-					vn[0] = velocityConstraint->K[0][2] * x[2] + velocityConstraint->K[0][3] * x[3] + b[0];
-					vn[1] = velocityConstraint->K[1][2] * x[2] + velocityConstraint->K[1][3] * x[3] + b[1];
-					vn[2] = 0.0f;
-					vn[3] = 0.0f;
-					vn[4] = velocityConstraint->K[4][2] * x[2] + velocityConstraint->K[4][3] * x[3] + b[4];
-					vn[5] = velocityConstraint->K[5][2] * x[2] + velocityConstraint->K[5][3] * x[3] + b[5];
-					if (vn[0] >= 0.0f && vn[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
-					{
-						flag = 3;
-						break;
-					}
-
-					//
-					// case 4: λn3 = λn4 = vn1 = vn2 = vn5 = vn6 = 0
-					// x= {λn1, λn2, 0, 0, λn5, λn6 };
-					// 
-					//   0 = a11 * x1 + a12 * x2 + a13 * 0 + a14 * 0 + a15 * x5 + a16 * x6 + b1' 
-					//   0 = a12 * x1 + a22 * x2 + a23 * 0 + a24 * 0 + a25 * x5 + a26 * x6 + b2' 
-					// vn3 = a13 * x1 + a23 * x2 + a33 * 0 + a34 * 0 + a35 * x5 + a36 * x6 + b3' 
-					// vn4 = a14 * x1 + a24 * x2 + a34 * 0 + a44 * 0 + a45 * x5 + a46 * x6 + b4' 
-					//   0 = a15 * x1 + a25 * x2 + a35 * 0 + a45 * 0 + a55 * x5 + a56 * x6 + b5' 
-					//   0 = a16 * x1 + a26 * x2 + a36 * 0 + a46 * 0 + a55 * x5 + a66 * x6 + b6' 
-					//
-
-					x[0] = -constraintPoints[0]->normalMass * b[0];
-					x[1] = -constraintPoints[1]->normalMass * b[1];
-					x[2] = 0.0f;
-					x[3] = 0.0f;
-					x[4] = -constraintPoints[4]->normalMass * b[4];
-					x[5] = -constraintPoints[5]->normalMass * b[5];
-
-					vn[0] = 0.0f;
-					vn[1] = 0.0f;
-					vn[2] = velocityConstraint->K[2][0] * x[0] + velocityConstraint->K[2][1] * x[1] + velocityConstraint->K[2][4] * x[4] + velocityConstraint->K[2][5] * x[5] + b[2];
-					vn[3] = velocityConstraint->K[3][0] * x[0] + velocityConstraint->K[3][1] * x[1] + velocityConstraint->K[3][4] * x[4] + velocityConstraint->K[3][5] * x[5] + b[3];
-					vn[4] = 0.0f;
-					vn[5] = 0.0f;
-					if (x[0] >= 0.0f && x[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
-					{
-						flag = 4;
-						break;
-					}
-
-					// case 5: λn1 = λn2 = λn3 = λn4 = vn5 = vn6 = 0
-					// x= {0, 0, 0, 0, λn5, λn6 };
-					// 
-					// vn1 = a11 * 0 + a12 * 0 + a13 * 0 + a14 * 0 + a15 * x5 + a16 * x6 + b1' 
-					// vn2 = a12 * 0 + a22 * 0 + a23 * 0 + a24 * 0 + a25 * x5 + a26 * x6 + b2' 
-					// vn3 = a13 * 0 + a23 * 0 + a33 * 0 + a34 * 0 + a35 * x5 + a36 * x6 + b3' 
-					// vn4 = a14 * 0 + a24 * 0 + a34 * 0 + a44 * 0 + a45 * x5 + a46 * x6 + b4' 
-					//   0 = a15 * 0 + a25 * 0 + a35 * 0 + a45 * 0 + a55 * x5 + a56 * x6 + b5' 
-					//   0 = a16 * 0 + a26 * 0 + a36 * 0 + a46 * 0 + a55 * x5 + a66 * x6 + b6' 
-					//
-
-					x[0] = 0.0f;
-					x[1] = 0.0f;
-					x[2] = 0.0f;
-					x[3] = 0.0f;
-					x[4] = -constraintPoints[4]->normalMass * b[4];
-					x[5] = -constraintPoints[5]->normalMass * b[5];
-
-					vn[0] = velocityConstraint->K[0][4] * x[4] + velocityConstraint->K[0][5] * x[5] + b[0];
-					vn[1] = velocityConstraint->K[1][4] * x[4] + velocityConstraint->K[1][5] * x[5] + b[1];
-					vn[2] = velocityConstraint->K[2][4] * x[4] + velocityConstraint->K[2][5] * x[5] + b[2];
-					vn[3] = velocityConstraint->K[3][4] * x[4] + velocityConstraint->K[3][5] * x[5] + b[3];
-					vn[4] = 0.0f;
-					vn[5] = 0.0f;
-					if (vn[0] >= 0.0f && vn[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
-					{
-						flag = 5;
-						break;
-					}
-
-					// case 6: λn5 = λn6 = vn1 = vn2 = vn3 = vn4 = 0
-					// x= {λn1, λn2, λn3, λn4, 0, 0 };
-					// 
-					//   0 = a11 * x1 + a12 * x2 + a13 * x3 + a14 * x4 + a15 * 0 + a16 * 0 + b1' 
-					//   0 = a12 * x1 + a22 * x2 + a23 * x3 + a24 * x4 + a25 * 0 + a26 * 0 + b2' 
-					//   0 = a13 * x1 + a23 * x2 + a33 * x3 + a34 * x4 + a35 * 0 + a36 * 0 + b3' 
-					//   0 = a14 * x1 + a24 * x2 + a34 * x3 + a44 * x4 + a45 * 0 + a46 * 0 + b4' 
-					// vn5 = a15 * x1 + a25 * x2 + a35 * x3 + a45 * x4 + a55 * 0 + a56 * 0 + b5' 
-					// vn6 = a16 * x1 + a26 * x2 + a36 * x3 + a46 * x4 + a55 * 0 + a66 * 0 + b6' 
-					//
-
-					x[0] = -constraintPoints[0]->normalMass * b[0];
-					x[1] = -constraintPoints[1]->normalMass * b[1];
-					x[2] = -constraintPoints[2]->normalMass * b[2];
-					x[3] = -constraintPoints[3]->normalMass * b[3];
-					x[4] = 0.0f;
-					x[5] = 0.0f;
-
-					vn[0] = 0.0f;
-					vn[1] = 0.0f;
-					vn[2] = 0.0f;
-					vn[3] = 0.0f;
-					vn[4] = velocityConstraint->K[4][0] * x[0] + velocityConstraint->K[4][1] * x[1] + velocityConstraint->K[4][2] * x[2] + velocityConstraint->K[4][3] * x[3] + b[4];
-					vn[5] = velocityConstraint->K[5][0] * x[0] + velocityConstraint->K[5][1] * x[1] + velocityConstraint->K[5][2] * x[2] + velocityConstraint->K[5][3] * x[3] + b[5];
-					if (x[0] >= 0.0f && x[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
-					{
-						flag = 6;
-						break;
-					}
-
-					// case 7: x = 0
-					//
-					// vn1 = b1'
-					// vn2 = b2'
-					// vn3 = b3'
-					// vn4 = b4'
-					// vn5 = b5'
-					// vn6 = b6'
-
-					for (int i = 0; i < 6; i++)
-						x[i] = 0.0f;
-
-					//vn[0] = velocityConstraint->K[0][0] * x[0] + velocityConstraint->K[0][1] * x[1] + velocityConstraint->K[0][2] * x[2] + velocityConstraint->K[0][3] * x[3] + velocityConstraint->K[0][4] * x[4] + velocityConstraint->K[0][5] * x[5] + b[0];
-					vn[0] = b[0];
-					vn[1] = b[1];
-					vn[2] = b[2];
-					vn[3] = b[3];
-					vn[4] = b[4];
-					vn[5] = b[5];
-					if (vn[0] >= 0.0f && vn[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
-					{
-						flag = 7;
-						break;
-					}
-
-					//
-					// case 8: vn = 0
-					//
-					// 0 = A * x + b'
-					//
-					// 冲量x: λn
-					// x = - inv(A) * b'    
-					// x = - inv(A) *(n(vB+wB×rB-vA-wA×rA) - A * λ)
+					b3_VelocityConstraintPoint* constraintPoints[6];
+					float a[6];       // 法向冲量normalImpulse (inverse A)， 上一轮结算的冲量
+					glm::vec3 dv[6];  // 相对速度 vB+wB×rB-vA-wA×rA
+					float vn[6];      // 法向速度 n(vB+wB×rB-vA-wA×rA)   Jnv  
 
 					for (int i = 0; i < 6; i++)
 					{
+						constraintPoints[i] = velocityConstraint->points + triangleIndex * 6 + i;
+
+						a[i] = constraintPoints[i]->normalImpulse;
+						assert(a[i] >= 0.0f);
+
+						dv[i] = vB + glm::cross(wB, constraintPoints[i]->rB) - vA - glm::cross(wA, constraintPoints[i]->rA);
+
+						vn[i] = glm::dot(dv[i], normal);
+					}
+
+					float b[6];  // b = Jnv = n(vB+wB×rB-vA-wA×rA)
+					for (int i = 0; i < 6; i++)
+					{
+						b[i] = vn[i] - constraintPoints[i]->velocityBias;
 						float sum = 0;
 						for (int j = 0; j < 6; j++)
-							sum += velocityConstraint->normalMass[i][j] * b[j];
-						x[i] = -sum;
+							sum += velocityConstraint->K[triangleIndex][i][j] * a[j];
+						b[i] -= sum;  // b' = b - A * a
 					}
 
-					if (x[0] >= 0.0f && x[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
+					const float k_errorTol = 1e-3f;
+					(void)(k_errorTol);  // not used
+
+					int flag = -1;
+					std::array<float, 6> x;
+
+					while (true)
 					{
-						flag = 8;
+						// 14种情况：
+						// 1、全向内 
+						// 2、全向外
+						// 3、p12 36向内，p45向外 
+						// 4、p12 36向外，p45向内 
+						// 5、p34 52向内，p16向外 
+						// 6、p34 53向外，p16向内 
+						// 7、p56 14向内，p23向外 
+						// 8、p56 14向外，p23向内 
+						// 9、p12 向内，p3456向外 
+						// 10、p12 向外，p3456向内 
+						// 11、p34 向内，p1256向外 
+						// 12、p34 向外，p1256向内 
+						// 13、p56 向内，p1234向外 
+						// 14、p56 向外，p1234向内 
+
+
+						{
+							//
+							// case 1: vn = 0
+							//
+							// 0 = A * x + b'
+							//
+							// 冲量x: λn
+							// x = - inv(A) * b'    
+							// x = - inv(A) *(n(vB+wB×rB-vA-wA×rA) - A * λ)
+
+							for (int i = 0; i < 6; i++)
+							{
+								float sum = 0;
+								for (int j = 0; j < 6; j++)
+									sum += velocityConstraint->normalMass[triangleIndex][i][j] * b[j];
+								x[i] = -sum;
+							}
+
+							if (x[0] >= 0.0f && x[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
+							{
+								flag = 1;
+								break;
+							}
+						}
+
+						{
+							// case 2: x = 0
+							//
+							// vn1 = b1'
+							// vn2 = b2'
+							// vn3 = b3'
+							// vn4 = b4'
+							// vn5 = b5'
+							// vn6 = b6'
+
+							for (int i = 0; i < 6; i++)
+							{
+								x[i] = 0.0f;
+								vn[i] = b[i];
+							}
+							if (vn[0] >= 0.0f && vn[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
+							{
+								flag = 2;
+								break;
+							}
+						}
+
+
+						{
+							//
+							// case 3: vn1 = vn2 = vn3 = λn4 = λn5 = vn6 = 0
+							// x= {λn1, λn2, λn3, 0, 0, λn6 };
+							//
+							//   0 = a11 * x1 + a12 * x2 + a13 * x3 + a14 * 0 + a15 * 0 + a16 * x6 + b1' 
+							//   0 = a12 * x1 + a22 * x2 + a23 * x3 + a24 * 0 + a25 * 0 + a26 * x6 + b2' 
+							// vn3 = a13 * x1 + a23 * x2 + a33 * x3 + a34 * 0 + a35 * 0 + a36 * x6 + b3' 
+							// vn4 = a14 * x1 + a24 * x2 + a34 * x3 + a44 * 0 + a45 * 0 + a46 * x6 + b4' 
+							// vn5 = a15 * x1 + a25 * x2 + a35 * x3 + a45 * 0 + a55 * 0 + a56 * x6 + b5' 
+							// vn6 = a16 * x1 + a26 * x2 + a36 * x3 + a46 * 0 + a55 * 0 + a66 * x6 + b6' 
+							//
+
+							x[0] = -constraintPoints[0]->normalMass * b[0];
+							x[1] = -constraintPoints[1]->normalMass * b[1];
+							x[2] = -constraintPoints[2]->normalMass * b[2];
+							x[3] = 0.0f;
+							x[4] = 0.0f;
+							x[5] = -constraintPoints[5]->normalMass * b[5];
+
+
+							vn[0] = 0.0f;
+							vn[1] = 0.0f;
+							vn[2] = 0.0f;
+							vn[3] = velocityConstraint->K[triangleIndex][3][0] * x[0] + velocityConstraint->K[triangleIndex][3][1] * x[1] + velocityConstraint->K[triangleIndex][3][2] * x[2] + velocityConstraint->K[triangleIndex][3][5] * x[5] + b[3];
+							vn[4] = velocityConstraint->K[triangleIndex][4][0] * x[0] + velocityConstraint->K[triangleIndex][4][1] * x[1] + velocityConstraint->K[triangleIndex][4][2] * x[2] + velocityConstraint->K[triangleIndex][4][5] * x[5] + b[4];
+							vn[5] = 0.0f;
+							if (x[0] >= 0.0f && x[1] >= 0.0f && x[2] >= 0.0f && vn[3] >= 0.0f && vn[4] >= 0.0f && x[5] >= 0.0f)
+							{
+								flag = 3;
+								break;
+							}
+						}
+
+						{
+							//
+							// case 4: λn1 = λn2 = λn3 = vn4 = vn5 = λn6 = 0
+							// x= {0, 0, 0, λn4, λn5, 0 };
+							//
+							// vn1 = a11 * 0 + a12 * 0 + a13 * 0 + a14 * x4 + a15 * x5 + a16 * 0 + b1' 
+							// vn2 = a12 * 0 + a22 * 0 + a23 * 0 + a24 * x4 + a25 * x5 + a26 * 0 + b2' 
+							// vn3 = a13 * 0 + a23 * 0 + a33 * 0 + a34 * x4 + a35 * x5 + a36 * 0 + b3' 
+							//   0 = a14 * 0 + a24 * 0 + a34 * 0 + a44 * x4 + a45 * x5 + a46 * 0 + b4' 
+							//   0 = a15 * 0 + a25 * 0 + a35 * 0 + a45 * x4 + a55 * x5 + a56 * 0 + b5' 
+							// vn6 = a16 * 0 + a26 * 0 + a36 * 0 + a46 * x4 + a55 * x5 + a66 * 0 + b6' 
+							//
+
+							x[0] = 0.0f;
+							x[1] = 0.0f;
+							x[2] = 0.0f;
+							x[3] = -constraintPoints[3]->normalMass * b[3];
+							x[4] = -constraintPoints[4]->normalMass * b[4];
+							x[5] = 0.0f;
+
+							vn[0] = velocityConstraint->K[triangleIndex][0][3] * x[3] + velocityConstraint->K[triangleIndex][0][4] * x[4] + b[0];
+							vn[1] = velocityConstraint->K[triangleIndex][1][3] * x[3] + velocityConstraint->K[triangleIndex][1][4] * x[4] + b[1];
+							vn[2] = velocityConstraint->K[triangleIndex][2][3] * x[3] + velocityConstraint->K[triangleIndex][2][4] * x[4] + b[2];
+							vn[3] = 0.0f;
+							vn[4] = 0.0f;
+							vn[5] = velocityConstraint->K[triangleIndex][5][3] * x[3] + velocityConstraint->K[triangleIndex][5][4] * x[4] + b[5];
+							if (vn[0] >= 0.0f && vn[1] >= 0.0f && vn[2] >= 0.0f && x[3] >= 0.0f && x[4] >= 0.0f && vn[5] >= 0.0f)
+							{
+								flag = 4;
+								break;
+							}
+						}
+
+						{
+							//
+							// case 5: λn1 = vn2 = vn3 = vn4  = vn5 = λn6= 0
+							// x= {0, λn2, λn3, λn4, λn5, 0 };
+							// 
+							//
+							// vn1 = a11 * 0 + a12 * x2 + a13 * x3 + a14 * x4 + a15 * x5 + a16 * 0 + b1' 
+							//   0 = a12 * 0 + a22 * x2 + a23 * x3 + a24 * x4 + a25 * x5 + a26 * 0 + b2' 
+							//   0 = a13 * 0 + a23 * x2 + a33 * x3 + a34 * x4 + a35 * x5 + a36 * 0 + b3' 
+							//   0 = a14 * 0 + a24 * x2 + a34 * x3 + a44 * x4 + a45 * x5 + a46 * 0 + b4' 
+							//   0 = a15 * 0 + a25 * x2 + a35 * x3 + a45 * x4 + a55 * x5 + a56 * 0 + b5' 
+							// vn6 = a16 * 0 + a26 * x2 + a36 * x3 + a46 * x4 + a55 * x5 + a66 * 0 + b6' 
+							//
+
+							x[0] = 0.0f;
+							x[1] = -constraintPoints[1]->normalMass * b[1];
+							x[2] = -constraintPoints[2]->normalMass * b[2];
+							x[3] = -constraintPoints[3]->normalMass * b[3];
+							x[4] = -constraintPoints[4]->normalMass * b[4];
+							x[5] = 0.0f;
+
+							vn[0] = velocityConstraint->K[triangleIndex][0][1] * x[1] + velocityConstraint->K[triangleIndex][0][2] * x[2] + velocityConstraint->K[triangleIndex][0][3] * x[3] + velocityConstraint->K[triangleIndex][0][4] * x[4] + b[0];
+							vn[1] = 0.0f;
+							vn[2] = 0.0f;
+							vn[3] = 0.0f;
+							vn[4] = 0.0f;
+							vn[5] = velocityConstraint->K[triangleIndex][5][1] * x[1] + velocityConstraint->K[triangleIndex][5][2] * x[2] + velocityConstraint->K[triangleIndex][5][3] * x[3] + velocityConstraint->K[triangleIndex][5][4] * x[4] + b[5];
+							if (vn[0] >= 0.0f && x[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && x[4] >= 0.0f && vn[5] >= 0.0f)
+							{
+								flag = 5;
+								break;
+							}
+						}
+
+						{
+							//
+							// case 6: vn1 = λn2 = λn3 = λn4 = λn5 = vn6 = 0
+							// x= {λn1, 0, 0, 0, 0, λn6 };
+							// 
+							//   0 = a11 * x1 + a12 * 0 + a13 * 0 + a14 * 0 + a15 * 0 + a16 * x6 + b1' 
+							// vn2 = a12 * x1 + a22 * 0 + a23 * 0 + a24 * 0 + a25 * 0 + a26 * x6 + b2' 
+							// vn3 = a13 * x1 + a23 * 0 + a33 * 0 + a34 * 0 + a35 * 0 + a36 * x6 + b3' 
+							// vn4 = a14 * x1 + a24 * 0 + a34 * 0 + a44 * 0 + a45 * 0 + a46 * x6 + b4' 
+							// vn5 = a15 * x1 + a25 * 0 + a35 * 0 + a45 * 0 + a55 * 0 + a56 * x6 + b5' 
+							//   0 = a16 * x1 + a26 * 0 + a36 * 0 + a46 * 0 + a55 * 0 + a66 * x6 + b6' 
+							//
+
+							x[0] = -constraintPoints[0]->normalMass * b[0];
+							x[1] = 0.0f;
+							x[2] = 0.0f;
+							x[3] = 0.0f;
+							x[4] = 0.0f;
+							x[5] = -constraintPoints[5]->normalMass * b[5];
+
+							vn[0] = 0.0f;
+							vn[1] = velocityConstraint->K[triangleIndex][1][0] * x[0] + velocityConstraint->K[triangleIndex][1][5] * x[5] + b[1];
+							vn[2] = velocityConstraint->K[triangleIndex][2][0] * x[0] + velocityConstraint->K[triangleIndex][2][5] * x[5] + b[2];
+							vn[3] = velocityConstraint->K[triangleIndex][3][0] * x[0] + velocityConstraint->K[triangleIndex][3][5] * x[5] + b[3];
+							vn[4] = velocityConstraint->K[triangleIndex][4][0] * x[0] + velocityConstraint->K[triangleIndex][4][5] * x[5] + b[4];
+							vn[5] = 0.0f;
+							if (x[0] >= 0.0f && vn[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && vn[4] >= 0.0f && x[5] >= 0.0f)
+							{
+								flag = 6;
+								break;
+							}
+						}
+
+						{
+							// case 7: vn1 = λn2 = λn3 = vn4 = vn5 = vn6 = 0
+							// x= {λn1, 0, 0, λn4, λn5, λn6 };
+							// 
+							//   0 = a11 * x1 + a12 * 0 + a13 * 0 + a14 * x4 + a15 * x5 + a16 * x6 + b1' 
+							// vn2 = a12 * x1 + a22 * 0 + a23 * 0 + a24 * x4 + a25 * x5 + a26 * x6 + b2' 
+							// vn3 = a13 * x1 + a23 * 0 + a33 * 0 + a34 * x4 + a35 * x5 + a36 * x6 + b3' 
+							//   0 = a14 * x1 + a24 * 0 + a34 * 0 + a44 * x4 + a45 * x5 + a46 * x6 + b4' 
+							//   0 = a15 * x1 + a25 * 0 + a35 * 0 + a45 * x4 + a55 * x5 + a56 * x6 + b5' 
+							//   0 = a16 * x1 + a26 * 0 + a36 * 0 + a46 * x4 + a55 * x5 + a66 * x6 + b6' 
+							//
+
+							x[0] = -constraintPoints[0]->normalMass * b[0];
+							x[1] = 0.0f;
+							x[2] = 0.0f;
+							x[3] = -constraintPoints[3]->normalMass * b[3];
+							x[4] = -constraintPoints[4]->normalMass * b[4];
+							x[5] = -constraintPoints[5]->normalMass * b[5];
+
+							vn[0] = 0.0f;
+							vn[1] = velocityConstraint->K[triangleIndex][1][0] * x[0] + velocityConstraint->K[triangleIndex][1][3] * x[3] + velocityConstraint->K[triangleIndex][1][4] * x[4] + velocityConstraint->K[triangleIndex][1][5] * x[5] + b[1];
+							vn[2] = velocityConstraint->K[triangleIndex][2][0] * x[0] + velocityConstraint->K[triangleIndex][2][3] * x[3] + velocityConstraint->K[triangleIndex][2][4] * x[4] + velocityConstraint->K[triangleIndex][2][5] * x[5] + b[2];
+							vn[3] = 0.0f;
+							vn[4] = 0.0f;
+							vn[5] = 0.0f;
+							if (x[0] >= 0.0f && vn[1] >= 0.0f && vn[2] >= 0.0f && x[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
+							{
+								flag = 7;
+								break;
+							}
+						}
+
+						{
+							// case 8: λn1 = vn2 = vn3 = λn4 = λn5 = λn6 = 0
+							// x= {0, λn2, λn3, 0, 0, 0 };
+							// 
+							// vn1 = a11 * 0 + a12 * x2 + a13 * x3 + a14 * 0 + a15 * 0 + a16 * 0 + b1' 
+							//   0 = a12 * 0 + a22 * x2 + a23 * x3 + a24 * 0 + a25 * 0 + a26 * 0 + b2' 
+							//   0 = a13 * 0 + a23 * x2 + a33 * x3 + a34 * 0 + a35 * 0 + a36 * 0 + b3' 
+							// vn4 = a14 * 0 + a24 * x2 + a34 * x3 + a44 * 0 + a45 * 0 + a46 * 0 + b4' 
+							// vn5 = a15 * 0 + a25 * x2 + a35 * x3 + a45 * 0 + a55 * 0 + a56 * 0 + b5' 
+							// vn6 = a16 * 0 + a26 * x2 + a36 * x3 + a46 * 0 + a55 * 0 + a66 * 0 + b6' 
+							//
+
+							x[0] = 0.0f;
+							x[1] = -constraintPoints[1]->normalMass * b[1];
+							x[2] = -constraintPoints[2]->normalMass * b[2];
+							x[3] = 0.0f;
+							x[4] = 0.0f;
+							x[5] = 0.0f;
+
+							vn[0] = velocityConstraint->K[triangleIndex][0][1] * x[1] + velocityConstraint->K[triangleIndex][0][2] * x[2] + b[0];
+							vn[1] = 0.0f;
+							vn[2] = 0.0f;
+							vn[3] = velocityConstraint->K[triangleIndex][3][1] * x[1] + velocityConstraint->K[triangleIndex][3][2] * x[2] + b[3];
+							vn[4] = velocityConstraint->K[triangleIndex][4][1] * x[1] + velocityConstraint->K[triangleIndex][4][2] * x[2] + b[4];
+							vn[5] = velocityConstraint->K[triangleIndex][5][1] * x[1] + velocityConstraint->K[triangleIndex][5][2] * x[2] + b[5];
+							if (vn[0] >= 0.0f && x[1] >= 0.0f && x[2] >= 0.0f && vn[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
+							{
+								flag = 8;
+								break;
+							}
+						}
+
+						{
+							//
+							// case 9: vn1 = vn2 = λn3 = λn4 = λn5 = λn6 = 0
+							// x= {λn1, λn2, 0, 0, 0, 0 };
+							//
+							//   0 = a11 * x1 + a12 * x2 + a13 * 0 + a14 * 0 + a15 * 0 + a16 * 0 + b1' 
+							//   0 = a12 * x1 + a22 * x2 + a23 * 0 + a24 * 0 + a25 * 0 + a26 * 0 + b2' 
+							// vn3 = a13 * x1 + a23 * x2 + a33 * 0 + a34 * 0 + a35 * 0 + a36 * 0 + b3' 
+							// vn4 = a14 * x1 + a24 * x2 + a34 * 0 + a44 * 0 + a45 * 0 + a46 * 0 + b4' 
+							// vn5 = a15 * x1 + a25 * x2 + a35 * 0 + a45 * 0 + a55 * 0 + a56 * 0 + b5' 
+							// vn6 = a16 * x1 + a26 * x2 + a36 * 0 + a46 * 0 + a55 * 0 + a66 * 0 + b6' 
+							//
+
+							x[0] = -constraintPoints[0]->normalMass * b[0];
+							x[1] = -constraintPoints[1]->normalMass * b[1];
+							x[2] = 0.0f;
+							x[3] = 0.0f;
+							x[4] = 0.0f;
+							x[5] = 0.0f;
+
+
+							vn[0] = 0.0f;
+							vn[1] = 0.0f;
+							vn[2] = velocityConstraint->K[triangleIndex][2][0] * x[0] + velocityConstraint->K[triangleIndex][2][1] * x[1] + b[2];
+							vn[3] = velocityConstraint->K[triangleIndex][3][0] * x[0] + velocityConstraint->K[triangleIndex][3][1] * x[1] + b[3];
+							vn[4] = velocityConstraint->K[triangleIndex][4][0] * x[0] + velocityConstraint->K[triangleIndex][4][1] * x[1] + b[4];
+							vn[5] = velocityConstraint->K[triangleIndex][5][0] * x[0] + velocityConstraint->K[triangleIndex][5][1] * x[1] + b[5];
+							if (x[0] >= 0.0f && x[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
+							{
+								flag = 9;
+								break;
+							}
+						}
+
+						{
+							//
+							// case 10: λn1 = λn2 = vn3 = vn4 = vn5 = vn6 = 0
+							// x= {0, 0, λn3, λn4, λn5, λn6 };
+							//
+							// vn1 = a11 * 0 + a12 * 0 + a13 * x3 + a14 * x4 + a15 * x5 + a16 * x6 + b1' 
+							// vn2 = a12 * 0 + a22 * 0 + a23 * x3 + a24 * x4 + a25 * x5 + a26 * x6 + b2' 
+							//   0 = a13 * 0 + a23 * 0 + a33 * x3 + a34 * x4 + a35 * x5 + a36 * x6 + b3' 
+							//   0 = a14 * 0 + a24 * 0 + a34 * x3 + a44 * x4 + a45 * x5 + a46 * x6 + b4' 
+							//   0 = a15 * 0 + a25 * 0 + a35 * x3 + a45 * x4 + a55 * x5 + a56 * x6 + b5' 
+							//   0 = a16 * 0 + a26 * 0 + a36 * x3 + a46 * x4 + a55 * x5 + a66 * x6 + b6' 
+							//
+
+							x[0] = 0.0f;
+							x[1] = 0.0f;
+							x[2] = -constraintPoints[2]->normalMass * b[2];
+							x[3] = -constraintPoints[3]->normalMass * b[3];
+							x[4] = -constraintPoints[4]->normalMass * b[4];
+							x[5] = -constraintPoints[5]->normalMass * b[5];
+
+							vn[0] = velocityConstraint->K[triangleIndex][0][2] * x[2] + velocityConstraint->K[triangleIndex][0][3] * x[3] + velocityConstraint->K[triangleIndex][0][4] * x[4] + velocityConstraint->K[triangleIndex][0][5] * x[5] + b[0];
+							vn[1] = velocityConstraint->K[triangleIndex][1][2] * x[2] + velocityConstraint->K[triangleIndex][1][3] * x[3] + velocityConstraint->K[triangleIndex][1][4] * x[4] + velocityConstraint->K[triangleIndex][1][5] * x[5] + b[1];
+							vn[2] = 0.0f;
+							vn[3] = 0.0f;
+							vn[4] = 0.0f;
+							vn[5] = 0.0f;
+							if (vn[0] >= 0.0f && vn[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
+							{
+								flag = 10;
+								break;
+							}
+						}
+
+						{
+							//
+							// case 11: λn1 = λn2 = vn3 = vn4 = λn5 = λn6 = 0
+							// x= {0, 0, λn3, λn4, 0, 0 };
+							// 
+							//
+							// vn1 = a11 * 0 + a12 * 0 + a13 * x3 + a14 * x4 + a15 * 0 + a16 * 0 + b1' 
+							// vn2 = a12 * 0 + a22 * 0 + a23 * x3 + a24 * x4 + a25 * 0 + a26 * 0 + b2' 
+							//   0 = a13 * 0 + a23 * 0 + a33 * x3 + a34 * x4 + a35 * 0 + a36 * 0 + b3' 
+							//   0 = a14 * 0 + a24 * 0 + a34 * x3 + a44 * x4 + a45 * 0 + a46 * 0 + b4' 
+							// vn5 = a15 * 0 + a25 * 0 + a35 * x3 + a45 * x4 + a55 * 0 + a56 * 0 + b5' 
+							// vn6 = a16 * 0 + a26 * 0 + a36 * x3 + a46 * x4 + a55 * 0 + a66 * 0 + b6' 
+							//
+
+							x[0] = 0.0f;
+							x[1] = 0.0f;
+							x[2] = -constraintPoints[2]->normalMass * b[2];
+							x[3] = -constraintPoints[3]->normalMass * b[3];
+							x[4] = 0.0f;
+							x[5] = 0.0f;
+
+							vn[0] = velocityConstraint->K[triangleIndex][0][2] * x[2] + velocityConstraint->K[triangleIndex][0][3] * x[3] + b[0];
+							vn[1] = velocityConstraint->K[triangleIndex][1][2] * x[2] + velocityConstraint->K[triangleIndex][1][3] * x[3] + b[1];
+							vn[2] = 0.0f;
+							vn[3] = 0.0f;
+							vn[4] = velocityConstraint->K[triangleIndex][4][2] * x[2] + velocityConstraint->K[triangleIndex][4][3] * x[3] + b[4];
+							vn[5] = velocityConstraint->K[triangleIndex][5][2] * x[2] + velocityConstraint->K[triangleIndex][5][3] * x[3] + b[5];
+							if (vn[0] >= 0.0f && vn[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
+							{
+								flag = 11;
+								break;
+							}
+						}
+
+						{
+							//
+							// case 12: vn1 = vn2 = λn3 = λn4 = vn5 = vn6 = 0
+							// x= {λn1, λn2, 0, 0, λn5, λn6 };
+							// 
+							//   0 = a11 * x1 + a12 * x2 + a13 * 0 + a14 * 0 + a15 * x5 + a16 * x6 + b1' 
+							//   0 = a12 * x1 + a22 * x2 + a23 * 0 + a24 * 0 + a25 * x5 + a26 * x6 + b2' 
+							// vn3 = a13 * x1 + a23 * x2 + a33 * 0 + a34 * 0 + a35 * x5 + a36 * x6 + b3' 
+							// vn4 = a14 * x1 + a24 * x2 + a34 * 0 + a44 * 0 + a45 * x5 + a46 * x6 + b4' 
+							//   0 = a15 * x1 + a25 * x2 + a35 * 0 + a45 * 0 + a55 * x5 + a56 * x6 + b5' 
+							//   0 = a16 * x1 + a26 * x2 + a36 * 0 + a46 * 0 + a55 * x5 + a66 * x6 + b6' 
+							//
+
+							x[0] = -constraintPoints[0]->normalMass * b[0];
+							x[1] = -constraintPoints[1]->normalMass * b[1];
+							x[2] = 0.0f;
+							x[3] = 0.0f;
+							x[4] = -constraintPoints[4]->normalMass * b[4];
+							x[5] = -constraintPoints[5]->normalMass * b[5];
+
+							vn[0] = 0.0f;
+							vn[1] = 0.0f;
+							vn[2] = velocityConstraint->K[triangleIndex][2][0] * x[0] + velocityConstraint->K[triangleIndex][2][1] * x[1] + velocityConstraint->K[triangleIndex][2][4] * x[4] + velocityConstraint->K[triangleIndex][2][5] * x[5] + b[2];
+							vn[3] = velocityConstraint->K[triangleIndex][3][0] * x[0] + velocityConstraint->K[triangleIndex][3][1] * x[1] + velocityConstraint->K[triangleIndex][3][4] * x[4] + velocityConstraint->K[triangleIndex][3][5] * x[5] + b[3];
+							vn[4] = 0.0f;
+							vn[5] = 0.0f;
+							if (x[0] >= 0.0f && x[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
+							{
+								flag = 12;
+								break;
+							}
+						}
+
+						{
+							// case 13: λn1 = λn2 = λn3 = λn4 = vn5 = vn6 = 0
+							// x= {0, 0, 0, 0, λn5, λn6 };
+							// 
+							// vn1 = a11 * 0 + a12 * 0 + a13 * 0 + a14 * 0 + a15 * x5 + a16 * x6 + b1' 
+							// vn2 = a12 * 0 + a22 * 0 + a23 * 0 + a24 * 0 + a25 * x5 + a26 * x6 + b2' 
+							// vn3 = a13 * 0 + a23 * 0 + a33 * 0 + a34 * 0 + a35 * x5 + a36 * x6 + b3' 
+							// vn4 = a14 * 0 + a24 * 0 + a34 * 0 + a44 * 0 + a45 * x5 + a46 * x6 + b4' 
+							//   0 = a15 * 0 + a25 * 0 + a35 * 0 + a45 * 0 + a55 * x5 + a56 * x6 + b5' 
+							//   0 = a16 * 0 + a26 * 0 + a36 * 0 + a46 * 0 + a55 * x5 + a66 * x6 + b6' 
+							//
+
+							x[0] = 0.0f;
+							x[1] = 0.0f;
+							x[2] = 0.0f;
+							x[3] = 0.0f;
+							x[4] = -constraintPoints[4]->normalMass * b[4];
+							x[5] = -constraintPoints[5]->normalMass * b[5];
+
+							vn[0] = velocityConstraint->K[triangleIndex][0][4] * x[4] + velocityConstraint->K[triangleIndex][0][5] * x[5] + b[0];
+							vn[1] = velocityConstraint->K[triangleIndex][1][4] * x[4] + velocityConstraint->K[triangleIndex][1][5] * x[5] + b[1];
+							vn[2] = velocityConstraint->K[triangleIndex][2][4] * x[4] + velocityConstraint->K[triangleIndex][2][5] * x[5] + b[2];
+							vn[3] = velocityConstraint->K[triangleIndex][3][4] * x[4] + velocityConstraint->K[triangleIndex][3][5] * x[5] + b[3];
+							vn[4] = 0.0f;
+							vn[5] = 0.0f;
+							if (vn[0] >= 0.0f && vn[1] >= 0.0f && vn[2] >= 0.0f && vn[3] >= 0.0f && x[4] >= 0.0f && x[5] >= 0.0f)
+							{
+								flag = 13;
+								break;
+							}
+						}
+
+						{
+							// case 14: vn1 = vn2 = vn3 = vn4 = λn5 = λn6 = 0
+							// x= {λn1, λn2, λn3, λn4, 0, 0 };
+							// 
+							//   0 = a11 * x1 + a12 * x2 + a13 * x3 + a14 * x4 + a15 * 0 + a16 * 0 + b1' 
+							//   0 = a12 * x1 + a22 * x2 + a23 * x3 + a24 * x4 + a25 * 0 + a26 * 0 + b2' 
+							//   0 = a13 * x1 + a23 * x2 + a33 * x3 + a34 * x4 + a35 * 0 + a36 * 0 + b3' 
+							//   0 = a14 * x1 + a24 * x2 + a34 * x3 + a44 * x4 + a45 * 0 + a46 * 0 + b4' 
+							// vn5 = a15 * x1 + a25 * x2 + a35 * x3 + a45 * x4 + a55 * 0 + a56 * 0 + b5' 
+							// vn6 = a16 * x1 + a26 * x2 + a36 * x3 + a46 * x4 + a55 * 0 + a66 * 0 + b6' 
+							//
+
+							x[0] = -constraintPoints[0]->normalMass * b[0];
+							x[1] = -constraintPoints[1]->normalMass * b[1];
+							x[2] = -constraintPoints[2]->normalMass * b[2];
+							x[3] = -constraintPoints[3]->normalMass * b[3];
+							x[4] = 0.0f;
+							x[5] = 0.0f;
+
+							vn[0] = 0.0f;
+							vn[1] = 0.0f;
+							vn[2] = 0.0f;
+							vn[3] = 0.0f;
+							vn[4] = velocityConstraint->K[triangleIndex][4][0] * x[0] + velocityConstraint->K[triangleIndex][4][1] * x[1] + velocityConstraint->K[triangleIndex][4][2] * x[2] + velocityConstraint->K[triangleIndex][4][3] * x[3] + b[4];
+							vn[5] = velocityConstraint->K[triangleIndex][5][0] * x[0] + velocityConstraint->K[triangleIndex][5][1] * x[1] + velocityConstraint->K[triangleIndex][5][2] * x[2] + velocityConstraint->K[triangleIndex][5][3] * x[3] + b[5];
+							if (x[0] >= 0.0f && x[1] >= 0.0f && x[2] >= 0.0f && x[3] >= 0.0f && vn[4] >= 0.0f && vn[5] >= 0.0f)
+							{
+								flag = 14;
+								break;
+							}
+						}
+
+						// 没有解决办法，放弃。这有时会被击中，但似乎并不重要。
+						// No solution, give up. This is hit sometimes, but it doesn't seem to matter.
 						break;
 					}
 
-					// 没有解决办法，放弃。这有时会被击中，但似乎并不重要。
-					// No solution, give up. This is hit sometimes, but it doesn't seem to matter.
-					break;
+					if (flag != -1)
+					{
+						VOL_TRACE("case " + std::to_string(flag));
+						// 冲量增量
+						std::array<float, 6> d;
+						for (int i = 0; i < 6; i++)
+							d[i] = x[i] - a[i];
+
+						// 应用冲量增量
+						std::array<glm::vec3, 6> P;
+						for (int i = 0; i < 6; i++)
+							P[i] = d[i] * normal;
+
+						glm::vec3 sumP = glm::vec3(0.0f);
+						for (int i = 0; i < 6; i++)
+							sumP += P[i];
+
+						vATemp[triangleIndex] -= imA * (sumP / (float)b3_MaxManifoldPoints);
+						//vA -= imA * sumP;
+
+						glm::vec3 sum_rA_cross_P = glm::vec3(0.0f);
+						for (int i = 0; i < 6; i++)
+							sum_rA_cross_P += glm::cross(constraintPoints[i]->rA, P[i]);
+						wATemp[triangleIndex] -= iIA * (sum_rA_cross_P / (float)b3_MaxManifoldPoints);
+						//wA -= iIA * (sum_rA_cross_P);
+
+						vBTemp[triangleIndex] += imB * (sumP / (float)b3_MaxManifoldPoints);
+						//vB += imB * sumP;
+
+						glm::vec3 sum_rB_cross_P = glm::vec3(0.0f);
+						for (int i = 0; i < 6; i++)
+							sum_rB_cross_P += glm::cross(constraintPoints[i]->rB, P[i]);
+						wBTemp[triangleIndex] += iIB * (sum_rB_cross_P / (float)b3_MaxManifoldPoints);
+						//wB += iIB * (sum_rB_cross_P);
+
+						// Accumulate
+						for (int i = 0; i < 6; i++)
+							constraintPoints[i]->normalImpulse = x[i];
+					}
+
+					for (int i = 0; i < 6; i++)
+						VOL_ASSERT(std::isfinite(constraintPoints[i]->normalImpulse));
 				}
 
-				if (flag != -1)
+				for (int i = 0; i < pointCount / 6; i++)
 				{
-					VOL_TRACE("case " + std::to_string(flag));
-					// 冲量增量
-					std::array<float, 6> d;
-					for (int i = 0; i < 6; i++)
-						d[i] = x[i] - a[i];
-
-					// 应用冲量增量
-					std::array<glm::vec3, 6> P;
-					for (int i = 0; i < 6; i++)
-						P[i] = d[i] * normal;
-
-					glm::vec3 sumP = glm::vec3(0.0f);
-					for (int i = 0; i < 6; i++)
-						sumP += P[i];
-					vA -= mA * (sumP / 6.0f);
-
-					glm::vec3 sumCrossRAP = glm::vec3(0.0f);
-					for (int i = 0; i < 6; i++)
-						sumCrossRAP += glm::cross(constraintPoints[i]->rA, P[i]);
-					wA -= iA * (sumCrossRAP / 6.0f);
-					//wA -= iA * (sumCrossRAP);
-
-					vB += mB * (sumP / 6.0f);
-
-					glm::vec3 sumCrossRBP = glm::vec3(0.0f);
-					for (int i = 0; i < 6; i++)
-						sumCrossRBP += glm::cross(constraintPoints[i]->rB, P[i]);
-					wB += iB * (sumCrossRBP / 6.0f);
-					//wB += iB * (sumCrossRBP);
-
-					// Accumulate
-					for (int i = 0; i < 6; i++)
-						constraintPoints[i]->normalImpulse = x[i];
+					vA += vATemp[i];
+					wA += wATemp[i];
+					vB += vBTemp[i];
+					wB += wBTemp[i];
 				}
-
-				for (int i = 0; i < 6; i++)
-					VOL_ASSERT(std::isfinite(constraintPoints[i]->normalImpulse));
 			}
+
 			VOL_TRACE("vA: " + std::to_string(vA.x) + ", " + std::to_string(vA.y) + ", " + std::to_string(vA.z));
 			VOL_TRACE("wA: " + std::to_string(wA.x) + ", " + std::to_string(wA.y) + ", " + std::to_string(wA.z));
 			VOL_ASSERT(std::isfinite(vA.x));
@@ -967,65 +1162,79 @@ namespace Volcano {
 			int indexA             = positionConstraint->indexA;
 			int indexB             = positionConstraint->indexB;
 			glm::vec3 localCenterA = positionConstraint->localCenterA;
-			float imA               = positionConstraint->invMassA;
-			glm::vec3 iA           = positionConstraint->invIA;
+			float imA              = positionConstraint->invMassA;
+			glm::mat3 iIA          = positionConstraint->invIA;
 			glm::vec3 localCenterB = positionConstraint->localCenterB;
-			float imB               = positionConstraint->invMassB;
-			glm::vec3 iB           = positionConstraint->invIB;
+			float imB              = positionConstraint->invMassB;
+			glm::mat3 iIB          = positionConstraint->invIB;
 			int pointCount         = positionConstraint->pointCount;
 
-			glm::vec3 cA           = m_positions[indexA].position;
-			glm::vec3 aA           = m_positions[indexA].rotation;
-			glm::vec3 cB           = m_positions[indexB].position;
-			glm::vec3 aB           = m_positions[indexB].rotation;
+			const glm::vec3 cA           = m_positions[indexA].position;
+			const glm::vec3 aA           = m_positions[indexA].rotation;
+			const glm::vec3 cB           = m_positions[indexB].position;
+			const glm::vec3 aB           = m_positions[indexB].rotation;
+
+			std::vector<glm::vec3> cATemp; cATemp.resize(pointCount / 6); for (int i = 0; i < cATemp.size(); i++) cATemp[i] = glm::vec3(0.0f);
+			std::vector<glm::vec3> aATemp; aATemp.resize(pointCount / 6); for (int i = 0; i < aATemp.size(); i++) aATemp[i] = glm::vec3(0.0f);
+			std::vector<glm::vec3> cBTemp; cBTemp.resize(pointCount / 6); for (int i = 0; i < cBTemp.size(); i++) cBTemp[i] = glm::vec3(0.0f);
+			std::vector<glm::vec3> aBTemp; aBTemp.resize(pointCount / 6); for (int i = 0; i < aBTemp.size(); i++) aBTemp[i] = glm::vec3(0.0f);
 
 			// 结算法向约束 
-			for (int j = 0; j < pointCount; ++j)
+			for (int triangleIndex = 0; triangleIndex < pointCount / 6; triangleIndex++)
 			{
-				b3_Transform transformA, transformB;
-				transformA.rotation.Set(aA);
-				transformB.rotation.Set(aB);
-				transformA.position = cA - b3_Multiply(transformA.rotation, localCenterA);
-				transformB.position = cB - b3_Multiply(transformB.rotation, localCenterB);
+				for (int pointIndex = 0; pointIndex < 6; ++pointIndex)
+				{
+					int pi = triangleIndex * 6 + pointIndex;
+					b3_Transform transformA, transformB;
+					transformA.rotation.Set(aA);
+					transformB.rotation.Set(aB);
+					transformA.position = cA - b3_Multiply(transformA.rotation, localCenterA);
+					transformB.position = cB - b3_Multiply(transformB.rotation, localCenterB);
 
-				b3_PositionSolverManifold positionSolverManifold;
-				positionSolverManifold.Initialize(positionConstraint, transformA, transformB, j);
-				glm::vec3 normal = positionSolverManifold.normal;
+					b3_PositionSolverManifold positionSolverManifold;
+					positionSolverManifold.Initialize(positionConstraint, transformA, transformB, pi);
+					glm::vec3 normal = positionSolverManifold.normal;
 
-				glm::vec3 point = positionSolverManifold.point;
-				float separation = positionSolverManifold.separation;
+					glm::vec3 point = positionSolverManifold.point;
+					float separation = positionSolverManifold.separation;
 
-				glm::vec3 rA = point - cA;
-				glm::vec3 rB = point - cB;
+					glm::vec3 rA = point - cA;
+					glm::vec3 rB = point - cB;
 
-				// 跟踪最大约束误差。Track max constraint error.
-				minSeparation = glm::min(minSeparation, separation);
+					// 跟踪最大约束误差。Track max constraint error.
+					minSeparation = glm::min(minSeparation, separation);
 
-				// 防止大幅修正，允许倾斜(slop)。 Prevent large corrections and allow slop.
-				float C = b3_Clamp(b3_Baumgarte * (separation + b3_LinearSlop), -b3_MaxLinearCorrection, 0.0f);
+					// 防止大幅修正，允许倾斜(slop)。 Prevent large corrections and allow slop.
+					float C = b3_Clamp(b3_Baumgarte * (separation + b3_LinearSlop), -b3_MaxLinearCorrection, 0.0f);
 
-				// 计算有效质量
-				glm::vec3 rnA = glm::cross(rA, normal);
-				glm::vec3 rnB = glm::cross(rB, normal);
-				float K = imA + imB + glm::length(iA * rnA * rnA) + glm::length(iB * rnB * rnB);
+					// 计算有效质量
+					glm::vec3 rA_cross_n = glm::cross(rA, normal);
+					glm::vec3 rB_cross_n = glm::cross(rB, normal);
+					float K = imA + glm::dot(iIA * rA_cross_n * rA_cross_n) + imB + glm::dot(iIB * rB_cross_n * rB_cross_n);
+					// 计算法向冲量
+					float impulse = K > 0.0f ? -C / K : 0.0f;
 
-				// 计算法向冲量
-				float impulse = K > 0.0f ? -C / K : 0.0f;
+					glm::vec3 P = impulse * normal;
 
-				glm::vec3 P = impulse * normal;
+					// L = Iw = r×P
+					cATemp[i] -= imA * P;
+					aATemp[i] -= iIA * glm::cross(rA, P);
+					cBTemp[i] += imB * P;
+					aBTemp[i] += iIB * glm::cross(rB, P);
+				}
+				for (int i = 0; i < 3; i++)
+				{
+					if (glm::abs(cATemp[triangleIndex][i]) < 0.1f * b3_LinearSlop) cATemp[triangleIndex][i] = 0.0f;
+					if (glm::abs(aATemp[triangleIndex][i]) < 0.1f * b3_LinearSlop) aATemp[triangleIndex][i] = 0.0f;
+					if (glm::abs(cBTemp[triangleIndex][i]) < 0.1f * b3_LinearSlop) cBTemp[triangleIndex][i] = 0.0f;
+					if (glm::abs(aBTemp[triangleIndex][i]) < 0.1f * b3_LinearSlop) aBTemp[triangleIndex][i] = 0.0f;
+				}
 
-				cA -= imA * P;
-				aA -= iA * glm::cross(rA, P);
-
-				cB += imB * P;
-				aB += iB * glm::cross(rB, P);
+				m_positions[indexA].position += cATemp[triangleIndex];
+				m_positions[indexA].rotation += aATemp[triangleIndex];
+				m_positions[indexB].position += cBTemp[triangleIndex];
+				m_positions[indexB].rotation += aBTemp[triangleIndex];
 			}
-
-			m_positions[indexA].position = cA;
-			m_positions[indexA].rotation = aA;
-
-			m_positions[indexB].position = cB;
-			m_positions[indexB].rotation = aB;
 		}
 
 		// 我们不能期望minSpeparation >= -b3_LinearSlop，因为我们没有将separation推到超过-b3_Lineslop。
@@ -1047,20 +1256,20 @@ namespace Volcano {
 			glm::vec3 localCenterB = pc->localCenterB;
 			int pointCount = pc->pointCount;
 
-			float mA = 0.0f;
-			glm::vec3 iA = { 0.0f, 0.0f, 0.0f };
+			float imA = 0.0f;
+			glm::mat3 iIA = 0.0f;
 			if (indexA == toiIndexA || indexA == toiIndexB)
 			{
-				mA = pc->invMassA;
-				iA = pc->invIA;
+				imA = pc->invMassA;
+				iIA = pc->invIA;
 			}
 
-			float mB = 0.0f;
-			glm::vec3 iB = { 0.0f, 0.0f, 0.0f };
+			float imB = 0.0f;
+			glm::mat3 iIB = 0.0f;
 			if (indexB == toiIndexA || indexB == toiIndexB)
 			{
-				mB = pc->invMassB;
-				iB = pc->invIB;
+				imB = pc->invMassB;
+				iIB = pc->invIB;
 			}
 
 			glm::vec3 cA = m_positions[indexA].position;
@@ -1095,20 +1304,20 @@ namespace Volcano {
 				float C = b3_Clamp(b3_TOIBaumgarte * (separation + b3_LinearSlop), -b3_MaxLinearCorrection, 0.0f);
 
 				// Compute the effective mass.
-				glm::vec3 rnA = glm::cross(rA, normal);
-				glm::vec3 rnB = glm::cross(rB, normal);
-				float K = mA + mB + glm::length(iA * rnA * rnA) + glm::length(iB * rnB * rnB);
+				glm::vec3 rA_cross_n = glm::cross(rA, normal);
+				glm::vec3 rB_cross_n = glm::cross(rB, normal);
+				float K = imA + glm::dot(iIA * rA_cross_n * rA_cross_n) + imB + glm::dot(iIB * rB_cross_n * rB_cross_n);
 
 				// Compute normal impulse
 				float impulse = K > 0.0f ? -C / K : 0.0f;
 
 				glm::vec3 P = impulse * normal;
 
-				cA -= mA * P;
-				aA -= iA * glm::cross(rA, P);
+				cA -= imA * P;
+				aA -= iIA * glm::cross(rA, P);
 
-				cB += mB * P;
-				aB += iB * glm::cross(rB, P);
+				cB += imB * P;
+				aB += iIB * glm::cross(rB, P);
 			}
 
 			m_positions[indexA].position = cA;

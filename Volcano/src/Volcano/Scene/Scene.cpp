@@ -138,34 +138,9 @@ namespace Volcano {
 
 		for (auto& child : other->GetEntityList())
 		{
-			/*
-			Ref<Entity> newEntity = Entity::Create(*newScene.get(), entityChild->GetUUID(), entityChild->GetName());
-			newEntity->SetActive(entityChild->GetActive());
-			entityIDMap[newEntity->GetUUID()] = newEntity;
-			entityEnttMap[newEntity->GetEntityHandle()] = newEntity;
-			entityList.push_back(newEntity);
-			CopyEntityChildren(entityChild, newEntity, entityIDMap, entityEnttMap);
-			*/
 			newScene->DuplicateEntity(child, nullptr, child->GetUUID());
 		}
 
-		// 获取旧实体的所有组件，然后用API，复制旧实体的所有组件给新实体，复制组件会包括复制组件的属性值
-		// Copy components (except IDComponent and TagComponent)
-		//CopyComponent(AllComponents{}, dstSceneRegistry, srcSceneRegistry, entityIDMap);
-
-		// MeshComponent的Mesh指针复制后还是绑定旧mesh，旧mesh绑定旧Entity，需要单独遍历一遍重新声明新mesh并绑定新Entity
-		/*
-		auto view = dstSceneRegistry.view<MeshComponent>();
-		for (auto entity : view)
-		{
-			auto& mc = dstSceneRegistry.get<MeshComponent>(entity);
-			auto modelPath = mc.modelPath;
-			auto vertexBone = mc.vertexBone;
-			mc.SetMesh(mc.meshType, entityEnttMap[entity].get(), mc.mesh);
-			mc.modelPath = modelPath;
-			mc.vertexBone = vertexBone;
-		}
-		*/
 		return newScene;
 	}
 
@@ -505,7 +480,7 @@ namespace Volcano {
 				});
 				
 			const int velocityIterations = 1;
-			const int positionIterations = 2;
+			const int positionIterations = 1;
 			// 从Box3D检索变换(Retrieve transform)
 			m_Physics3DWorld->Step(ts, velocityIterations, positionIterations);
 
@@ -615,7 +590,7 @@ namespace Volcano {
 		Camera* mainCamera = nullptr;
 		glm::mat4 cameraTransform;
 		glm::vec3 cameraPosition;
-		glm::vec3 cameraDirection;
+		glm::vec3 cameraRotation;
 		{
 			Ref<Entity> mainCameraEntity = GetPrimaryCameraEntity();
 			if (mainCameraEntity)
@@ -627,13 +602,13 @@ namespace Volcano {
 				glm::vec3 parentPosition, parentRotation, parentScale;
 				Math::DecomposeTransform(mainCameraEntity->GetParentTransform(), parentPosition, parentRotation, parentScale);
 				cameraPosition = parentPosition + transform.Translation;
-				cameraDirection = glm::rotate(glm::quat(parentRotation + transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
+				cameraRotation = parentRotation + transform.Rotation;//glm::rotate(glm::quat(parentRotation + transform.Rotation), glm::vec3(0.0f, 0.0f, -1.0f));
 			}
 		}
 
 		// 主摄像头渲染场景
 		if (mainCamera)
-			RenderScene(*mainCamera, cameraTransform, cameraPosition, cameraDirection);
+			RenderScene(*mainCamera, cameraTransform, cameraPosition, cameraRotation);
 	}
 
 	void Scene::OnUpdateSimulation(Timestep ts, EditorCamera& camera)
@@ -647,7 +622,7 @@ namespace Volcano {
 	void Scene::OnRenderSimulation(Timestep ts, EditorCamera& camera)
 	{
 		// Render
-		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetForwardDirection());
+		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetRotation());//camera.GetForwardDirection());
 	}
 
 	void Scene::OnUpdateEditor(Timestep ts, EditorCamera& camera)
@@ -658,7 +633,7 @@ namespace Volcano {
 	void Scene::OnRenderEditor(Timestep ts, EditorCamera& camera)
 	{
 		// Render
-		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetForwardDirection());
+		RenderScene(camera, camera.GetViewMatrix(), camera.GetPosition(), camera.GetRotation());//camera.GetForwardDirection());
 	}
 
 	void Scene::OnViewportResize(uint32_t width, uint32_t height)
@@ -703,6 +678,15 @@ namespace Volcano {
 			mc.SetMesh(mc.meshType, newEntity.get(), mc.mesh);
 			mc.modelPath = modelPath;
 			mc.vertexBone = vertexBone;
+		}
+
+		if (newEntity->HasComponent<ParticleSystemComponent>())
+		{
+			auto& newPs = newEntity->GetComponent<ParticleSystemComponent>().particleSystem;
+			auto& oldPs = entity->GetComponent<ParticleSystemComponent>().particleSystem;
+			newPs = std::make_shared<ParticleSystem>(*oldPs.get());
+			newPs->entity = newEntity.get();
+			newPs->UpdateEntityOnMesh();
 		}
 
 		// AnimatorComponent复制后animator指针需要重置
@@ -914,6 +898,17 @@ namespace Volcano {
 
 	void Scene::UpdateScene(Timestep ts)
 	{
+		// Update Particle System
+		TraverseEntity(m_EntityList, [ts](Ref<Entity> entity) {
+			if (entity->HasComponent<ParticleSystemComponent>() && entity->GetComponent<ParticleSystemComponent>().enabled)
+			{
+				std::vector<glm::mat4> finalBoneMatrices;
+				auto& particleSystem = entity->GetComponent<ParticleSystemComponent>().particleSystem;
+				particleSystem->Update(ts);
+
+			}
+			});
+
 		// Update Skybox
 		auto skyboxEntity = GetPrimarySkyboxEntity();
 		if (skyboxEntity != nullptr)
@@ -1058,7 +1053,7 @@ namespace Volcano {
 	}
 
 	// 摄像头渲染场景，摄像头，摄像头TRS，摄像头位置（translation），摄像头方向
-	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction)
+	void Scene::RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& rotation)
 	{
 		UpdateCameraData(camera, transform, position);
 
@@ -1117,7 +1112,7 @@ namespace Volcano {
 						auto& transformComponent = entity->GetComponent<TransformComponent>();
 						SphereMesh::GetInstance()->BeginScene(camera, transform, position);
 						SphereMesh::GetInstance()->StartBatch();
-						SphereMesh::GetInstance()->DrawMesh(entity->GetUUID(), finalBoneMatrices);
+						SphereMesh::GetInstance()->DrawMesh((int)entity->GetEntityHandle(), finalBoneMatrices);
 						SphereMesh::GetInstance()->BindShader(m_RenderType);
 						b3_Body* body = (b3_Body*)entity->GetComponent<RigidbodyComponent>().RuntimeBody;
 						if (body != nullptr)
@@ -1144,7 +1139,7 @@ namespace Volcano {
 						auto& transformComponent = entity->GetComponent<TransformComponent>();
 						CubeMesh::GetInstance()->BeginScene(camera, transform, position);
 						CubeMesh::GetInstance()->StartBatch();
-						CubeMesh::GetInstance()->DrawMesh(entity->GetUUID(), finalBoneMatrices);
+						CubeMesh::GetInstance()->DrawMesh((int)entity->GetEntityHandle(), finalBoneMatrices);
 						CubeMesh::GetInstance()->BindShader(m_RenderType);
 						b3_Body* body = (b3_Body*)entity->GetComponent<RigidbodyComponent>().RuntimeBody;
 						if (body != nullptr)
@@ -1169,34 +1164,59 @@ namespace Volcano {
 
 		}
 
+		// Draw Particle System
+		if (m_RenderType == RenderType::PARTICLE)
+		{
+			//RendererAPI::SetCullFace(false);
+			TraverseEntity(m_EntityList, [&](Ref<Entity> entity) {
+				if (!entity->HasComponent<ParticleSystemComponent>())
+					return;
+
+				auto& psc = entity->GetComponent<ParticleSystemComponent>();
+
+				if (!psc.enabled)
+					return;
+
+				if (!psc.particleSystem->renderer.enabled)
+					return;
+
+				psc.particleSystem->Render(camera, transform, position, rotation);
+
+				});
+			//RendererAPI::SetCullFace(true);
+
+			return;
+		}
+
 		Renderer2D::BeginScene(camera, transform);
-
-		// Draw sprites
 		{
-			auto group = m_Registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
-			for (auto entity : group)
+			// Draw sprites
 			{
-				if (m_EntityEnttMap[entity]->GetActive())
+				auto group = m_Registry.group<TransformComponent>(entt::get<SpriteRendererComponent>);
+				for (auto entity : group)
 				{
-					auto [transform, sprite] = group.get<TransformComponent, SpriteRendererComponent>(entity);
-					Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+					if (m_EntityEnttMap[entity]->GetActive())
+					{
+						auto [transform, sprite] = group.get<TransformComponent, SpriteRendererComponent>(entity);
+						Renderer2D::DrawSprite(transform.GetTransform(), sprite, (int)entity);
+					}
 				}
 			}
-		}
 
-		// Draw circles
-		{
-			auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
-			for (auto entity : view)
+			// Draw circles
 			{
-				if (m_EntityEnttMap[entity]->GetActive())
+				auto view = m_Registry.view<TransformComponent, CircleRendererComponent>();
+				for (auto entity : view)
 				{
-					auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
-					Renderer2D::DrawCircle(transform.GetTransform(), circle.Color, circle.Thickness, circle.Fade, (int)entity);
+					if (m_EntityEnttMap[entity]->GetActive())
+					{
+						auto [transform, circle] = view.get<TransformComponent, CircleRendererComponent>(entity);
+						Renderer2D::DrawCircle(transform.GetTransform(), circle.Color, circle.Thickness, circle.Fade, (int)entity);
+					}
 				}
 			}
+			Renderer2D::EndScene();
 		}
-		Renderer2D::EndScene();
 
 		//Draw Mesh
 		TraverseEntity(m_EntityList, [&](Ref<Entity> entity) {
@@ -1206,6 +1226,13 @@ namespace Volcano {
 				auto& transformComponent    = entity->GetComponent<TransformComponent>();
 				auto& meshComponent         = entity->GetComponent<MeshComponent>();
 				auto& meshRendererComponent = entity->GetComponent<MeshRendererComponent>();
+
+
+				glm::mat4 transform = entity->GetParentTransform() * entity->GetTransform();
+				glm::mat4 normalTransform = transpose(inverse(transform));//glm::mat3(transpose(inverse(transform)));
+
+				UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&transform, sizeof(glm::mat4));
+				UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&normalTransform, sizeof(glm::mat4), 4 * 4 * sizeof(float));
 
 				switch (meshComponent.meshType)
 				{
@@ -1237,49 +1264,6 @@ namespace Volcano {
 			}
 
 			});
-		/*
-		{
-			auto view = m_Registry.view<TransformComponent, MeshComponent, MeshRendererComponent>();
-
-			for (auto entity : view)
-			{
-				if (m_EntityEnttMap[entity]->GetActive())
-				{
-					auto [meshTransform, mesh, renderer] = view.get<TransformComponent, MeshComponent, MeshRendererComponent>(entity);
-
-					switch (mesh.meshType)
-					{
-					case MeshType::None:
-						break;
-					case MeshType::Plane:
-					case MeshType::Cube:
-					case MeshType::Sphere:
-					case MeshType::Cylinder:
-					case MeshType::Capsule:
-						mesh.mesh->BeginScene(camera, transform, position);
-						mesh.mesh->BindTextures(renderer.Textures);
-						mesh.mesh->BindShader(m_RenderType);
-						mesh.mesh->EndScene();
-						break;
-					case MeshType::Model:
-						if (mesh.mesh != nullptr)
-						{
-							mesh.mesh->BeginScene(camera, transform, position);
-							mesh.mesh->BindTextures(renderer.Textures);
-							mesh.mesh->BindShader(m_RenderType);
-							mesh.mesh->EndScene();
-						}
-						break;
-					default:
-						VOL_TRACE("错误MeshType");
-						break;
-					}
-				}
-			}
-		}
-		*/
-
-		// draw skybox as last
 		
 
 	}
@@ -1542,7 +1526,7 @@ namespace Volcano {
 	void Scene::OnComponentAdded<BoxColliderComponent>(Entity& entity, BoxColliderComponent& component)
 	{
 	}
-
+	
 	template<>
 	void Scene::OnComponentAdded<SphereColliderComponent>(Entity& entity, SphereColliderComponent& component)
 	{
@@ -1551,6 +1535,13 @@ namespace Volcano {
 	template<>
 	void Scene::OnComponentAdded<SkyboxComponent>(Entity& entity, SkyboxComponent& component)
 	{
+	}
+
+	template<>
+	void Scene::OnComponentAdded<ParticleSystemComponent>(Entity& entity, ParticleSystemComponent& component)
+	{
+		component.particleSystem->entity = &entity;
+		component.particleSystem->UpdateEntityOnMesh();
 	}
 
 	void Listener::BeginContact(b3_Contact* contact)

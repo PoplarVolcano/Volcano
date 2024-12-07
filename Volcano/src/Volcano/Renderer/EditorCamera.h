@@ -30,6 +30,7 @@ namespace Volcano {
 		glm::vec3 GetForwardDirection() const;
 		glm::vec3 GetPosition() { return m_Position; }
 		glm::quat GetOrientation() const;
+		glm::vec3 GetRotation() const;
 
 		float GetPitch() const { return m_Pitch; }
 		float GetYaw() const { return m_Yaw; }

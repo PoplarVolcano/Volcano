@@ -136,7 +136,7 @@ namespace Volcano {
 		// @param impluse 世界冲量向量，通常以N-seconds或kg-m/s为单位。
 		// @param point 施力点的世界位置。
 		// @param wake 也会唤醒body
-		void ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& point, bool wake);
+		void ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& point, bool awake);
 
 		// 对质心施加冲量。这会立即改变速度。 
 		// @param impluse 世界冲量向量，通常以N-seconds或kg-m/s为单位。
@@ -151,8 +151,8 @@ namespace Volcano {
 		// 求出body的总质量 @return质量，通常以千克kilograms（kg）为单位。
 		float GetMass() const;
 
-		// 获取物体围绕局部原点的转动惯量 @return 转动惯量，通常以kg-m^2为单位。
-		glm::vec3 GetInertia() const;
+		// 获取物体围绕质心的惯性张量 @return 转动惯量，通常以kg-m^2为单位。
+		glm::mat3 GetInertia() const;
 
 		// 获取Body的质量数据 @return 一个包含Body的质量、惯性和中心的struct。
 		b3_MassData GetMassData() const;
@@ -318,7 +318,9 @@ namespace Volcano {
 		b3_ContactEdge* m_contactList; // contace双链表
 
 		float m_mass, m_invMass;// 质量，千克
-		glm::vec3 m_I, m_invI; // 质心的转动惯量  Rotational inertia about the center of mass.
+		//glm::vec3 m_I, m_invI; // 质心的转动惯量  Rotational inertia about the center of mass.
+
+		glm::mat3 m_I, m_invI;  // 惯性张量
 
 		float m_linearDamping;   // 线性阻尼
 		float m_angularDamping;  // 角速度阻尼
@@ -425,14 +427,14 @@ namespace Volcano {
 		}
 	}
 
-	inline void b3_Body::ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& point, bool wake)
+	inline void b3_Body::ApplyLinearImpulse(const glm::vec3& impulse, const glm::vec3& point, bool awake)
 	{
 		if (m_type != b3_BodyType::e_dynamicBody)
 		{
 			return;
 		}
 
-		if (wake && (m_flags & e_awakeFlag) == 0)
+		if (awake && (m_flags & e_awakeFlag) == 0)
 		{
 			SetAwake(true);
 		}
@@ -479,18 +481,21 @@ namespace Volcano {
 		// Don't accumulate velocity if the body is sleeping
 		if (m_flags & e_awakeFlag)
 		{
-			m_angularVelocity += m_invI * impulse;
+			float I = ComputeInertia(m_I, GetLocalCenter(), glm::normalize(GetRotation()));
+			if (I != 0.0f)
+				m_angularVelocity += 1.0f / I * impulse;
+			
 		}
 	}
 
 	inline float b3_Body::GetMass() const { return m_mass; }
-	inline glm::vec3 b3_Body::GetInertia() const { return m_I + m_mass * glm::dot(m_sweep.localCenter, m_sweep.localCenter); }
+	inline glm::mat3 b3_Body::GetInertia() const { return ComputeInertia(m_I, m_mass, m_sweep.localCenter); }
 	inline b3_MassData b3_Body::GetMassData() const
 	{
 		b3_MassData data;
 		data.mass = m_mass;
-		data.I = m_I + m_mass * glm::dot(m_sweep.localCenter, m_sweep.localCenter); // 平行轴定理：j' = j + md^2
 		data.center = m_sweep.localCenter;
+		data.I = ComputeInertia(m_I, m_mass, m_sweep.localCenter);
 		return data;
 	}
 	inline glm::vec3 b3_Body::GetWorldPoint(const glm::vec3& localPoint) const { return b3_Multiply(m_transform, localPoint); }

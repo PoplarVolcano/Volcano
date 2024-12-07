@@ -1,4 +1,4 @@
-#include "ParticleSystem.h"
+#include "TwoDParticleSystem.h"
 
 #include "Random.h"
 
@@ -6,7 +6,7 @@
 #include <glm/gtx/compatibility.hpp>
 
 namespace Volcano {
-	ParticleSystem::ParticleSystem(uint32_t maxParticles)
+	TwoDParticleSystem::TwoDParticleSystem(uint32_t maxParticles)
 		: m_PoolIndex(maxParticles - 1)
 	{
 		m_ParticlePool.resize(maxParticles);
@@ -16,7 +16,7 @@ namespace Volcano {
 	///发散粒子
 	/// </summary>
 	/// <param name="particleProps"></param>
-	void ParticleSystem::Emit(const ParticleProps& particleProps)
+	void TwoDParticleSystem::Emit(const ParticleProps& particleProps)
 	{
 		//从粒子池中取出一个
 		Particle& particle = m_ParticlePool[m_PoolIndex];
@@ -47,7 +47,7 @@ namespace Volcano {
 		m_PoolIndex = (m_PoolIndex - 1) % m_ParticlePool.size();
 	}
 
-	void ParticleSystem::OnUpdate(Timestep ts)
+	void TwoDParticleSystem::OnUpdate(Timestep ts)
 	{
 		//更新池子的每个元素
 		for (auto& particle : m_ParticlePool)
@@ -70,7 +70,7 @@ namespace Volcano {
 		}
 	}
 
-	void ParticleSystem::OnRender()
+	void TwoDParticleSystem::OnRender()
 	{
 		//取出粒子
 		for (auto& particle : m_ParticlePool)

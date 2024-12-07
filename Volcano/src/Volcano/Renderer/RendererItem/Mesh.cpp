@@ -63,45 +63,40 @@ namespace Volcano {
             uint32_t dataSize = (uint32_t)((uint8_t*)vertexBufferPtr - (uint8_t*)vertexBufferBase);
             m_VertexBuffer->SetData(vertexBufferBase, dataSize);
 
-            glm::mat4 transform = m_Entity->GetParentTransform() * m_Entity->GetTransform();
-            glm::mat4 normalTransform = transpose(inverse(transform));//glm::mat3(transpose(inverse(transform)));
-
-            UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&transform, sizeof(glm::mat4));
-            UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&normalTransform, sizeof(glm::mat4), 4 * 4 * sizeof(float));
-
-
-            auto& mc = m_Entity->GetComponent<MeshComponent>();
-            if (mc.meshType == MeshType::Model || !mc.vertexBone.empty())
+            if (m_Entity->HasComponent<MeshComponent>())
             {
-                Entity* entityTemp = m_Entity;
-                do
+                auto& mc = m_Entity->GetComponent<MeshComponent>();
+                if (mc.meshType == MeshType::Model || !mc.vertexBone.empty())
                 {
-                    if (entityTemp->HasComponent<AnimationComponent>() && entityTemp->HasComponent<AnimatorComponent>())
+                    Entity* entityTemp = m_Entity;
+                    do
                     {
+                        if (entityTemp->HasComponent<AnimationComponent>() && entityTemp->HasComponent<AnimatorComponent>())
+                        {
 
-                        auto& animatorComponent = entityTemp->GetComponent<AnimatorComponent>();
-                        auto& finalBoneMatrices = animatorComponent.animator->GetFinalBoneMatrices();
-                        for(uint32_t i = 0; i < finalBoneMatrices.size(); i++)
-                            UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&finalBoneMatrices[i], sizeof(glm::mat4), i * 4 * 4 * sizeof(float));
+                            auto& animatorComponent = entityTemp->GetComponent<AnimatorComponent>();
+                            auto& finalBoneMatrices = animatorComponent.animator->GetFinalBoneMatrices();
+                            for (uint32_t i = 0; i < finalBoneMatrices.size(); i++)
+                                UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&finalBoneMatrices[i], sizeof(glm::mat4), i * 4 * 4 * sizeof(float));
                             //UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&finalBoneMatrices, finalBoneMatrices.size() * 4 * 4 * sizeof(float));
-                        break;
+                            break;
+                        }
+                        else
+                            entityTemp = entityTemp->GetEntityParent();
+                    } while (entityTemp != nullptr);
+                    if (entityTemp == nullptr)
+                    {
+                        float zero[1600] = { 0.0f };
+                        UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&zero, sizeof(zero));
                     }
-                    else
-                        entityTemp = entityTemp->GetEntityParent();
-                } while (entityTemp != nullptr);
-                if (entityTemp == nullptr) 
+
+                }
+                else
                 {
                     float zero[1600] = { 0.0f };
                     UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&zero, sizeof(zero));
                 }
-
             }
-            else
-            {
-                float zero[1600] = { 0.0f };
-                UniformBufferManager::GetUniformBuffer("BonesMatrices")->SetData(&zero, sizeof(zero));
-            }
-
 
             Draw();
         }
@@ -119,59 +114,84 @@ namespace Volcano {
         StartBatch();
     }
 
-    void Mesh::DrawMesh(int entityID, std::vector<glm::mat4>& finalBoneMatrices)
+    void Mesh::DrawMesh(int entityID, std::vector<glm::mat4>& finalBoneMatrices, const glm::mat4* transform, const glm::mat3* normalTransform)
 	{
         if (m_IndexCount >= MaxIndices)
             NextBatch();
 
-        for (uint32_t i = 0; i < m_VertexSize; i++)
+        if (transform == nullptr)
         {
-            vertexBufferPtr->Position  = m_Vertices[i].Position;
-            vertexBufferPtr->TexCoords = m_Vertices[i].TexCoords;
-            vertexBufferPtr->Normal    = m_Vertices[i].Normal;
-            vertexBufferPtr->Tangent   = m_Vertices[i].Tangent;
-            vertexBufferPtr->Bitangent = m_Vertices[i].Bitangent;
-            for (uint32_t index = 0; index < MAX_BONE_INFLUENCE; index++)
+            for (uint32_t i = 0; i < m_VertexSize; i++)
             {
-                vertexBufferPtr->BoneIDs[index] = m_Vertices[i].BoneIDs[index];
-                vertexBufferPtr->Weights[index] = m_Vertices[i].Weights[index];
-            }
-
-            /*
-            if (!finalBoneMatrices.empty())
-            {
-                glm::vec4 position = glm::vec4(0.0f);
+                vertexBufferPtr->Position  = m_Vertices[i].Position;
+                vertexBufferPtr->TexCoords = m_Vertices[i].TexCoords;
+                vertexBufferPtr->Normal    = m_Vertices[i].Normal;
+                vertexBufferPtr->Tangent   = m_Vertices[i].Tangent;
+                vertexBufferPtr->Bitangent = m_Vertices[i].Bitangent;
                 for (uint32_t index = 0; index < MAX_BONE_INFLUENCE; index++)
                 {
                     vertexBufferPtr->BoneIDs[index] = m_Vertices[i].BoneIDs[index];
                     vertexBufferPtr->Weights[index] = m_Vertices[i].Weights[index];
-
-                    if (vertexBufferPtr->BoneIDs[index] == -1)
-                        continue;
-                    if (vertexBufferPtr->BoneIDs[index] >= 100)
-                    {
-                        position = glm::vec4(m_Vertices[i].Position, 1.0f);
-                        break;
-                    }
-                    glm::vec4 localPosition = finalBoneMatrices[vertexBufferPtr->BoneIDs[index]] * glm::vec4(m_Vertices[i].Position, 1.0f);
-                    position += localPosition * vertexBufferPtr->Weights[index];
                 }
-                //vertexBufferPtr->Position = transform * position;
-                vertexBufferPtr->Position = position;
+
+                /*
+                if (!finalBoneMatrices.empty())
+                {
+                    glm::vec4 position = glm::vec4(0.0f);
+                    for (uint32_t index = 0; index < MAX_BONE_INFLUENCE; index++)
+                    {
+                        vertexBufferPtr->BoneIDs[index] = m_Vertices[i].BoneIDs[index];
+                        vertexBufferPtr->Weights[index] = m_Vertices[i].Weights[index];
+
+                        if (vertexBufferPtr->BoneIDs[index] == -1)
+                            continue;
+                        if (vertexBufferPtr->BoneIDs[index] >= 100)
+                        {
+                            position = glm::vec4(m_Vertices[i].Position, 1.0f);
+                            break;
+                        }
+                        glm::vec4 localPosition = finalBoneMatrices[vertexBufferPtr->BoneIDs[index]] * glm::vec4(m_Vertices[i].Position, 1.0f);
+                        position += localPosition * vertexBufferPtr->Weights[index];
+                    }
+                    //vertexBufferPtr->Position = transform * position;
+                    vertexBufferPtr->Position = position;
+                }
+                else
+                    //vertexBufferPtr->Position = transform * glm::vec4(m_Vertices[i].Position, 1.0f);
+                    vertexBufferPtr->Position = m_Vertices[i].Position;
+                */
+                vertexBufferPtr->EntityID = entityID;
+                vertexBufferPtr++;
             }
-            else
-                //vertexBufferPtr->Position = transform * glm::vec4(m_Vertices[i].Position, 1.0f);
-                vertexBufferPtr->Position = m_Vertices[i].Position;
-            */
-            vertexBufferPtr->EntityID  = entityID;
-            vertexBufferPtr++;
+        }
+        else
+        {
+            for (uint32_t i = 0; i < m_VertexSize; i++)
+            {
+                vertexBufferPtr->Position  = *transform * glm::vec4(m_Vertices[i].Position, 1.0f);
+                vertexBufferPtr->TexCoords = m_Vertices[i].TexCoords;
+                if (normalTransform != nullptr)
+                {
+                    vertexBufferPtr->Normal = *normalTransform * m_Vertices[i].Normal;
+                    vertexBufferPtr->Tangent = *normalTransform * m_Vertices[i].Tangent;
+                    vertexBufferPtr->Bitangent = glm::cross(vertexBufferPtr->Normal, vertexBufferPtr->Tangent);//normalTransform * m_Vertices[i].Bitangent;
+                }
+                for (uint32_t index = 0; index < MAX_BONE_INFLUENCE; index++)
+                {
+                    vertexBufferPtr->BoneIDs[index] = m_Vertices[i].BoneIDs[index];
+                    vertexBufferPtr->Weights[index] = m_Vertices[i].Weights[index];
+                }
+
+                vertexBufferPtr->EntityID = entityID;
+                vertexBufferPtr++;
+            }
         }
         m_IndexCount += m_IndexSize;
 	}
 
     void Mesh::Draw()
     {
-        Renderer::DrawIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
+        Renderer::DrawIndexed(m_VertexArray, m_IndexCount);//m_VertexArray->GetIndexBuffer()->GetCount());
     }
 
     void Mesh::BindTextures(std::vector<std::pair<ImageType, Ref<Texture>>> textures)
@@ -212,6 +232,11 @@ namespace Volcano {
 
     }
 
+    uint32_t Mesh::GetIndexCount()
+    {
+        return m_IndexCount;
+    }
+
     void Mesh::BindShader(RenderType type)
     {
         switch (type)
@@ -243,6 +268,9 @@ namespace Volcano {
         case RenderType::COLLIDER:
             Renderer::GetShaderLibrary()->Get("Collider")->Bind();
             break;
+        case RenderType::PARTICLE:
+            Renderer::GetShaderLibrary()->Get("Particle")->Bind();
+            break;
         case RenderType::NORMAL:
             break;
         default:
@@ -253,6 +281,7 @@ namespace Volcano {
     void Mesh::ResetVertexBufferBase()
     {
         vertexBufferBase = new MeshVertex[MaxVertices];
+        vertexBufferPtr = vertexBufferBase;
     }
 
     void Mesh::SetBoneID(int vertexIndex1, int vertexIndex2, int boneIndex, float weight)
@@ -329,14 +358,23 @@ namespace Volcano {
         uint32_t offset = 0;
         for (uint32_t i = 0; i < MaxIndices; i += m_IndexSize)
         {
+            VOL_ASSERT(i + m_IndexSize - 1 < MaxIndices);
             for (uint32_t j = 0; j < m_IndexSize; j++)
                 indicesBuffer[i + j] = offset + m_Indices[j];
-            offset += m_VertexSize; // +vertexSize
+            offset += m_VertexSize;
         }
         Ref<IndexBuffer> indexBuffer = IndexBuffer::Create(indicesBuffer, MaxIndices);;
         m_VertexArray->SetIndexBuffer(indexBuffer);
-        delete[] indicesBuffer;	// cpu上传到gpu上了可以删除cpu的索引数据块了
+        delete[] indicesBuffer;	// 数据上传到gpu上了可以删除cpu的索引数据块了
 
+    }
+
+    void Mesh::ResetMaxMeshes(uint32_t size)
+    {
+        MaxMeshes = size;
+        MaxVertices = MaxMeshes * m_VertexSize;
+        MaxIndices = MaxMeshes * m_IndexSize;
+        SetupMesh();
     }
 
     const Scope<MeshLibrary>& Mesh::GetMeshLibrary()

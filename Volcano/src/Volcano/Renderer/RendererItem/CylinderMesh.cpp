@@ -4,6 +4,19 @@
 
 namespace Volcano {
 
+	std::once_flag CylinderMesh::init_flag;
+	Scope<CylinderMesh> CylinderMesh::m_instance;
+
+	Scope<CylinderMesh>& CylinderMesh::GetInstance()
+	{
+		std::call_once(init_flag, []() { m_instance.reset(new CylinderMesh()); });
+		return m_instance;
+	}
+
+	Ref<CylinderMesh> CylinderMesh::CloneRef()
+	{
+		return std::make_shared<CylinderMesh>(*GetInstance().get());
+	}
 
 	CylinderMesh::CylinderMesh()
 	{
@@ -125,4 +138,20 @@ namespace Volcano {
 	{
 		Renderer::DrawStripIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
 	}
+
+	void CylinderMesh::DrawCylinder(glm::mat4 transform)
+	{
+		if (m_IndexCount)
+		{
+			// 不加uint8_t转化会得到元素数量, 加uint8_t返回以char为单位占用多少元素
+			uint32_t dataSize = (uint32_t)((uint8_t*)vertexBufferPtr - (uint8_t*)vertexBufferBase);
+			m_VertexBuffer->SetData(vertexBufferBase, dataSize);
+
+			UniformBufferManager::GetUniformBuffer("ModelTransform")->SetData(&transform, sizeof(glm::mat4));
+		}
+
+		Renderer::DrawIndexed(m_VertexArray, m_VertexArray->GetIndexBuffer()->GetCount());
+	}
+
+
 }

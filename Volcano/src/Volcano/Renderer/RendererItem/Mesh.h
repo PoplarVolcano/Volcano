@@ -87,7 +87,7 @@ namespace Volcano {
 		void NextBatch();
 		virtual void Draw();
 
-		virtual void DrawMesh(int entityID, std::vector<glm::mat4>& finalBoneMatrices);
+		virtual void DrawMesh(int entityID, std::vector<glm::mat4>& finalBoneMatrices, const glm::mat4* transform = nullptr, const glm::mat3* normalTransform = nullptr);
 
 		void BindTextures(std::vector<std::pair<ImageType, Ref<Texture>>> textures);
 		void BindShader(RenderType type = RenderType::NORMAL);
@@ -104,8 +104,12 @@ namespace Volcano {
 
 		void SetVertexBoneDataToDefault();
 
+		void ResetMaxMeshes(uint32_t size);
+
 		static void SetVertexBoneDataToDefault(MeshVertex& vertex);
 		static void SetVertexBoneData(MeshVertex& vertex, int boneID, float weight);
+
+		uint32_t GetIndexCount();
 	protected:
 		Mesh() = default;
 		virtual void SetupMesh();

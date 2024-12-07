@@ -32,7 +32,8 @@ namespace Volcano {
 		PBRDEFERRED_SHADING,
 		DEFERRED_SHADING,
 		SKYBOX,
-		COLLIDER
+		COLLIDER,
+		PARTICLE
 	};
 
 	class Entity;
@@ -137,7 +138,7 @@ namespace Volcano {
 
 		void UpdateCameraData(Camera& camera, glm::mat4 transform, glm::vec3 position);
 		void UpdateScene(Timestep ts);
-		void RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& direction);
+		void RenderScene(Camera& camera, const glm::mat4& transform, const glm::vec3& position, const glm::vec3& rotation);
 
 	private:
 		std::string m_Name = "Untitled";

@@ -611,9 +611,14 @@ namespace Volcano {
 		{
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);
 			RenderScene();
+			m_ActiveScene->SetRenderType(RenderType::COLLIDER);
+			RenderScene();
+			m_ActiveScene->SetRenderType(RenderType::PARTICLE);
+			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::SKYBOX);
 			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);
+
 
 			// ¸²¸Ç²ã
 			//OnOverlayRender();
@@ -749,6 +754,8 @@ namespace Volcano {
 			m_ActiveScene->SetRenderType(RenderType::NORMAL);
 			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::COLLIDER);
+			RenderScene();
+			m_ActiveScene->SetRenderType(RenderType::PARTICLE);
 			RenderScene();
 			m_ActiveScene->SetRenderType(RenderType::SKYBOX);
 			RenderScene();
