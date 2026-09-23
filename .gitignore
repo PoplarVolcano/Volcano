@@ -1,0 +1,20 @@
+# Binaries
+bin/
+bin-int/
+Intermediates/
+
+# Visual Studio files and folder
+.vs/
+**.sln
+**.slnx
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+**.csproj
+
+# Directories
+Volcano/vendor/VulkanSDK
+VolcanoEditor/Resources/cache
+scripts/__pycache__
+Volcano-old/
+packages/

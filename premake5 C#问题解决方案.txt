@@ -1,0 +1,6 @@
+将 <Platform Project="x64" /> 加入所有 Project
+
+如 
+  <Project Path="VolcanoScriptCore\VolcanoScriptCore.csproj" Id="F59D5403-61B4-5299-AA2B-DEBA16812321">
+    <Platform Project="x64" />
+  </Project>
